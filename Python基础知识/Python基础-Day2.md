@@ -185,6 +185,7 @@ else:
 ### 1. 基础变量和字符串操作
 
 * 题目：编写一个程序，接收用户输入的姓名和年龄，然后计算并输出这个人5年后的年龄。
+
     `要求`：
     1. 使用input()函数获取用户输入
     2. 进行必要的类型转换
@@ -205,3 +206,34 @@ future_age = age + x
 print(f"你好，{name}！再过{x}年，你就{future_age}岁了。")
 ```
 
+### 简单密码验证
+
+#### 要求：
+编写一个程序，模拟简单的登录验证：
+1. 程序内设置一个固定的用户名和密码（如username="admin"，password="12345"）。
+2. 接收用户输入的用户名和密码，判断是否正确：
+    * 如果正确，输出“登录成功”。
+    * 如果用户名或密码错误，输出“用户名或密码错误”。
+
+#### 结题思路：
+* 定义固定的用户名和密码。
+* 使用input()获取用户输入的用户名和密码。
+* 使用if-else判断输入是否匹配。
+
+#### 答案
+```python
+# 固定用户名和密码
+correct_username = "admin"
+correct_password = "12345"
+
+# 用户输入
+username = input("请输入用户名：")
+password = input("请输入密码：")
+
+# 验证
+if username == correct_username and password == correct_password:
+    print("登录成功")
+else:
+    print("用户名或密码错误")
+
+```
