@@ -348,7 +348,7 @@ print(f"最高分: {max_score}")
 print(f"最低分: {min_score}")
 
 # 排序
-sorted_scores = sorted(scores, reverse=True)
+sorted_scores = scores.reverse()
 print("降序排列:", sorted_scores)
 
 ```
