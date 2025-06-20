@@ -347,8 +347,8 @@ min_score = min(scores)
 print(f"最高分: {max_score}")
 print(f"最低分: {min_score}")
 
-# 排序
-sorted_scores = scores.reverse()
+# 降序排列   先给列表排序再将列表反转
+sorted_scores = scores.sort().reverse()
 print("降序排列:", sorted_scores)
 
 ```
