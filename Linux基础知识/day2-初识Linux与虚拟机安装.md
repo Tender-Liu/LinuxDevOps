@@ -99,6 +99,9 @@ Linux的发行版是基于Linux内核构建的操作系统，通常包含内核�
     * https://www.cnblogs.com/EthanS/p/18211302
     * https://docs.geeksman.com/tools/ubuntu/02.ubuntu-install.html
 
+5. VMware 激活码
+    * https://github.com/hegdepavankumar/VMware-Workstation-Pro-17-Licence-Keys
+
 5. 在VMware中安装Ubuntu系统
     * 英文版系统安装教程 -  https://blog.csdn.net/m0_51913750/article/details/131604868
     * 中文版系统安装教程 - https://docs.geeksman.com/tools/ubuntu/02.ubuntu-install.html#_2-%E9%85%8D%E7%BD%AE-ubuntu-%E8%99%9A%E6%8B%9F%E6%9C%BA
