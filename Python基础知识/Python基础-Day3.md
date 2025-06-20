@@ -191,6 +191,55 @@ print(f"总字符数（不包含空格）: {chars_without_space}")
 
 ```
 
+### 练习题3：字符串处理 - 2
+给定字符串 s = "  Hello world! Python is fun.  ", 请按照以下步骤完成字符串处理：
+1. 去掉两端的空白字符。
+2. 判断字符串是否以单词 "Hello" 开头，并以句号 "." 结尾。
+3. 将字符串中的所有 "o" 替换为 "0"。
+4. 将字符串按空格分割为单词列表。
+5. 统计单词列表中包含字母 "i" 的单词个数。
+6. 最后将单词列表用逗号拼接为一个新的字符串，并输出。
+
+#### 解析思路
+1. 去除两端空白字符：使用 strip() 方法。
+2. 判断开头和结尾：分别使用 startswith() 和 endswith() 方法。
+3. 替换字符：使用 replace() 方法将所有的 "o" 替换为 "0"。
+4. 分割字符串：使用 split() 方法按空格分割字符串为单词列表。
+5. 统计包含字母 "i" 的单词：遍历单词列表，用 count() 方法统计每个单词中 "i" 的出现次数，并累加。
+6. 拼接字符串：使用 join() 方法将单词列表用逗号拼接为一个字符串。
+
+#### 答案
+```python
+# 原始字符串
+s = "  Hello world! Python is fun.  "
+
+# 1. 去掉两端空白字符
+s = s.strip()
+
+# 2. 判断开头和结尾
+is_start_hello = s.startswith("Hello")
+is_end_dot = s.endswith(".")
+
+# 3. 替换字符
+s = s.replace("o", "0")
+
+# 4. 分割字符串为单词列表
+words = s.split()
+
+# 5. 统计包含字母 "i" 的单词个数
+count_i = sum(1 for word in words if "i" in word)
+
+# 6. 拼接单词列表为新字符串
+result_string = ",".join(words)
+
+# 输出结果
+print(f"是否以 'Hello' 开头: {is_start_hello}")
+print(f"是否以 '.' 结尾: {is_end_dot}")
+print(f"包含字母 'i' 的单词个数: {count_i}")
+print(f"处理后的字符串: {result_string}")
+
+```
+
 ## 2. 列表（List）
 
 ### 2.1 列表定义
