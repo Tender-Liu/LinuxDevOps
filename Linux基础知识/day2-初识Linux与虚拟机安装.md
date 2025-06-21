@@ -384,6 +384,12 @@ svr01
 
 #### 操作内容
 ```bash
+# 由于ubuntu安装的系统时，默认没有安装ifconfig命令
+# 请使用以下命令安装
+sudo apt install net-tools
+```
+
+```bash
 [root@localhost /]# ifconfig             # 查看网卡 IP 地址信息
 
 
@@ -424,11 +430,22 @@ svr01
 
 #### 操作内容
 ```bash
+# vim 编辑文本命令默认没有安装，使用命令安装一下
+# 记得输入密码哦
+sudo apt install -y vim
+```
+
+```bash
 [root@localhost /]# vim /opt/test.txt    # 编辑文件
 # 按 i 键进入插入模式，输入内容：
 I Love Linux
 # 按 Esc 键返回命令模式，输入 :wq 保存并退出
 
+```
+
+```bash
+# 查看刚才编辑的文件
+cat /opt/test.txt
 ```
 
 #### 操作结果
