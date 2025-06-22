@@ -8,9 +8,9 @@
 ### 1.1 下载XShell
 1. 访问XShell官网 (https://www.xshell.com/zh/xshell-download/)
 2. 选择"Free for Home/School"（家庭/学校免费版）
-    <img src="/Linux基础知识/images/dayy3/xshell下载地址.png" alt="xshell下载地址" height="300">
+    * <img src="/Linux基础知识/images/dayy3/xshell下载地址.png" alt="xshell下载地址" height="300">
 3. 填写相关信息并下载安装包
-    <img src="/Linux基础知识/images/dayy3/下载界面.png" alt="下载界面" height="300">
+    * <img src="/Linux基础知识/images/dayy3/下载界面.png" alt="下载界面" height="300">
 
 ### 1.2 安装步骤
 1. 双击下载的安装包启动安装程序
@@ -66,11 +66,9 @@ sudo ufw disable
 2. 协议：选择SSH
 3. 主机：输入Ubuntu服务器的IP地址
 4. 端口号：默认为22
+    * <img src="/Linux基础知识/images/dayy3/配置远程连接一.png" alt="配置远程连接一" height="300">
 5. 用户密码: 自己配置
-
-<img src="/Linux基础知识/images/dayy3/配置远程连接一.png" alt="配置远程连接一" height="300">
-
-<img src="/Linux基础知识/images/dayy3/远程配置2.png" alt="远程配置2" height="300">
+    * <img src="/Linux基础知识/images/dayy3/远程配置2.png" alt="远程配置2" height="300">
 
 
 ### 3.3 连接测试
