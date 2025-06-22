@@ -735,3 +735,99 @@ vim命令的功能是编辑文本内容，是Linux系统字符界面下最常用
 
 ## 恭喜你看到这里了
 看到这里，把grep和vim的练习再来一遍，谢谢，别觉得枯燥，后面学习更麻烦，总不能还回来学基础吧
+
+
+## 综合练习
+### 今日学习综合练习：文件与目录管理任务
+
+本练习旨在综合运用今天所学的 `cd`、`ls`、`mkdir`、`rm`、`mv`、`cp`、`grep` 和 `vim` 命令，完成一系列文件和目录管理任务。通过本练习，学员将熟悉文件系统的基本操作和常用命令的组合使用。
+
+#### 操作任务：
+1. **创建与切换目录**  
+   - 在当前目录下创建一个名为 `practice` 的目录：  
+     ```
+     mkdir practice
+     ```
+   - 切换到 `practice` 目录：  
+     ```
+     cd practice
+     ```
+
+2. **创建文件与查看目录内容**  
+   - 在 `practice` 目录下创建两个文件：`file1.txt` 和 `file2.txt`：  
+     ```
+     touch file1.txt file2.txt
+     ```
+   - 使用 `ls` 命令查看当前目录内容：  
+     ```
+     ls
+     ```
+
+3. **编辑文件内容**  
+   - 使用 `vim` 编辑 `file1.txt`，输入以下内容：  
+     ```
+     学习Linux命令是一件非常有趣的事情。
+     掌握cd、ls、mkdir等命令，可以轻松管理文件和目录。
+     ```
+     保存并退出编辑器（按 `Esc`，然后输入 `:wq`）。
+
+4. **复制与移动文件**  
+   - 将 `file1.txt` 复制为 `file1_copy.txt`：  
+     ```
+     cp file1.txt file1_copy.txt
+     ```
+   - 将 `file2.txt` 移动到 `file2_renamed.txt`：  
+     ```
+     mv file2.txt file2_renamed.txt
+     ```
+
+5. **创建子目录并移动文件**  
+   - 创建一个名为 `subdir` 的子目录：  
+     ```
+     mkdir subdir
+     ```
+   - 将 `file1_copy.txt` 移动到 `subdir` 目录中：  
+     ```
+     mv file1_copy.txt subdir/
+     ```
+
+6. **查找与删除文件**  
+   - 使用 `grep` 查找 `file1.txt` 中包含“命令”一词的行：  
+     ```
+     grep "命令" file1.txt
+     ```
+   - 删除 `file2_renamed.txt` 文件：  
+     ```
+     rm file2_renamed.txt
+     ```
+
+7. **综合操作：总结报告**  
+   - 使用 `vim` 创建一个名为 `summary.txt` 的文件，输入以下内容：  
+     ```
+     今日练习总结：
+     - 创建了practice目录，并切换到该目录。
+     - 创建了file1.txt和file2.txt文件。
+     - 使用vim编辑了file1.txt，学习了文本编辑。
+     - 复制了file1.txt为file1_copy.txt，重命名了file2.txt。
+     - 创建了subdir子目录，并将file1_copy.txt移动到该目录。
+     - 使用grep查找了file1.txt中的内容。
+     - 删除了file2_renamed.txt文件。
+     ```
+     保存并退出编辑器。
+
+8. **查看最终目录结构**  
+   - 返回上一级目录：  
+     ```
+     cd ..
+     ```
+   - 使用 `ls -R practice` 查看 `practice` 目录及其子目录的结构：  
+     ```
+     ls -R practice
+     ```
+
+#### 练习目标：
+通过本练习，学员将熟练掌握以下内容：
+- 基本文件与目录操作（创建、删除、移动、复制等）；
+- 文本编辑器 `vim` 的基础使用；
+- 使用 `grep` 查找文件内容；
+- 查看目录结构和内容。
