@@ -53,6 +53,17 @@ sudo ufw disable
 # sudo ufw enable
 ```
 
+### 2.3 安装远程依赖组件
+```bash
+# Ubuntu 默认情况下可能没有安装 SSH 服务，您需要安装 openssh-server 软件包
+sudo apt update
+sudo apt install openssh-server -y
+
+# 启动 SSH 服务
+sudo systemctl start ssh
+# 开启启动服务
+sudo systemctl enable ssh
+```
 
 ## 3. 使用XShell连接Ubuntu
 
