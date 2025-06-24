@@ -210,13 +210,32 @@ tar -Jxvf /root/test.tar.xz -C /root/test_xz/
 #### 1. -C 切换目录打包
 ```bash
 # 只打包 /etc 目录下的 passwd 文件和 /etc/sysconfig/network-scripts/ 下的 ifcfg-lo 文件
-tar -zcf /root/yy.tar.gz -C /etc passwd -C /etc/sysconfig/network-scripts ifcfg-lo
+tar -zcf /root/passwd.tar.gz -C /etc passwd -C /etc/sysconfig/network-scripts ifcfg-lo
+
+# 创建解压缩文件夹
+mkdir /root/passwd_gz
+
+# 查看压缩文件
+tar -tf /root/passwd_gz
+
+# 指定位置，解压文件
+tar -zxf /root/passwd.tar.gz -C /root/passwd_gz
 
 ```
 
 #### 2. 多文件/多目录打包
 ```bash
-tar -zcf /root/zz.tar.gz -C /etc passwd shells hosts fstab
+# 指定压缩内容 passwd shells hosts fstab
+tar -zcf /root/hosts.tar.gz -C /etc passwd shells hosts fstab
+
+# 创建解压目录
+mkdir /root/hosts_gz
+
+# 查看压缩文件
+tar -tf hosts_gz.tar.gz
+
+# 解压文件到指定目录
+tar -zxvf /root/hosts.tar.gz -C /root/hosts_gz
 
 ```
 
