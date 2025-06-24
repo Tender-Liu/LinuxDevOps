@@ -165,30 +165,44 @@ tar [选项] [归档文件名] [文件或目录名...]
 ```bash
 # 1.1 打包为 .tar
 tar -cf /root/test.tar /etc/passwd /home
+mkdir /root/test_tar
 
 # 1.2 打包为 .tar.gz（gzip压缩）
 tar -zcf /root/test.tar.gz /etc/passwd /home
+mkdir /root/test_gz
 
 # 1.3 打包为 .tar.bz2（bzip2压缩）
 tar -jcf /root/test.tar.bz2 /etc/passwd /home
+mkdir /root/test_bz2
 
 # 1.4 打包为 .tar.xz（xz压缩）
 tar -Jcf /root/test.tar.xz /etc/passwd /home
+mkdir /root/test_xz
 
 ```
 
 ### 查看归档内容
 ```bash
+tar -tf /root/test.tar
 tar -tf /root/test.tar.gz
+tar -tf /root/test.tar.bz2
+tar -tf /root/test.tar.xz
 ```
 
 ### 解包（释放归档）
 ```bash
-# 3.1 解包到当前目录
-tar -zxf /root/test.tar.gz
+# 3.1 解包到当前目录 -- 这个不练习
+tar -xf /root/test.tar -C /root/test_tar
 
-# 3.2 解包到指定目录
-tar -jxf /root/test.tar.bz2 -C /tmp/test/
+# 3.2 解包到指定目录 .tar.gz（gzip压缩）
+tar -zxvf /root/test.tar.gz -C /root/test_gz/
+
+# 3.2 解包到指定目录 .tar.gz（gzip压缩）
+tar -jxvf /root/test.tar.bz2 -C /root/test_bz2/
+
+# 3.2 解包到指定目录 .tar.gz（gzip压缩）
+tar -Jxvf /root/test.tar.xz -C /root/test_xz/
+
 
 ```
 
