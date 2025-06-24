@@ -102,7 +102,7 @@ tail -f /var/log/syslog               # 实时输出日志文件内容
 2. 用 tail -f 实时查看 /var/log/syslog 文件内容，并观察变化。
     * `tail -f /var/log/syslog`
     * 在打开一个终端使用echo 命令，为`/var/log/syslog` 添加内容
-    * `echo >> "你能看见我的实时更新吗？"`
+    * `echo "你能看见我的实时更新吗？" >> /var/log/syslog`
     * 观察`tail -f /var/log/syslog` 是否有数据在刷新
 3. 用 tail 查看两个文件的最后2行，要求不显示文件名头部。
     * tail -n 2 -q /var/log/apt/history.log /etc/passwd
