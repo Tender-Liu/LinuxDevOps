@@ -353,9 +353,9 @@ find是Linux中非常强大的文件查找命令，可以根据文件名、类�
 * find /mnt -name "cbd*" -type d
 
 #### 查找并处理（-exec）
-* 查找大文件并复制：find /boot -size +10M -exec cp {} /mnt \;
+* 查找大文件并复制：`find /boot -size +10M -exec cp {} /mnt \;`
 * 查找所有者为student的文件并复制：
-    * find / -user student -type f -exec cp {} /root/findfiles \;
+    * `find / -user student -type f -exec cp {} /root/findfiles \;`
 
 **解释：**
 
