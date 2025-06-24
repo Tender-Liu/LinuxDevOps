@@ -23,53 +23,53 @@
 ## 常见主机资源排查思路
 
 1. CPU 占用高
-- 使用 top 或 htop 实时查看CPU使用率，关注占用高的进程。
-- ps aux --sort=-%cpu 按CPU占用排序，定位高消耗进程。
-- mpstat -P ALL 1 监控多核CPU负载。
+    - 使用 top 或 htop 实时查看CPU使用率，关注占用高的进程。
+    - ps aux --sort=-%cpu 按CPU占用排序，定位高消耗进程。
+    - mpstat -P ALL 1 监控多核CPU负载。
 
 2. 内存不足或泄漏
-- free -h 查看总内存和剩余内存。
-- top/htop 关注高内存进程。
-- ps aux --sort=-%mem 按内存占用排序。
-- vmstat 1 持续监控内存、交换区变化。
+    - free -h 查看总内存和剩余内存。
+    - top/htop 关注高内存进程。
+    - ps aux --sort=-%mem 按内存占用排序。
+    - vmstat 1 持续监控内存、交换区变化。
 
 3. 磁盘空间不足
-- df -h 查看各分区空间使用情况。
-- du -sh /* 查找哪个目录占用空间大。
-- du -sh /var/log/* 检查日志目录是否过大。
+    - df -h 查看各分区空间使用情况。
+    - du -sh /* 查找哪个目录占用空间大。
+    - du -sh /var/log/* 检查日志目录是否过大。
 
 4. 磁盘IO瓶颈
-- iostat -x 1 监控磁盘IO利用率和等待情况。
-- iotop 实时查看进程级别的IO消耗。
-- dstat -d 1 综合查看磁盘读写速率。
+    - iostat -x 1 监控磁盘IO利用率和等待情况。
+    - iotop 实时查看进程级别的IO消耗。
+    - dstat -d 1 综合查看磁盘读写速率。
 
 5. 磁盘健康问题
-- smartctl -a /dev/sda 检查硬盘健康状态。
-- badblocks -sv /dev/sda 检查硬盘坏道（谨慎操作）。
+    - smartctl -a /dev/sda 检查硬盘健康状态。
+    - badblocks -sv /dev/sda 检查硬盘坏道（谨慎操作）。
 
 6. 网络问题
-- ip addr 或 ifconfig 查看网卡和IP信息。
-- ping 目标IP 检查网络连通性。
-- traceroute 目标IP 跟踪网络路径。
-- netstat -tnlp 或 ss -tnlp 查看端口监听和网络连接。
-- lsof -i:端口号 查找占用端口的进程。
-- iftop 或 nload 实时监控网卡流量。
-- tcpdump -i eth0 抓包分析网络异常。
+    - ip addr 或 ifconfig 查看网卡和IP信息。
+    - ping 目标IP 检查网络连通性。
+    - traceroute 目标IP 跟踪网络路径。
+    - netstat -tnlp 或 ss -tnlp 查看端口监听和网络连接。
+    - lsof -i:端口号 查找占用端口的进程。
+    - iftop 或 nload 实时监控网卡流量。
+    - tcpdump -i eth0 抓包分析网络异常。
 
 7. 服务异常
-- systemctl status 服务名 查看服务状态。
-- journalctl -u 服务名 查看服务日志。
-- ps aux | grep 服务名 检查服务进程是否存在。
+    - systemctl status 服务名 查看服务状态。
+    - journalctl -u 服务名 查看服务日志。
+    - ps aux | grep 服务名 检查服务进程是否存在。
 
 8. 日志与系统信息
-- dmesg 查看内核日志，排查硬件及驱动故障。
-- tail -f /var/log/syslog 或 /var/log/messages 实时查看系统日志。
+    - dmesg 查看内核日志，排查硬件及驱动故障。
+    - tail -f /var/log/syslog 或 /var/log/messages 实时查看系统日志。
 
 9. 其他硬件检查
-- lscpu 查看CPU详细信息。
-- lsblk 查看块设备和挂载情况。
-- lspci 查看PCI设备。
-- lsusb 查看USB设备。
+    - lscpu 查看CPU详细信息。
+    - lsblk 查看块设备和挂载情况。
+    - lspci 查看PCI设备。
+    - lsusb 查看USB设备。
 
 建议：排查问题时，先从整体资源（CPU、内存、磁盘、网络）入手，逐步缩小范围，结合服务日志和系统日志，定位具体异常点。
 
