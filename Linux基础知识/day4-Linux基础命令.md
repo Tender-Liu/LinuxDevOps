@@ -150,6 +150,11 @@ tar（tape archive）是 Linux 下最常用的归档和压缩工具之一，常�
 * `.tar.bz2` ：tar打包 + bzip2压缩
 * `.tar.xz` ：tar打包 + xz压缩
 
+### 基本语法
+```bash
+tar [选项] [归档文件名] [文件或目录名...]
+```
+
 ### 选择建议
 * 日常备份、传输：用 .tar.gz（速度快，兼容性好）
 * 追求更小体积：用 .tar.bz2 或 .tar.xz
