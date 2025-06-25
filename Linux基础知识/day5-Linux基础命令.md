@@ -295,8 +295,8 @@ sudo yum install unzip zip lrzsz -y
 ```bash
 unzip -v
 zip -v
-lsz --version
-lrz --version
+sz --version
+rz --version
 ```
 
 #### zip 文件压缩与解压
