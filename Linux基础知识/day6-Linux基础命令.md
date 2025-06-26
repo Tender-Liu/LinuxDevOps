@@ -408,8 +408,8 @@ user1    ALL=(root)      /usr/bin/passwd
 # 允许组内所有用户执行命令
 %sudo    ALL=(ALL:ALL)   ALL
 
-# 限制特定命令
-user2    ALL=(ALL)       !/usr/bin/passwd root
+# 限制特定命令 除了不能修改root密码，其他命令都可以使用
+user2   ALL=(ALL:ALL) NOPASSWD: ALL, !/usr/bin/passwd root
 
 ```
 
@@ -423,7 +423,8 @@ user2    ALL=(ALL)       !/usr/bin/passwd root
 
 # 答案：
 useradd dev_user
-visudo
+
+vim /etc/sudoers
 # 添加以下行：
 dev_user ALL=(root) /usr/sbin/nginx
 # 保存退出
@@ -439,7 +440,7 @@ sudo -l -U dev_user  # 验证权限
 # 3. 测试配置
 
 # 答案：
-visudo
+vim /etc/sudoers
 # 添加以下配置：
 Cmnd_Alias NETWORK = /sbin/ifconfig, /sbin/route, /bin/ping
 user1 ALL=(root) NETWORK
@@ -456,7 +457,7 @@ sudo -l -U user1  # 验证权限
 # 3. 测试权限
 
 # 答案：
-visudo
+vim /etc/sudoers
 # 添加以下配置：
 user2 ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
 # 保存退出
