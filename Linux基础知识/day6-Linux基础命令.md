@@ -132,7 +132,7 @@ su test                       # 切换到test用户但不加载环境变量
 
 # 答案：
 useradd -m -s /bin/bash student    # 创建用户
-usermod -aG adm student         # 添加到docker组
+usermod -aG adm student         # 添加到adm组
 echo "student123" | passwd --stdin student  # 设置密码
 
 ```
