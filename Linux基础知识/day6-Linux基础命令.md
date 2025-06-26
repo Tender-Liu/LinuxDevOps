@@ -838,10 +838,13 @@ vim ~/.ssh/authorized_keys
 4. 测试 SSH 登录
 请将私钥导入至xshell中 步骤如图
 
-<img src="/Linux基础知识/images/day6/shell秘钥配置.png" alt="shell秘钥配置" height="300">
+* shell秘钥配置
+    <img src="/Linux基础知识/images/day6/shell秘钥配置.png" alt="shell秘钥配置" height="300">
 
 
-<img src="/Linux基础知识/images/day6/导入私钥.png" alt="导入私钥" height="300">
+* 导入私钥
+    <img src="/Linux基础知识/images/day6/导入私钥.png" alt="导入私钥" height="300">
 
 
-<img src="/Linux基础知识/images/day6/秘钥登录.png" alt="秘钥登录" height="300">
+* 秘钥登录
+    <img src="/Linux基础知识/images/day6/秘钥登录.png" alt="秘钥登录" height="300">
