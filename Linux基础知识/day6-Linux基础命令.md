@@ -99,7 +99,7 @@ useradd -m -s /bin/bash test     # 创建test用户并指定shell
 useradd -g admin -G docker test  # 创建用户并指定组
 
 # 修改用户
-usermod -aG docker test         # 将test用户添加到docker组
+usermod -aG adm test         # 将test用户添加到docker组
 usermod -s /sbin/nologin test   # 禁止test用户登录
 
 # 设置密码
@@ -132,7 +132,7 @@ su test                       # 切换到test用户但不加载环境变量
 
 # 答案：
 useradd -m -s /bin/bash student    # 创建用户
-usermod -aG docker student         # 添加到docker组
+usermod -aG adm student         # 添加到docker组
 echo "student123" | passwd --stdin student  # 设置密码
 
 ```
