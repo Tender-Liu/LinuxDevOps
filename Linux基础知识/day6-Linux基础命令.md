@@ -42,8 +42,8 @@ linux用户管理命令详解：useradd命令的功能与使用方法 [参考文
 | 参数 | 作用                     | 举例                              |
 |------|-------------------------|-----------------------------------|
 | `-d` | 指定用户主目录          | `useradd -d /home/test test`     |
-| `-g` | 指定用户所属主组        | `useradd -g admin test`          |
-| `-G` | 指定用户所属附加组      | `useradd -G docker,admin test`   |
+| `-g` | 指定用户所属主组        | `useradd -g adm test`          |
+| `-G` | 指定用户所属附加组      | `useradd -G lpadmin,adm test`   |
 | `-s` | 指定用户的登录shell     | `useradd -s /bin/bash test`      |
 | `-m` | 创建用户主目录          | `useradd -m test`                |
 
@@ -51,9 +51,9 @@ linux用户管理命令详解：useradd命令的功能与使用方法 [参考文
 #### usermod参数
 | 参数 | 作用                     | 举例                              |
 |------|-------------------------|-----------------------------------|
-| `-g` | 修改用户主组            | `usermod -g admin test`          |
-| `-G` | 修改用户附加组          | `usermod -G docker test`         |
-| `-a` | 追加用户到附加组        | `usermod -aG docker test`        |
+| `-g` | 修改用户主组            | `usermod -g adm test`          |
+| `-G` | 修改用户附加组          | `usermod -G lpadmin test`         |
+| `-a` | 追加用户到附加组        | `usermod -aG lpadmin test`        |
 | `-s` | 修改用户shell           | `usermod -s /bin/bash test`      |
 | `-L` | 锁定用户账号            | `usermod -L test`                |
 | `-U` | 解锁用户账号            | `usermod -U test`                |
@@ -66,7 +66,6 @@ linux用户管理命令详解：useradd命令的功能与使用方法 [参考文
 | `-d`          | 删除用户密码                     | `passwd -d test`                         |
 | `-e`          | 强制用户下次登录修改密码         | `passwd -e test`                         |
 | `-S`          | 查看密码状态                     | `passwd -S test`                         |
-| `--stdin`     | 从标准输入读取密码               | `echo "123456" | passwd --stdin test`    |
 
 
 #### groups命令
@@ -79,8 +78,8 @@ linux用户管理命令详解：useradd命令的功能与使用方法 [参考文
 #### gpasswd参数
 | 参数  | 作用                    | 举例                            |
 |-------|------------------------|---------------------------------|
-| `-a`  | 将用户添加到组          | `gpasswd -a test docker`       |
-| `-d`  | 将用户从组中删除        | `gpasswd -d test docker`       |
+| `-a`  | 将用户添加到组          | `gpasswd -a test lpadmin`       |
+| `-d`  | 将用户从组中删除        | `gpasswd -d test lpadmin`       |
 | `-A`  | 指定组管理员            | `gpasswd -A test `              |
 
 
@@ -96,23 +95,23 @@ linux用户管理命令详解：useradd命令的功能与使用方法 [参考文
 ```bash
 # 创建用户
 useradd -m -s /bin/bash test     # 创建test用户并指定shell
-useradd -g admin -G docker test  # 创建用户并指定组
+useradd -g adm -G lpadmin test  # 创建用户并指定组
 
 # 修改用户
-usermod -aG adm test         # 将test用户添加到docker组
+usermod -aG lpadmin test         # 将test用户添加到lpadmin组
 usermod -s /sbin/nologin test   # 禁止test用户登录
 
 # 设置密码
 passwd test                     # 为test用户设置密码
-echo "password" | passwd --stdin test  # 非交互式设置密码
+echo "test:password" | sudo chpasswd # 非交互式设置密码
 
 # 删除用户
 userdel -r test                # 删除用户及其主目录
 
 # 组管理
 groups test                    # 查看test用户所属的组
-gpasswd -a test docker        # 将test用户添加到docker组
-gpasswd -d test docker        # 将test用户从docker组中删除
+gpasswd -a test lpadmin        # 将test用户添加到lpadmin组
+gpasswd -d test lpadmin        # 将test用户从lpadmin组中删除
 
 # 切换用户
 su - test                     # 切换到test用户并加载环境变量
@@ -127,13 +126,13 @@ su test                       # 切换到test用户但不加载环境变量
 # 任务：创建一个名为student的用户，配置以下要求：
 # 1. 主目录为/home/student
 # 2. 使用bash作为默认shell
-# 3. 添加到docker组
+# 3. 添加到lpadmin组
 # 4. 设置密码为student123
 
 # 答案：
 useradd -m -s /bin/bash student    # 创建用户
 usermod -aG adm student         # 添加到adm组
-echo "student123" | passwd --stdin student  # 设置密码
+echo "student:student123" | sudo chpasswd  # 设置密码
 
 ```
 
@@ -355,12 +354,19 @@ ls -l test_file
 ```
 
 ## Sudo配置管理
+### 什么是 Sudo？
+sudo（Superuser Do）是一个 Linux/Unix 系统中非常重要的权限管理工具。它允许普通用户在不直接使用 root 用户登录的情况下，临时以超级用户（或其他指定用户）的身份执行特定命令。
+
+### 为什么需要 Sudo？ 
+* 安全性：避免直接使用 root 用户登录，减少误操作和被攻击的风险。
+* 精细权限控制：通过 sudo，可以为不同用户分配不同的命令权限。
+* 审计功能：sudo 会记录所有使用 sudo 执行的命令，便于追踪和审查。
 
 ### 1. 命令解释
 | 命令          | 说明                          |
 |---------------|------------------------------|
 | `visudo`      | 安全地编辑 sudoers 配置文件   |
-| `sudo -I`     | 列出当前用户的 sudo 权限      |
+| `sudo -l`     | 列出当前用户的 sudo 权限      |
 | `sudo -v`     | 更新用户的时间戳              |
 | `sudo -k`     | 使时间戳失效                  |
 
@@ -368,7 +374,7 @@ ls -l test_file
 | 参数  | 作用                          | 举例                              |
 |-------|------------------------------|-----------------------------------|
 | `-u`  | 以指定用户执行命令            | `sudo -u mysql mysqld`           |
-| `-g`  | 以指定组执行命令              | `sudo -g docker docker ps`       |
+| `-g`  | 以指定组执行命令              | `sudo -g lpadmin lpadmin ps`       |
 | `-i`  | 模拟初始登录 shell            | `sudo -i`                        |
 | `-s`  | 运行 shell                    | `sudo -s`                        |
 | `-H`  | 设置 HOME 环境变量            | `sudo -H pip install package`    |
@@ -390,25 +396,32 @@ user    host=(runas)    commands
 # 别名定义
 Host_Alias    SERVERS = server1, server2
 Cmnd_Alias    NETWORKING = /sbin/route, /sbin/ifconfig
-User_Alias    ADMINS = john, mike
+User_Alias    admS = john, mike
 
 ```
+
+* user: 指定用户或用户组（组名前加 %）。
+* host: 指定主机（ALL 表示所有主机）。
+* runas: 指定可以切换的用户身份（ALL 表示所有用户）。
+* commands: 指定允许执行的命令（ALL 表示所有命令）。
 
 #### 3.2 常用配置示例
 ```bash
 # 允许用户执行所有命令
-admin    ALL=(ALL)       ALL
+adm    ALL=(ALL)       ALL
 
 # 允许用户免密码执行所有命令
-admin    ALL=(ALL)       NOPASSWD: ALL
+# 注意: 请确保配置写到%sudo 内容以下
+adm    ALL=(ALL)     NOPASSWD: ALL
 
-# 允许用户执行特定命令
+# 允许用户以 root 身份执行特定命令
 user1    ALL=(root)      /usr/bin/passwd
 
 # 允许组内所有用户执行命令
 %sudo    ALL=(ALL:ALL)   ALL
 
 # 限制特定命令 除了不能修改root密码，其他命令都可以使用
+# 注意: 请确保配置写到%sudo 内容以下
 user2   ALL=(ALL:ALL) NOPASSWD: ALL, !/usr/bin/passwd root
 
 ```
@@ -422,64 +435,129 @@ user2   ALL=(ALL:ALL) NOPASSWD: ALL, !/usr/bin/passwd root
 # 3. 验证配置
 
 # 答案：
-useradd dev_user
+# 创建测试用户
+useradd -m -s /bin/bash dev_user
 
 vim /etc/sudoers
 # 添加以下行：
-dev_user ALL=(root) /usr/sbin/nginx
+dev_user ALL=(root) /usr/sbin/ls
 # 保存退出
 sudo -l -U dev_user  # 验证权限
 
 ```
 
 #### 实验二：配置命令别名
+##### 实验目标
+1. 限制普通用户无法直接运行某些命令（通过调整命令的权限）。
+2. 授权用户使用 sudo 执行这些被限制的命令。
+3. 验证用户只能通过 sudo 执行授权命令，而无法直接运行。
+
+##### 实验步骤
+1. 创建测试用户 - 创建一个测试用户 user1：
+    ```bash
+    sudo useradd -m -s /bin/bash user1
+    sudo passwd user1  # 设置密码
+
+    ```
+
+2. 限制普通用户使用这些命令
+    为了让普通用户无法直接运行这些命令，可以通过以下方法调整命令的权限：
+    ```bash
+    sudo chmod o-x /sbin/ifconfig
+    sudo chmod o-x /sbin/route
+    sudo chmod o-x /bin/ping
+
+    ```
+
+    **解释：**
+
+    chmod o-x：移除“其他用户”（即非文件所有者和非所属组用户）的执行权限。
+
+    验证效果，切换到 user1 用户，尝试直接运行这些命令：
+
+    ```bash
+    su - user1
+    /sbin/ifconfig
+    /sbin/route
+    /bin/ping -c 4 www.baidu.com
+
+    ```
+
+3. 配置 sudoers 文件
+    * 编辑 /etc/sudoers 文件：
+    
+    添加以下内容：
+
+    ```bash
+    # 请将内容配置到  %sudo 行 后面
+    # 定义网络管理命令别名
+    Cmnd_Alias NETWORK = /sbin/ifconfig, /sbin/route, /bin/ping
+
+    # 授权 user1 仅能以 root 身份运行网络管理命令
+    user1 ALL=(ALL) NETWORK
+
+    ```
+4. 测试配置
+    * 切换到 user1 用户：`su - user1`
+    * 测试用户是否能够通过 sudo 执行这些命令：
+        * `sudo /sbin/ifconfig`
+        * `/sbin/route`
+        * `/bin/ping -c 4 www.baidu.com`
+    * 测试用户直接运行这些命令（应提示权限不足）
+
+
+#### 实验三：精确授权免密码使用特定命令
+##### 1. 创建测试用户
 ```bash
-# 任务：
-# 1. 创建网络管理命令别名
-# 2. 授权用户使用这些命令
-# 3. 测试配置
+sudo useradd -m -s /bin/bash user2
+sudo passwd user2  # 设置密码
+```
+##### 2. 配置 sudoers 文件
+编辑 /etc/sudoers 文件, 添加以下内容：
 
-# 答案：
-vim /etc/sudoers
-# 添加以下配置：
-Cmnd_Alias NETWORK = /sbin/ifconfig, /sbin/route, /bin/ping
-user1 ALL=(root) NETWORK
-# 保存退出
-sudo -l -U user1  # 验证权限
-
+```bash
+# 授权 user2 免密码使用所有命令，但禁止修改 root 密码
+user2 ALL=(ALL) NOPASSWD: ALL, !/usr/bin/passwd root
 ```
 
-#### 实验三：免密码配置
-```bash
-# 任务：
-# 1. 配置用户可以免密码重启服务
-# 2. 验证配置
-# 3. 测试权限
-
-# 答案：
-vim /etc/sudoers
-# 添加以下配置：
-user2 ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
-# 保存退出
-sudo -l -U user2
-sudo systemctl restart nginx  # 测试无需密码
-
-```
+#### 3. 验证配置
+1. 切换到用户 user2 并测试配置： `su - user2`
+2. 测试允许的命令（应免密码执行成功）： `sudo passwd root`
 
 ## SSH远程登录配置
 
+### SSH 基本概念
+* SSH（Secure Shell）：一种加密的网络协议，用于安全地远程登录和管理服务器。
+* 核心组件：
+    * ssh：客户端命令，用于远程登录。
+    * sshd：服务器守护进程，处理 SSH 连接请求。
+    * SSH 密钥：一种基于公钥加密的身份验证方式，由公钥和私钥组成。
 
-### 1. 命令解释
-| 命令            | 说明                          |
-|-----------------|------------------------------|
-| `ssh-keygen`    | 生成 SSH 密钥对              |
-| `ssh-copy-id`   | 将公钥复制到远程服务器        |
-| `ssh`           | SSH 远程登录命令             |
-| `sshd`          | SSH 服务器守护进程           |
+* SSH 的主要功能
+    * 远程登录：允许用户安全地登录到远程计算机。
+    * 命令执行：在远程计算机上执行命令。
+    * 文件传输：使用 SCP 或 SFTP 进行安全文件传输。
+    * 端口转发：通过加密隧道转发网络端口。
 
-### 2. 参数说明
+### SSH 服务安装
+在大多数 Linux 发行版中，SSH 服务器可以通过以下方式安装：
 
-#### ssh-keygen参数
+* Debian/Ubuntu 系列：
+```bash
+sudo apt update
+sudo apt install openssh-server
+```
+
+* CentOS/RHEL 系列：
+```bash
+sudo yum install openssh-server
+```
+
+### SSH 密钥登录配置
+
+#### 2.1 生成 SSH 密钥
+`ssh-keygen` 在客户端上生成一对密钥（公钥和私钥）：
+
 | 参数  | 作用                          | 举例                              |
 |-------|------------------------------|-----------------------------------|
 | `-t`  | 指定密钥类型                 | `ssh-keygen -t rsa`              |
@@ -488,14 +566,62 @@ sudo systemctl restart nginx  # 测试无需密码
 | `-C`  | 添加注释                     | `ssh-keygen -C "work@email.com"`|
 
 
-#### ssh-copy-id参数
+```bash
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+
+```
+
+* 操作步骤：
+
+    * 执行命令后，系统会提示输入密钥保存路径：
+        * 默认路径：~/.ssh/id_rsa（私钥）和 ~/.ssh/id_rsa.pub（公钥）。
+        * 如果不需要自定义路径，直接按 Enter 使用默认路径。
+    * 系统会提示设置密码短语（用于保护私钥）：
+        * 建议：初学者可以直接按 Enter 跳过密码短语。
+    * 最后会显示密钥生成成功的信息，并说明密钥文件的保存位置。
+* 注意：
+
+    * 私钥（id_rsa）：保存在本地，需妥善保管，不能泄露。
+    * 公钥（id_rsa.pub）：用于部署到服务器。
+
+
+#### 2.2 部署公钥到服务器
+使用 ssh-copy-id 将公钥复制到服务器：
+
 | 参数  | 作用                          | 举例                                      |
 |-------|------------------------------|-------------------------------------------|
 | `-i`  | 指定公钥文件                 | `ssh-copy-id -i ~/.ssh/id_rsa.pub user@host` |
 | `-p`  | 指定端口                     | `ssh-copy-id -p 2222 user@host`          |
 | `-f`  | 强制覆盖                     | `ssh-copy-id -f user@host`               |
 
-### 3. 配置示例
+
+```bash
+ssh-copy-id user@remote_host
+
+```
+
+* 操作步骤：
+
+* 替换 user 为服务器的用户名，remote_host 为服务器的 IP 地址或域名。
+* 输入服务器密码后，公钥会自动复制到服务器的 ~/.ssh/authorized_keys 文件中。
+* 部署完成后，可以通过以下命令测试是否成功
+    ```bash
+    ssh user@remote_host
+
+    ```
+* 常见问题：
+    * 如果服务器使用了非默认端口（如 2222），需要指定端口号：
+    ```bash
+    ssh-copy-id -p 2222 user@remote_host
+
+    ```
+
+* 验证成功的标志：
+    * 登录时无需再输入密码，直接进入服务器。
+
+
+
+#### 3. SSH 密钥登录配置流程
 ```mermaid
 sequenceDiagram
     participant Client as 客户端
@@ -517,33 +643,65 @@ sequenceDiagram
 
 ```
 
-#### 3.1 生成SSH密钥
+
+### 3. SSH 服务器配置
+SSH 服务器的配置文件通常位于 /etc/ssh/sshd_config。可以使用文本编辑器进行修改，例如：
+
 ```bash
-# 生成默认RSA密钥
-ssh-keygen
-
-# 生成指定类型和大小的密钥
-ssh-keygen -t ed25519 -C "your_email@example.com"
-
-# 生成指定文件名的密钥
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/custom_key
+sudo vim /etc/ssh/sshd_config
 
 ```
 
-#### 3.2 部署公钥
+**常用配置项说明：**
+
+| 配置项                 | 作用                       | 示例                                 |
+| ---------------------- | -------------------------- | ------------------------------------ |
+| Port                   | 修改 SSH 服务端口（默认 22） | `Port 2222`                          |
+| PermitRootLogin        | 是否允许 root 用户直接登录   | `PermitRootLogin no`                 |
+| PasswordAuthentication | 是否允许密码登录            | `PasswordAuthentication no`          |
+| PubkeyAuthentication   | 是否启用密钥认证            | `PubkeyAuthentication yes`           |
+| AuthorizedKeysFile     | 公钥文件路径               | `AuthorizedKeysFile .ssh/authorized_keys` |
+
+#### 推荐配置：
 ```bash
-# 标准部署方式
-ssh-copy-id user@remote_host
+Port 2222
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+```
+#### 设置文件权限
+确保 .ssh 文件夹和公钥文件的权限正确：
 
-# 指定端口部署
-ssh-copy-id -p 2222 user@remote_host
-
-# 指定密钥文件部署
-ssh-copy-id -i ~/.ssh/custom_key.pub user@remote_host
+```bash
+chmod 700 ~/.ssh
+chmod 700 ~/.ssh/isa
+chmod 600 ~/.ssh/authorized_keys
 
 ```
+* 权限说明：
+    * .ssh 文件夹：仅允许用户自己访问。
+    * isa 私钥文件：仅允许用户自己访问。
+    * authorized_keys 文件：仅允许用户自己读取和写入。
 
-#### 3.3 SSH服务器配置
+
+#### 启动和重启 SSH 服务
+在修改配置文件后，需要重启 SSH 服务以应用更改：
+
+```bash
+# 重启 SSH 服务
+sudo systemctl restart sshd
+
+# 启动 SSH 服务
+sudo systemctl start sshd
+
+# 关闭 SSH 服务
+sudo systemctl stop sshd
+
+# 查看 SSH 服务状态
+sudo systemctl status sshd
+```
+
 ```bash
 # 编辑SSH配置文件
 vim /etc/ssh/sshd_config
@@ -557,7 +715,9 @@ AuthorizedKeysFile .ssh/authorized_keys
 
 ```
 
-### 4. 练习实验
+### 总结-sudo免密与ssh-key登录
+通过以上步骤，您可以成功安装和配置 SSH 服务器，实现安全的远程登录和管理。确保配置文件中的设置符合安全最佳实践，如禁用密码登录和 root 登录，以减少安全风险。
+
 ```mermaid
 graph TD
     A[SSH配置流程] --> B[客户端配置]
@@ -589,121 +749,23 @@ graph TD
 
 ```
 
-#### 实验一：基本密钥配置
-```bash
-# 任务：
-# 1. 生成SSH密钥对
-# 2. 查看生成的文件
-# 3. 确认权限正确
-
-# 答案：
-ssh-keygen -t rsa -b 4096
-ls -l ~/.ssh/
-# 确认权限
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/id_rsa
-chmod 644 ~/.ssh/id_rsa.pub
-
-```
-
-#### 实验二：部署密钥到服务器
-```bash
-# 任务：
-# 1. 部署公钥到远程服务器
-# 2. 测试免密登录
-# 3. 查看远程authorized_keys
-
-# 答案：
-ssh-copy-id user@remote_host
-ssh user@remote_host
-ls -l ~/.ssh/authorized_keys
-
-```
-
-#### 实验三：禁用密码登录
-```bash
-# 任务：
-# 1. 备份SSH配置
-# 2. 修改配置禁用密码
-# 3. 重启SSH服务
-# 4. 测试配置
-
-# 答案：
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-sudo vim /etc/ssh/sshd_config
-
-# 修改以下配置
-PasswordAuthentication no
-PubkeyAuthentication yes
-
-# 重启服务
-sudo systemctl restart sshd
-
-```
-
-### 5. 安全建议
-1. 密钥管理
-
-```bash
-# 使用强密钥
-ssh-keygen -t ed25519 -b 4096
-
-# 保护私钥
-chmod 600 ~/.ssh/id_rsa
-
-```
+1. 客户端配置
+    * 生成密钥对：在客户端生成一对公钥和私钥，用于身份验证。公钥会被部署到服务器，私钥保存在本地。
+    * 部署公钥到服务器：将生成的公钥上传到目标服务器的指定位置，以便服务器识别客户端的身份。
+    * 测试连接：配置完成后，通过 SSH 登录服务器，确认是否可以使用密钥免密登录。
 
 2. 服务器配置
-```bash
-# /etc/ssh/sshd_config
-Port 2222                    # 修改默认端口
-PermitRootLogin no          # 禁止root登录
-MaxAuthTries 3              # 最大尝试次数
-LoginGraceTime 30           # 登录超时时间
+    * 修改 SSH 配置文件：打开服务器上的 SSH 配置文件，启用密钥认证功能，禁用密码登录（可选），并根据需要调整其他安全设置。
+    * 设置文件权限：确保服务器上的 .ssh 文件夹和认证文件权限正确，避免因权限问题导致密钥无法使用。
+    * 重启 SSH 服务：修改配置后，重启 SSH 服务以使更改生效。
 
-```
+3. sudo 免密配置流程
+    * 编辑权限文件：修改系统的 sudo 配置文件，为指定用户添加免密权限。
+    * 在配置文件中为目标用户设置免密码执行 sudo 命令的权限。
+    * 保存并测试：保存配置后，执行 sudo 命令，确认是否可以免密码运行。
 
-3. 访问控制
-```bash
-# /etc/ssh/sshd_config
-AllowUsers user1 user2      # 允许的用户
-DenyUsers baduser           # 禁止的用户
-AllowGroups sshusers       # 允许的组
+**注意事项：**
 
-```
-
-### 6. 常见问题处理
-1. 权限问题
-```bash
-# 修复权限
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/id_rsa
-chmod 644 ~/.ssh/id_rsa.pub
-chmod 644 ~/.ssh/authorized_keys
-
-```
-
-2. 连接测试
-```bash
-# 测试连接（详细模式）
-ssh -v user@remote_host
-
-# 指定密钥测试
-ssh -i ~/.ssh/custom_key user@remote_host
-
-```
-
-3. 服务状态检查
-```bash
-# 检查服务状态
-systemctl status sshd
-
-# 查看日志
-journalctl -u sshd
-
-```
-
-4. 注意事项：
 1. 禁用密码登录前确保密钥登录正常
 2. 保持一个活动的SSH会话直到确认配置正确
 3. 定期更换密钥
@@ -713,452 +775,73 @@ journalctl -u sshd
 7. 配置文件修改后要重启服务
 8. 建议使用非标准端口
 
+### 实验: 创建 Ubuntu 用户，配置 sudo 免密和 SSH 公钥认证
+**实验目标**
+1. 创建一个名为 ubuntu 的用户。
+2. 为 ubuntu 用户配置 sudo 免密权限，允许执行所有命令。
+3. 配置 SSH 公钥认证，允许管理员通过私钥管理该用户。
+4. 确保私钥文件权限正确，保证安全性。
 
-## Chrony时间同步服务详解
+**实验步骤**
 
-### 1. 命令解释
-#### 1.1 基础命令表格
-| 命令          | 作用                          | 示例                                      |
-|---------------|------------------------------|-------------------------------------------|
-| `timedatectl` | 查看和设置系统时间/时区      | `timedatectl set-timezone Asia/Shanghai` |
-| `chronyd`     | 时间同步守护进程             | `systemctl start chronyd`               |
-| `chronyc`     | 时间同步客户端工具           | `chronyc sources`                       |
-| `date`        | 显示或设置系统日期和时间     | `date "+%Y-%m-%d %H:%M:%S"`            |
-
-#### 1.2 chronyc子命令
-| 子命令         | 作用                      | 示例                      |
-|----------------|--------------------------|---------------------------|
-| `tracking`     | 显示时间同步状态         | `chronyc tracking`       |
-| `sources`      | 显示配置的时间源         | `chronyc sources -v`     |
-| `sourcestats`  | 显示时间源统计信息       | `chronyc sourcestats`    |
-| `makestep`     | 立即同步时间             | `chronyc makestep`       |
-
-### 2. 配置参数表格
-
-#### 2.1 配置文件参数(/etc/chrony.conf)
-| 参数          | 作用                          | 示例                                      |
-|---------------|------------------------------|-------------------------------------------|
-| `server`      | 指定NTP服务器                | `server ntp.aliyun.com iburst`          |
-| `pool`        | 指定NTP服务器池              | `pool 2.centos.pool.ntp.org`            |
-| `iburst`      | 加快初始同步                 | `server ntp1.example.com iburst`        |
-| `allow`       | 允许客户端访问               | `allow 192.168.1.0/24`                 |
-| `local`       | 即使无法同步也作为时间服务器 | `local stratum 10`                      |
-| `driftfile`   | 时钟偏差记录文件             | `driftfile /var/lib/chrony/drift`       |
-
-
-#### 2.2 时区设置参数
-
-| 参数            | 作用                      | 示例                                      |
-|-----------------|--------------------------|-------------------------------------------|
-| `set-timezone`  | 设置系统时区             | `timedatectl set-timezone Asia/Shanghai` |
-| `list-timezones`| 列出可用时区             | `timedatectl list-timezones`            |
-| `status`        | 显示当前时间设置         | `timedatectl status`                    |
-
-### 3. 语法举例
-
-```mermaid
-graph TB
-    subgraph "Chrony时间同步原理"
-        A[本地系统] -->|请求时间| B[NTP服务器]
-        B -->|返回时间| A
-        
-        A -->|计算时间偏移| C[时间同步]
-        C -->|调整系统时钟| D[系统时间]
-        
-        E[chronyd守护进程] -->|监控| C
-        E -->|管理| D
-        
-        F[chronyc客户端] -->|控制/查询| E
-    end
-
-```
-
-
-#### 3.1 基础配置
+1. 创建 Ubuntu 用户
 ```bash
-# 安装chrony
-sudo dnf install chrony
-
-# 编辑配置文件
-sudo vim /etc/chrony.conf
-server ntp.aliyun.com iburst
-server time1.cloud.tencent.com iburst
-
-# 启动服务
-sudo systemctl start chronyd
-sudo systemctl enable chronyd
-
+useradd -m -s /bin/bash ubuntu
 ```
+2. 编辑编辑 /etc/sudoers 文件
+    在 sudoers 文件中添加以下内容，为 ubuntu 用户配置免密权限：
 
-#### 3.2 时区设置
+    ```bash
+    # 一定要添加到  行开头内容为  `%sudo`  的行下面
+    # 这表示 ubuntu 用户可以执行所有命令且无需输入密码。
+    ubuntu ALL=(ALL) NOPASSWD:ALL
+    ``
+3. 验证 sudo 免密
+    ```bash
+    # 切换至root用户，检查是否需要输入密码
+    sudo su -
+    ```
+
+4. 配置 SSH 公钥认证
+**准备的公钥**
 ```bash
-# 查看当前时区
-timedatectl
-
-# 设置时区
-sudo timedatectl set-timezone Asia/Shanghai
-
-# 验证时间同步
-date
-chronyc tracking
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDgkHby/f9l0TJ3oOFM1fV+IZsxz+zeiQx1Xh4+uB4qGFVQOS4pzUKTJ4a5hz7KjW6B5NPnZrVhObsovo0ehaDIlFm4BCRLe3NzLlLeiQarockxom+PmtKzNKGEgcArrwQTw7VUJA7O+69Mdz4iHpKjUfLailK8PHuws+jij+MlnhNTf90f4ZIdMad7GCcpscv3o84X9CwdMTe8zeXZ7PzuYrw5MLgy3tuyeRQYjZ8puOYGX9Y1H715QOw+8WPHthRfPeuaO/Y7/G2VMqsJ40j7yIqmbygYijKfurG89RyMiQdwA+z92rhIE/Hrix6K+OSBE9j8P5SgZNskZQcgIpNlAXfIhDE9DxVhZjaJoiR1hqCCrObIdeI6JAHzpc8TjZQ0Re8t3Rb/l+I5bgj5Wnvpo5nt/DLQI8RI1ZHt/mBHZXfPg0SyMLzD1EUqy6jDKPMNMqfiZv1wt1AiaoJefF8l/m1Uv5JcRfTNGZTU1dd98OrQ2Wof7xmZsmLaRL7Yays= root@liujun-virtual-machine
 
 ```
 
-#### 3.3 状态检查
+1. 创建 .ssh 文件夹
 ```bash
-# 查看同步源
-chronyc sources -v
+# 登录到 ubuntu 用户，创建 .ssh 文件夹，用于存放公钥。
+mkdir ~/.ssh
+chmod 700 ~/.ssh
 
-# 查看详细统计
-chronyc sourcestats
-
-# 查看同步状态
-chronyc tracking
 
 ```
-
-### 4. 练习实验
-```mermaid
-graph TD
-    A[Chrony配置流程] --> B[安装配置]
-    A --> C[时区设置]
-    A --> D[服务管理]
-    A --> E[状态验证]
-    
-    B --> B1[安装chrony包]
-    B --> B2[配置NTP服务器]
-    B --> B3[编辑配置文件]
-    
-    C --> C1[查看当前时区]
-    C --> C2[设置时区]
-    C --> C3[验证时区]
-    
-    D --> D1[启动服务]
-    D --> D2[设置开机启动]
-    D --> D3[检查服务状态]
-    
-    E --> E1[检查同步状态]
-    E --> E2[查看时间源]
-    E --> E3[监控同步精度]
-
-```
-
-#### 练习1：基础配置
+2. 上传公钥
 ```bash
-# 任务：配置chrony使用国内NTP服务器
-步骤1: 安装chrony
-sudo dnf install chrony
+# 创建公钥存储配置文件
+touch ~/.ssh/authorized_keys
 
-步骤2: 编辑配置文件
-sudo vim /etc/chrony.conf
-# 添加以下内容
-server ntp.aliyun.com iburst
-server time1.cloud.tencent.com iburst
+# 配置authorized_keys 文件权限
+chmod 600 ~/.ssh/authorized_keys
 
-步骤3: 启动服务
-sudo systemctl start chronyd
-sudo systemctl enable chronyd
-
-步骤4: 验证配置
-chronyc sources
-
+# 将提供的公钥内容写入 ~/.ssh/authorized_keys 文件。
+# 请将准备的公钥复制到配置文件中
+vim ~/.ssh/authorized_keys
 ```
 
-#### 练习2：时区设置
-```bash
-# 任务：将系统时区设置为上海时区
-步骤1: 查看当前时区
-timedatectl
+3. 权限检查
+* 确保 .ssh 文件夹权限为 700。
+* 确保 authorized_keys 文件权限为 600。
+* 如果权限配置不正确，SSH 登录可能会失败。
 
-步骤2: 设置时区
-sudo timedatectl set-timezone Asia/Shanghai
+4. 测试 SSH 登录
+请将私钥导入至xshell中 步骤如图
 
-步骤3: 验证设置
-date
-timedatectl status
+<img src="/Linux基础知识/images/day6/shell秘钥配置.png" alt="shell秘钥配置" height="300">
 
-```
 
-#### 练习3：同步状态检查
-```bash
-# 任务：检查时间同步状态并分析
-步骤1: 查看同步状态
-chronyc tracking
+<img src="/Linux基础知识/images/day6/导入私钥.png" alt="导入私钥" height="300">
 
-步骤2: 查看时间源
-chronyc sources -v
 
-步骤3: 分析同步精度
-chronyc sourcestats
-
-```
-
-#### 练习4：故障排查
-```bash
-# 任务：解决常见同步问题
-步骤1: 检查服务状态
-systemctl status chronyd
-
-步骤2: 查看日志
-journalctl -u chronyd
-
-步骤3: 检查网络连接
-ping ntp.aliyun.com
-
-步骤4: 验证防火墙设置
-sudo firewall-cmd --list-services
-
-```
-
-
-## 系统状态查看详解
-
-### 1. 命令解释
-| 命令       | 作用                        | 基本语法                       |
-|------------|----------------------------|-------------------------------|
-| `top`      | 实时显示系统资源使用状况    | `top [-d 延时 -p PID]`       |
-| `ps`       | 显示进程状态               | `ps [aux -- sort]`           |
-| `netstat`  | 显示网络连接信息           | `netstat [-tulpn]`           |
-| `free`     | 显示内存使用情况           | `free [-h -s]`              |
-| `df`       | 显示磁盘使用情况           | `df [-h -T]`                |
-
-### 2. 参数详解
-
-#### 2.1 top命令参数
-
-| 参数   | 作用                | 示例                |
-|--------|---------------------|---------------------|
-| `-d`   | 指定刷新间隔        | `top -d 2`          |
-| `-p`   | 监控指定进程        | `top -p 1234`       |
-| `-u`   | 显示特定用户进程    | `top -u root`       |
-| `-b`   | 批处理模式          | `top -b -n 1`       |
-
-交互命令：
-
-* P：按CPU使用率排序
-* M：按内存使用率排序
-* T：按运行时间排序
-* k：终止进程
-* r：重新设置优先级
-* c: 显示模式-显示完整命令及参数
-* z: 进入颜色模式
-
-#### 2.2 ps命令参数
-| 参数        | 作用            | 示例                       |
-|-------------|-----------------|----------------------------|
-| `aux`       | 显示所有进程    | `ps aux`                   |
-| `-ef`       | 全格式显示      | `ps -ef`                   |
-| `--sort`    | 排序显示        | `ps aux --sort=-pcpu`      |
-| `-u`        | 指定用户进程    | `ps -u root`               |
-
-
-#### 2.3 netstat命令参数
-| 参数   | 作用            | 示例              |
-|--------|-----------------|-------------------|
-| `-t`   | 显示TCP连接     | `netstat -t`      |
-| `-u`   | 显示UDP连接     | `netstat -u`      |
-| `-l`   | 显示监听端口    | `netstat -l`      |
-| `-n`   | 显示端口号      | `netstat -n`      |
-| `-p`   | 显示进程信息    | `netstat -p`      |
-
-#### 2.4 free命令参数
-| 参数 | 作用     | 示例         |
-| ---- | -------- | ------------ |
-| -h   | 人性化显示 | `free -h`    |
-| -s   | 持续显示   | `free -s 1`  |
-| -t   | 显示总计   | `free -t`    |
-| -w   | 宽输出     | `free -w`    |
-
-#### 2.5 df命令参数
-| 参数 | 作用               | 示例            |
-| ---- | ------------------ | --------------- |
-| -h   | 人性化显示         | `df -h`         |
-| -T   | 显示文件系统类型   | `df -T`         |
-| -i   | 显示 inode 信息    | `df -i`         |
-| -x   | 排除特定文件系统   | `df -x tmpfs`   |
-
-
-### 3. 使用示例
-
-#### 3.1 系统负载监控
-```bash
-# 实时监控系统负载
-top
-
-# 监控特定进程
-top -p $(pgrep nginx)
-
-# 按CPU使用率排序输出前10个进程
-ps aux --sort=-pcpu | head -n 11
-
-```
-
-#### 3.2 网络连接查看
-```bash
-# 查看所有TCP连接
-netstat -tnp
-
-# 查看监听端口
-netstat -tlnp
-
-# 查看特定端口
-netstat -tnp | grep :80
-
-```
-
-#### 3.3 内存使用监控
-```bash
-# 查看内存使用情况
-free -h
-
-# 每2秒更新一次
-free -h -s 2
-
-# 显示详细信息
-free -w -h
-
-```
-
-#### 3.4 磁盘使用查看
-```bash
-# 查看磁盘使用情况
-df -h
-
-# 查看文件系统类型
-df -T
-
-# 查看inode使用情况
-df -i
-
-```
-
-### 4. 练习实验
-
-#### 练习1：系统负载分析
-```bash
-# 任务：找出CPU使用率最高的前5个进程
-步骤1: 使用top命令
-top
-# 按P键按CPU使用率排序
-
-步骤2: 使用ps命令
-ps aux --sort=-pcpu | head -n 6
-
-# 答案分析：
-# 1. 进程ID
-# 2. CPU使用率
-# 3. 内存使用率
-# 4. 命令名称
-
-```
-
-#### 练习2：网络连接分析
-```bash
-# 任务：查看系统所有TCP监听端口
-步骤1: 使用netstat命令
-netstat -tlnp
-
-# 答案应包含：
-# - 协议类型
-# - 本地地址
-# - 监听端口
-# - 进程名/PID
-
-```
-
-#### 练习3：内存使用分析
-```bash
-# 任务：监控系统内存使用变化
-步骤1: 使用free命令持续监控
-free -h -s 2
-
-步骤2: 分析内存使用情况
-# 关注点：
-# - 总内存
-# - 已用内存
-# - 可用内存
-# - 缓存使用
-
-```
-
-#### 练习4：磁盘空间分析  --选学高级用法
-不会的哈，自己修养，我不强求
-
-```bash
-# 任务：找出磁盘使用率超过80%的分区
-步骤1: 使用df命令
-df -h | awk '{if(NR>1)if(+$5>80)print}'
-
-# 答案分析：
-# - 文件系统
-# - 已用空间
-# - 可用空间
-# - 使用率
-
-```
-
-
-### 5. 常见问题处理
-#### 5.1 系统负载高
-```bash
-# 检查CPU密集进程
-top -c
-# 或
-ps aux --sort=-pcpu | head
-
-# 检查内存使用
-free -h
-ps aux --sort=-rss | head
-
-```
-
-#### 5.2 网络连接问题
-```bash
-# 检查网络连接状态
-netstat -ant | awk '{print $6}' | sort | uniq -c
-
-# 检查特定端口
-netstat -tlnp | grep :80
-
-```
-
-#### 5.3 内存不足
-```bash
-# 查看内存使用详情
-free -h
-# 查看大内存进程
-ps aux --sort=-rss | head
-
-```
-
-#### 5.4 磁盘空间不足
-```bash
-# 查看大文件
-find / -type f -size +100M -exec ls -lh {} \;
-
-# 查看目录大小
-du -sh /*
-
-```
-
-### 6. 监控要点
-1. 系统负载监控
-    * CPU使用率
-    * 平均负载
-    * 进程数量
-    * 线程状态
-2. 网络状态监控
-    * 连接数量
-    * 网络流量
-    * 端口状态
-    * 错误统计
-3. 内存使用监控
-    * 物理内存使用
-    * 交换空间使用
-    * 缓存使用
-    * 共享内存
-4. 磁盘使用监控
-    * 空间使用率
-    * I/O负载
-    * inode使用
-    * 读写速度
+<img src="/Linux基础知识/images/day6/秘钥登录.png" alt="秘钥登录" height="300">
