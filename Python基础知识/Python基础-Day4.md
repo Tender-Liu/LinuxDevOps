@@ -524,9 +524,7 @@ for i in range(n):  # 外层循环，控制排序轮数
     for j in range(0, n - i - 1):  # 内层循环，控制每轮比较次数
         if number_list[j] > number_list[j + 1]:  # 如果当前元素大于下一个元素
             # 交换位置
-            temp = number_list[j]
-            number_list[j] = number_list[j + 1]
-            number_list[j + 1] = temp
+            number_list[j],  number_list[j + 1] = number_list[j + 1], number_list[j]
             swapped = True  # 发生了交换
     if not swapped:  # 如果本轮没有交换，说明已有序
         break
