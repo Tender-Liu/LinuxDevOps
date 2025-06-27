@@ -548,15 +548,15 @@ print("排序后列表:", number_list)
 graph TD
   A[开始] --> B[初始化列表长度 n]
   B --> C[外循环 i 从 0 到 n-1]
-  C --> D[设置 swapped = False]
+  C --> D[设置 swapped 为 False]
   D --> E[内循环 j 从 0 到 n-i-2]
-  E --> F{列表[j] > 列表[j+1]?}
-  F -->|是| G[交换 列表[j] 和 列表[j+1]]
-  G --> H[设置 swapped = True]
+  E --> F{列表 j 大于 列表 j+1 吗?}
+  F -->|是| G[交换 列表 j 和 列表 j+1]
+  G --> H[设置 swapped 为 True]
   H --> I[继续内循环]
   F -->|否| I
   I --> J[内循环结束]
-  J --> K{swapped == False?}
+  J --> K{swapped 等于 False 吗?}
   K -->|是| L[提前结束排序]
   K -->|否| M[继续外循环]
   M --> C
