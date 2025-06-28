@@ -1,6 +1,8 @@
-# Linux系统用户管理与安全配置实战
+# Linux 时间同步与系统监控实战指南
 
-## 课程目标：
+## 课程目标
+
+通过本课程您将掌握以下核心技能：
 
 3. 掌握时间同步服务的部署和配置
     * 理解NTP服务的重要性
@@ -15,12 +17,11 @@
 
 ### 1. 命令解释
 #### 1.1 基础命令表格
-| 命令          | 作用                          | 示例                                      |
-|---------------|------------------------------|-------------------------------------------|
-| `timedatectl` | 查看和设置系统时间/时区      | `timedatectl set-timezone Asia/Shanghai` |
-| `chronyd`     | 时间同步守护进程             | `systemctl start chronyd`               |
-| `chronyc`     | 时间同步客户端工具           | `chronyc sources`                       |
-| `date`        | 显示或设置系统日期和时间     | `date "+%Y-%m-%d %H:%M:%S"`            |
+| 命令           | 作用描述                     | 常用示例                                  | 适用场景                  |
+|----------------|----------------------------|------------------------------------------|-------------------------|
+| `timedatectl`  | 管理系统时间和时区          | `sudo timedatectl set-timezone Asia/Shanghai` | 时区配置/时间查看        |
+| `chronyc`      | Chrony客户端控制工具        | `sudo chronyc tracking`                 | 时间同步状态监控         |
+| `date`         | 显示/设置系统时间           | `date "+%Y-%m-%d %H:%M:%S"`            | 时间格式查看与设置       |
 
 #### 1.2 chronyc子命令
 | 子命令         | 作用                      | 示例                      |
@@ -54,27 +55,28 @@
 ### 3. 语法举例
 
 ```mermaid
-graph TB
-    subgraph "Chrony时间同步原理"
-        A[本地系统] -->|请求时间| B[NTP服务器]
-        B -->|返回时间| A
-        
-        A -->|计算时间偏移| C[时间同步]
-        C -->|调整系统时钟| D[系统时间]
-        
-        E[chronyd守护进程] -->|监控| C
-        E -->|管理| D
-        
-        F[chronyc客户端] -->|控制/查询| E
+%%{init: {'theme': 'neutral'}}%%
+flowchart TD
+    A[本地系统] --> B{时间同步流程}
+    B --> C[[NTP服务器]]
+    C --> D[时间偏差计算]
+    D --> E[时钟调整]
+    
+    subgraph Chrony服务
+        F[守护进程] -.->|监控| D
+        G[客户端工具] --> F
     end
-
+    
+    style A fill:#f9f,stroke:#333
+    style C fill:#bbf,stroke:#f66
+    style F fill:#9f9,stroke:#333
 ```
 
 
 #### 3.1 基础配置
 ```bash
 # 安装chrony
-sudo dnf install chrony
+sudo apt install chrony
 
 # 编辑配置文件
 sudo vim /etc/chrony.conf
@@ -82,8 +84,8 @@ server ntp.aliyun.com iburst
 server time1.cloud.tencent.com iburst
 
 # 启动服务
-sudo systemctl start chronyd
-sudo systemctl enable chronyd
+sudo systemctl start chrony
+sudo systemctl enable chrony
 
 ```
 
@@ -143,21 +145,29 @@ graph TD
 #### 练习1：基础配置
 ```bash
 # 任务：配置chrony使用国内NTP服务器
-步骤1: 安装chrony
-sudo dnf install chrony
+## 实战演练：Chrony服务部署
 
-步骤2: 编辑配置文件
-sudo vim /etc/chrony.conf
-# 添加以下内容
+```bash
+# 步骤1: 安装服务
+sudo apt update
+sudo apt install -y chrony
+
+# 步骤2: 配置NTP服务器(编辑/etc/chrony.conf)
+sudo tee -a /etc/chrony.conf <<EOF
+# 阿里云NTP服务器
 server ntp.aliyun.com iburst
+# 腾讯云NTP服务器
 server time1.cloud.tencent.com iburst
+EOF
 
-步骤3: 启动服务
-sudo systemctl start chronyd
-sudo systemctl enable chronyd
+# 步骤3: 启动并启用服务
+sudo systemctl restart chrony
+sudo systemctl enable --now chrony
 
-步骤4: 验证配置
-chronyc sources
+# 步骤4: 验证服务状态
+chronyc sources -v
+chronyc tracking
+```
 
 ```
 
@@ -194,16 +204,16 @@ chronyc sourcestats
 ```bash
 # 任务：解决常见同步问题
 步骤1: 检查服务状态
-systemctl status chronyd
+systemctl status chrony
 
 步骤2: 查看日志
-journalctl -u chronyd
+journalctl -u chrony
 
 步骤3: 检查网络连接
 ping ntp.aliyun.com
 
 步骤4: 验证防火墙设置
-sudo firewall-cmd --list-services
+sudo ufw status
 
 ```
 
@@ -275,59 +285,156 @@ sudo firewall-cmd --list-services
 | -x   | 排除特定文件系统   | `df -x tmpfs`   |
 
 
-### 3. 使用示例
+### 3. 命令输出详解
 
 #### 3.1 系统负载监控
 ```bash
 # 实时监控系统负载
 top
+```
 
-# 监控特定进程
-top -p $(pgrep nginx)
+输出示例：
+```plaintext
+top - 14:28:48 up 1 day, 2:35, 1 user, load average: 0.52, 0.58, 0.59
+Tasks: 180 total,   1 running, 179 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  5.9 us,  3.1 sy,  0.0 ni, 90.6 id,  0.0 wa,  0.0 hi,  0.4 si,  0.0 st
+MiB Mem :  7881.4 total,   361.0 free,  4876.1 used,  2644.3 buff/cache
+MiB Swap:  2048.0 total,  1892.5 free,   155.5 used.  2522.8 avail Mem
 
-# 按CPU使用率排序输出前10个进程
-ps aux --sort=-pcpu | head -n 11
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+ 1520 www-data  20   0  357604  14056   8872 S   6.0   0.2   0:00.91 nginx
+ 1521 mysql     20   0 1795288 365272  37500 S   5.0   4.5   2:30.31 mysqld
+```
 
+**输出解释：**
+- 第1行：系统运行时间、用户数、平均负载（1分钟、5分钟、15分钟）
+- 第2行：进程总数及状态分布
+- 第3行：CPU使用率分布（us用户态、sy系统态、id空闲等）
+- 第4-5行：内存和交换分区使用情况
+- 进程列表说明：
+  - PID：进程ID
+  - USER：进程所有者
+  - %CPU：CPU使用率
+  - %MEM：内存使用率
+  - COMMAND：进程名称
+
+```bash
+# 按CPU使用率排序输出前5个进程
+ps aux --sort=-pcpu | head -n 6
+```
+
+输出示例：
+```plaintext
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+www-data  1520  6.0  0.2 357604 14056 ?        Ss   13:45   0:00 nginx: master process
+mysql     1521  5.0  4.5 1795288 365272 ?      Sl   13:45   2:30 /usr/sbin/mysqld
 ```
 
 #### 3.2 网络连接查看
 ```bash
 # 查看所有TCP连接
 netstat -tnp
+```
 
+输出示例：
+```plaintext
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      1521/mysqld
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      1520/nginx
+tcp        0      0 192.168.1.100:80        192.168.1.10:52431      ESTABLISHED 1520/nginx
+```
+
+**输出解释：**
+- Proto：协议类型（tcp/udp）
+- Local Address：本地地址和端口
+- Foreign Address：远程地址和端口
+- State：连接状态（LISTEN监听、ESTABLISHED已连接等）
+- PID/Program name：进程ID和名称
+
+```bash
 # 查看监听端口
 netstat -tlnp
-
-# 查看特定端口
-netstat -tnp | grep :80
-
 ```
 
 #### 3.3 内存使用监控
 ```bash
 # 查看内存使用情况
 free -h
+```
 
-# 每2秒更新一次
+输出示例：
+```plaintext
+              total        used        free      shared  buff/cache   available
+Mem:          7.7Gi       4.8Gi       361Mi       386Mi       2.6Gi       2.5Gi
+Swap:         2.0Gi       155Mi       1.9Gi
+```
+
+**输出解释：**
+- total：总内存大小
+- used：已使用内存
+- free：空闲内存
+- shared：共享内存
+- buff/cache：缓冲/缓存使用的内存
+- available：可用内存（包括可回收的缓存）
+
+```bash
+# 每2秒更新一次内存使用情况
 free -h -s 2
-
-# 显示详细信息
-free -w -h
-
 ```
 
 #### 3.4 磁盘使用查看
 ```bash
 # 查看磁盘使用情况
 df -h
+```
 
+输出示例：
+```plaintext
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        98G   48G   45G  52% /
+/dev/sda2       459G  199G  237G  46% /home
+tmpfs           7.8G     0  7.8G   0% /dev/shm
+```
+
+**输出解释：**
+- Filesystem：文件系统设备
+- Size：总容量
+- Used：已使用空间
+- Avail：可用空间
+- Use%：使用率百分比
+- Mounted on：挂载点
+
+```bash
 # 查看文件系统类型
 df -T
+```
 
+输出示例：
+```plaintext
+Filesystem     Type     Size  Used Avail Use% Mounted on
+/dev/sda1      ext4      98G   48G   45G  52% /
+/dev/sda2      ext4     459G  199G  237G  46% /home
+tmpfs          tmpfs    7.8G     0  7.8G   0% /dev/shm
+```
+
+```bash
 # 查看inode使用情况
 df -i
-
 ```
+
+输出示例：
+```plaintext
+Filesystem      Inodes  IUsed   IFree IUse% Mounted on
+/dev/sda1      6553600 285873 6267727    5% /
+/dev/sda2     30531584 524188 30007396    2% /home
+tmpfs          2023936      1 2023935    1% /dev/shm
+```
+
+**输出解释：**
+- Inodes：总inode数量
+- IUsed：已使用的inode数量
+- IFree：空闲的inode数量
+- IUse%：inode使用率
 
 ### 4. 练习实验
 
