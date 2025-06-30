@@ -334,7 +334,7 @@ server {
    
    # 克隆项目代码
    cd /opt/nginx/touch.liujun.com
-   git clone https://github.com/retgy/PhyTouch-master .
+   git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
    
    cd /opt/nginx/stars.liujun.com
    git clone https://github.com/wangyasai/Stars-Emmision .
