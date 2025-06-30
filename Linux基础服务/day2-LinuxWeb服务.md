@@ -322,7 +322,7 @@ server {
    
    # 克隆项目代码
    cd /opt/nginx/touch.liujun.com
-   git clone https://github.com/retgy/PhyTouch-master .
+   git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
    
    cd /opt/nginx/stars.liujun.com
    git clone https://github.com/wangyasai/Stars-Emmision .
@@ -350,7 +350,8 @@ server {
        
        # 启用gzip压缩
        gzip on;
-       gzip_types text/plain text/css application/javascript;
+       gzip_comp_level 6;
+       gzip_types text/plain text/css application/javascript application/json text/javascript;
    }
    ```
 
@@ -396,10 +397,6 @@ server {
         
         access_log /var/log/nginx/stars.liujun.com.access.log;  # 访问日志
         error_log /var/log/nginx/stars.liujun.com.error.log;    # 错误日志
-        
-        # 开启gzip压缩
-        gzip on;
-        gzip_types text/plain text/css application/javascript;
         
         # 添加访问认证
         auth_basic "请输入用户名和密码";
@@ -464,23 +461,27 @@ server {
 #### 4.4 性能测试与优化实践
 
 1. **修改主配置文件**
-   ```bash
-   sudo vim /etc/nginx/nginx.conf
-   ```
-   
-   在http块中添加以下配置：
-   ```nginx
-   # 全局性能参数
-   worker_processes 1;           # 降低工作进程数
-   worker_connections 100;       # 限制连接数
-   keepalive_timeout 5;          # 降低长连接超时
-   
-   # 开启gzip压缩（先不开启，用于对比）
-   #gzip on;
-   #gzip_types text/plain text/css application/javascript application/json;
-   #gzip_min_length 1000;        # 小文件不压缩
-   #gzip_comp_level 6;           # 压缩级别
-   ```
+    ```bash
+    sudo vim /etc/nginx/nginx.conf
+    ```
+
+    在http块中添加以下配置：
+    ```nginx
+    # 全局性能参数
+    worker_processes 1;           # 降低工作进程数
+    worker_connections 100;       # 限制连接数
+    keepalive_timeout 5;          # 降低长连接超时
+
+    # 开启gzip压缩（先不开启，用于对比）
+    #gzip on;
+    #gzip_vary on;
+    #gzip_proxied any;
+    #gzip_min_length 1k;          # 小于1K的小文件不压缩
+    #gzip_comp_level 9;           # 压缩级别 1-9 9最大，最消耗性能
+    #gzip_buffers 16 8k;
+    #gzip_http_version 1.1;
+    #gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript application/x-javascript;
+    ```
 
 2. **安装压测工具**
    ```bash
