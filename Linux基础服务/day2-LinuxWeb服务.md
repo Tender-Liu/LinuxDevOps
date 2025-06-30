@@ -1,26 +1,54 @@
 # Linux Web服务与Nginx深入剖析
 
 ## 课程目标
-1. 了解Web服务的基本概念和作用
-   - 理解Web服务在互联网中的角色
-   - 掌握客户端和服务器的交互过程
-   - 了解常见的Web服务器软件
 
-2. 掌握Web服务通信的基本原理
-   - 理解HTTP协议的工作机制
-   - 掌握请求和响应的基本结构
-   - 了解常见的状态码含义
+通过本课程您将掌握以下核心技能：
 
-3. 理解Web服务涉及的网络协议
-   - 掌握TCP/IP协议在Web服务中的应用
-   - 理解HTTP和HTTPS的区别和联系
-   - 了解SSL/TLS在安全通信中的作用
+1. 深入理解Web服务架构
+    * OSI七层模型与Web服务的关系
+        - 应用层（HTTP/HTTPS）：用户数据传输
+        - 表示层：数据加密、压缩
+        - 会话层：会话管理
+        - 传输层（TCP/UDP）：端到端连接
+        - 网络层（IP）：路由和寻址
+        - 数据链路层：错误检测和纠正
+        - 物理层：比特流传输
 
-4. 能够部署和管理基础Web服务
-   - 安装和配置Nginx服务器
-   - 配置基本的虚拟主机
-   - 管理静态网站和日志
-   - 实现简单的性能优化
+    * HTTP/HTTPS协议原理
+        - HTTP请求/响应模型
+        - 常见状态码（2xx成功、3xx重定向、4xx客户端错误、5xx服务器错误）
+        - HTTP请求方法（GET、POST、PUT、DELETE等）
+        - HTTPS工作原理（SSL/TLS加密、证书验证）
+        - HTTP/2特性（多路复用、服务器推送、头部压缩）
+
+    * Web服务架构设计最佳实践
+        - 前后端分离架构
+        - 微服务架构
+        - CDN加速
+        - 缓存策略（浏览器缓存、服务器缓存）
+        - 安全性考虑（WAF、DDoS防护）
+
+2. 掌握Nginx核心功能与配置
+    * Nginx模块化架构
+        - 核心模块：处理配置文件和进程管理
+        - 事件模块：处理网络连接
+        - HTTP模块：处理HTTP请求
+        - Mail模块：邮件代理
+        - Stream模块：TCP/UDP代理
+
+    * 核心配置指令
+        - worker_processes：工作进程数
+        - worker_connections：每个进程的最大连接数
+        - keepalive_timeout：长连接超时时间
+        - client_max_body_size：请求体大小限制
+        - gzip：压缩配置
+
+    * location匹配规则
+        - 精确匹配：=
+        - 优先匹配：^
+        - 一般匹配：无符号
+        - 正则匹配：~（区分大小写）和~*（不区分大小写）
+        - 匹配优先级规则
 
 ## Web服务基础架构
 
@@ -63,47 +91,31 @@ sequenceDiagram
 
 #### 2.0 Nginx基础概念
 
-Nginx是一个高性能的开源Web服务器、反向代理服务器和负载均衡器。它在现代Web架构中扮演着关键角色，广泛应用于各类网站和应用服务。以下是其核心特点和实际应用场景：
+Nginx是一个高性能的开源Web服务器、反向代理服务器和负载均衡器。它具有以下核心特点：
 
-1. **Web服务器基础功能**
-   * 静态文件服务
-       - 处理静态资源（HTML、CSS、JavaScript、图片等）
-       - 配置文件压缩（gzip）
-       - 设置文件缓存
+1. **Web服务器功能**
+   * 提供静态文件服务
+   * 支持HTTP/HTTPS协议
+   * 支持虚拟主机配置
+   * 提供访问日志和错误日志
 
-   * HTTP服务
-       - 支持HTTP/1.1协议
-       - 配置HTTPS访问（SSL证书）
-       - 设置访问控制
+2. **反向代理能力**
+   * 支持HTTP、HTTPS、TCP/UDP代理
+   * 可以代理到后端应用服务器（如PHP、Java等）
+   * 支持WebSocket代理
+   * 提供缓存机制
 
-   * 虚拟主机
-       - 基于域名的虚拟主机
-       - 基于端口的虚拟主机
+3. **负载均衡**
+   * 支持多种负载均衡算法（轮询、权重、IP哈希等）
+   * 支持健康检查
+   * 支持后端服务器的动态添加和删除
+   * 提供会话保持功能
 
-   * 日志管理
-       - 配置访问日志
-       - 设置错误日志
-       - 日志轮转
-
-2. **Nginx进程模型**
-   * 主进程（master）
-       - 读取配置文件
-       - 管理工作进程
-
-   * 工作进程（worker）
-       - 处理客户端请求
-       - 执行具体任务
-
-3. **基础性能优化**
-   * 配置优化
-       - worker进程数
-       - 最大连接数
-       - 超时设置
-
-   * 资源优化
-       - 开启压缩
-       - 配置缓存
-       - 调整缓冲区
+4. **高性能设计**
+   * 采用事件驱动的异步非阻塞架构
+   * 支持多进程和多线程模式
+   * 内存占用小，并发能力强
+   * 支持热部署，不中断服务
 
 #### 2.1 Nginx模块化架构
 ```mermaid
@@ -322,7 +334,7 @@ server {
    
    # 克隆项目代码
    cd /opt/nginx/touch.liujun.com
-   git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
+   git clone https://github.com/retgy/PhyTouch-master .
    
    cd /opt/nginx/stars.liujun.com
    git clone https://github.com/wangyasai/Stars-Emmision .
@@ -350,8 +362,7 @@ server {
        
        # 启用gzip压缩
        gzip on;
-       gzip_comp_level 6;
-       gzip_types text/plain text/css application/javascript application/json text/javascript;
+       gzip_types text/plain text/css application/javascript;
    }
    ```
 
@@ -397,6 +408,10 @@ server {
         
         access_log /var/log/nginx/stars.liujun.com.access.log;  # 访问日志
         error_log /var/log/nginx/stars.liujun.com.error.log;    # 错误日志
+        
+        # 开启gzip压缩
+        gzip on;
+        gzip_types text/plain text/css application/javascript;
         
         # 添加访问认证
         auth_basic "请输入用户名和密码";
@@ -461,27 +476,23 @@ server {
 #### 4.4 性能测试与优化实践
 
 1. **修改主配置文件**
-    ```bash
-    sudo vim /etc/nginx/nginx.conf
-    ```
-
-    在http块中添加以下配置：
-    ```nginx
-    # 全局性能参数
-    worker_processes 1;           # 降低工作进程数
-    worker_connections 100;       # 限制连接数
-    keepalive_timeout 5;          # 降低长连接超时
-
-    # 开启gzip压缩（先不开启，用于对比）
-    #gzip on;
-    #gzip_vary on;
-    #gzip_proxied any;
-    #gzip_min_length 1k;          # 小于1K的小文件不压缩
-    #gzip_comp_level 9;           # 压缩级别 1-9 9最大，最消耗性能
-    #gzip_buffers 16 8k;
-    #gzip_http_version 1.1;
-    #gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript application/x-javascript;
-    ```
+   ```bash
+   sudo vim /etc/nginx/nginx.conf
+   ```
+   
+   在http块中添加以下配置：
+   ```nginx
+   # 全局性能参数
+   worker_processes 1;           # 降低工作进程数
+   worker_connections 100;       # 限制连接数
+   keepalive_timeout 5;          # 降低长连接超时
+   
+   # 开启gzip压缩（先不开启，用于对比）
+   #gzip on;
+   #gzip_types text/plain text/css application/javascript application/json;
+   #gzip_min_length 1000;        # 小文件不压缩
+   #gzip_comp_level 6;           # 压缩级别
+   ```
 
 2. **安装压测工具**
    ```bash
@@ -618,38 +629,10 @@ sudo vim /etc/nginx/nginx.conf
 # 在http块中添加以下日志格式定义
 http {
     # 定义JSON格式的日志
-    # JSON格式日志配置
-    log_format json_combined escape=json '
-        {"time_local":"$time_local", 
-         "remote_addr":"$remote_addr", 
-         "request":"$request", 
-         "status": "$status", 
-         "body_bytes_sent":"$body_bytes_sent", 
-         "http_referer":"$http_referer", 
-         "http_user_agent":"$http_user_agent", 
-         "http_x_forwarded_for":"$http_x_forwarded_for", 
-         "request_time":"$request_time", 
-         "upstream_response_time":"$upstream_response_time"
-        }';  # 注意最后的分号
-
+    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time"}';  # 注意最后的分号
     # ... 其他配置 ...
 }
 ```
-
-**JSON日志字段说明**
-
-| 字段名 | 变量 | 说明 |
-|--------|------|------|
-| 访问时间 | $time_local | 本地时间，格式：[18/Apr/2024:10:30:45 +0800] |
-| 客户端IP | $remote_addr | 访问者的IP地址 |
-| 请求信息 | $request | 完整的原始请求行，如："GET /index.html HTTP/1.1" |
-| 响应状态 | $status | HTTP响应状态码，如：200、404、500等 |
-| 发送字节 | $body_bytes_sent | 发送给客户端的字节数，不包括响应头 |
-| 来源页面 | $http_referer | 请求的来源URL，即从哪个页面链接过来 |
-| 用户代理 | $http_user_agent | 客户端浏览器标识，包含浏览器类型、版本等 |
-| 代理IP | $http_x_forwarded_for | 经过代理后的客户端IP列表 |
-| 请求时间 | $request_time | 请求处理时间，单位：秒，精确到毫秒 |
-| 上游响应时间 | $upstream_response_time | 从上游服务器获得响应的时间，单位：秒 |
 
 编辑站点配置文件：
 ```bash
