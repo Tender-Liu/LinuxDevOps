@@ -332,6 +332,10 @@ sudo sysctl net.ipv4.tcp_fin_timeout
        # 站点配置
        root /opt/nginx/touch.liujun.com;
        index index.html;
+
+       # 访问日志与错误配置
+       access_log /var/log/nginx/touch.liujun.com.access.log log_format;  # 访问日志
+       error_log /var/log/nginx/touch.liujun.com.error.log warn;    # 错误日志
        
        # 添加location配置
        location / {
@@ -562,6 +566,9 @@ server {
     # Vue项目根目录配置
     root /opt/nginx/vue-web.liujun.com/dist;    # 指向构建输出目录
     index index.html;
+    # 访问日志与错误配置
+    access_log /var/log/nginx/vue-web.liujun.com.access.log log_format;  # 访问日志
+    error_log /var/log/nginx/vue-web.liujun.com.error.log warn;    # 错误日志
     
     # Vue Router处理
     # location 指令用于匹配特定的URL路径，并为这些路径配置特定的处理规则
@@ -866,6 +873,41 @@ location /download/ {
 ```
 
 ### 3.2 负载均衡调度算法
+反向代理是一种服务器端代理技术，它接收客户端的请求，然后将请求转发给内部网络上的服务器，并将从服务器上得到的结果返回给客户端。
+
+#### 1. 反向代理的作用
+
+- **负载均衡**：分发请求到多个服务器
+- **安全防护**：隐藏真实服务器
+- **缓存静态内容**：提高访问速度
+- **SSL终端**：集中管理SSL证书
+
+#### 2. 负载均衡调度算法
+
+1. **轮询（Round Robin）**
+   - 原理：按顺序将请求分配给不同服务器
+   - 优点：配置简单，适合所有服务器性能相近的情况
+   - 缺点：不考虑服务器实际负载情况
+
+2. **加权轮询（Weighted Round Robin）**
+   - 原理：根据服务器权重分配请求
+   - 优点：可以根据服务器性能分配不同权重
+   - 适用：服务器性能不均衡的情况
+
+3. **IP哈希（IP Hash）**
+   - 原理：根据客户端IP计算哈希值分配服务器
+   - 优点：同一用户固定访问同一服务器
+   - 适用：需要会话保持的场景
+
+4. **最少连接（Least Connections）**
+   - 原理：优先分配给当前连接数最少的服务器
+   - 优点：能够动态适应服务器负载变化
+   - 适用：请求处理时间差异大的场景
+
+5. **URL哈希（URL Hash）**
+    - 原理：根据请求的URL进行哈希分配
+    - 优点：相同URL的请求总是发送到同一服务器
+    - 适用：缓存服务器的场景
 
 #### 1. 轮询（默认）
 ```nginx
@@ -929,148 +971,24 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 #### 2. Location实践
 ```nginx
 # 基础配置
+# 后端服务器组
+upstream backend_servers {
+    # 使用IP哈希算法实现会话保持
+    ip_hash;
+
+    # 后端服务器列表
+    server 127.0.0.1:3000 weight=1 max_fails=2 fail_timeout=30s;
+    server 127.0.0.1:3001 weight=1 max_fails=2 fail_timeout=30s;
+
+    # 备用服务器
+    server 127.0.0.1:3002 backup;
+}
+
+# HTTP重定向到HTTPS
 server {
-    listen 443 ssl;
+    listen 80;
     server_name vue-backup.liujun.com;
-
-    # SSL配置
-    ssl_certificate /etc/nginx/ssl/vue-backup.liujun.com/server.crt;
-    ssl_certificate_key /etc/nginx/ssl/vue-backup.liujun.com/server.key;
-
-    # 1. 精确匹配示例
-    location = /api/version {
-        return 200 '{"version": "1.0.0"}\n';
-        add_header Content-Type application/json;
-    }
-
-    # 2. 前缀匹配示例
-    location ^~ /static/ {
-        alias /opt/nginx/vue-backup.liujun.com/static/;
-        expires 30d;
-        access_log off;
-    }
-
-    # 3. 正则匹配示例
-    location ~ \.(js|css|png|jpg|gif|ico|woff|ttf)$ {
-        root /opt/nginx/vue-backup.liujun.com;
-        expires 7d;
-        access_log off;
-    }
-
-    # 4. 普通匹配示例
-    location /api/ {
-        proxy_pass http://backend_servers;
-    }
-}
-```
-
-#### 3. 负载均衡实践
-```nginx
-# 定义后端服务器组
-upstream backend_servers {
-    # 1. 轮询策略示例
-    server 127.0.0.1:3000;
-    server 127.0.0.1:3001;
-
-    # 2. 权重策略示例
-    # server 127.0.0.1:3000 weight=3;
-    # server 127.0.0.1:3001 weight=1;
-
-    # 3. IP哈希示例
-    # ip_hash;
-    # server 127.0.0.1:3000;
-    # server 127.0.0.1:3001;
-
-    # 4. 最少连接示例
-    # least_conn;
-    # server 127.0.0.1:3000;
-    # server 127.0.0.1:3001;
-
-    # 5. 健康检查示例
-    # server 127.0.0.1:3000 max_fails=3 fail_timeout=30s;
-    # server 127.0.0.1:3001 backup;
-}
-
-# 测试命令
-```bash
-# 测试轮询效果
-for i in {1..4}; do
-    curl -k https://vue-backup.liujun.com/api/test
-    echo
-done
-
-# 测试会话保持
-curl -k https://vue-backup.liujun.com/api/test
-```
-
-#### 4. 实践测试
-
-1. **启动测试服务器**
-```bash
-# 启动第一个Node.js服务
-PORT=3000 node server.js &
-
-# 启动第二个Node.js服务
-PORT=3001 node server.js &
-```
-
-2. **测试Location匹配**
-```bash
-# 测试精确匹配
-curl -k https://vue-backup.liujun.com/api/version
-
-# 测试静态文件
-curl -k https://vue-backup.liujun.com/static/style.css
-
-# 测试图片文件
-curl -k https://vue-backup.liujun.com/images/logo.png
-
-# 测试API代理
-curl -k https://vue-backup.liujun.com/api/users
-```
-
-3. **测试负载均衡**
-```bash
-# 测试轮询分发
-for i in {1..4}; do
-    curl -k https://vue-backup.liujun.com/api/server-info
-    echo
-done
-
-# 测试会话保持（启用ip_hash后）
-for i in {1..4}; do
-    curl -k https://vue-backup.liujun.com/api/server-info
-    echo
-done
-```
-
-4. **检查日志**
-```bash
-# 查看Nginx访问日志
-tail -f /var/log/nginx/access.log
-
-# 查看Nginx错误日志
-tail -f /var/log/nginx/error.log
-
-# 查看Node.js服务日志
-PORT=3000 pm2 logs
-PORT=3001 pm2 logs
-```
-
-### 3.3 实践配置示例
-
-```nginx
-# 定义上游服务器组
-upstream backend_servers {
-    # 轮询策略（默认）
-    server 127.0.0.1:3000;
-    server 127.0.0.1:3001;
-    server 127.0.0.1:3002;
-
-    # 其他可选策略：
-    # least_conn; # 最少连接
-    # ip_hash;   # IP哈希
-    # weight=3;  # 权重
+    return 301 https://$server_name$request_uri;
 }
 
 # HTTPS服务器配置
@@ -1083,46 +1001,17 @@ server {
     ssl_certificate_key /etc/nginx/ssl/vue-backup.liujun.com/server.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
 
-    # 安全响应头
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-    add_header X-XSS-Protection "1; mode=block";
+    # 访问日志与错误配置
+    access_log /var/log/nginx/vue-backup.liujun.com.access.log log_format;  # 访问日志
+    error_log /var/log/nginx/vue-backup.liujun.com.error.log warn;    # 错误日志
 
-    # 精确匹配首页
-    location = / {
-        root /opt/nginx/vue-backup.liujun.com;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # 前缀匹配静态资源
-    location ^~ /static/ {
-        root /opt/nginx/vue-backup.liujun.com;
-        expires 30d;
-        add_header Cache-Control "public, no-transform";
-        access_log off;
-    }
-
-    # 正则匹配图片文件
-    location ~ \.(jpg|jpeg|png|gif|ico|webp)$ {
-        root /opt/nginx/vue-backup.liujun.com;
-        expires 7d;
-        add_header Cache-Control "public, no-transform";
-        access_log off;
-    }
-
-    # API反向代理
+    # API代理配置
     location /api/ {
-        # 移除/api前缀
-        rewrite ^/api/(.*) /$1 break;
-        
         proxy_pass http://backend_servers;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -1132,231 +1021,79 @@ server {
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-
-    # 普通前缀匹配
-    location / {
-        root /opt/nginx/vue-backup.liujun.com;
-        try_files $uri $uri/ /index.html;
-        index index.html;
-    }
-}
-
-# HTTP重定向到HTTPS
-server {
-    listen 80;
-    server_name vue-backup.liujun.com;
-    return 301 https://$server_name$request_uri;
 }
 ```
 
-### 3.4 配置说明
-
-1. **upstream配置**
-   - 定义后端服务器组
-   - 支持多种负载均衡策略
-   - 可以设置服务器权重
-
-2. **location匹配规则**
-   - `= /` 精确匹配首页
-   - `^~ /static/` 优先匹配静态资源
-   - `~ \.(jpg|jpeg|png|gif|ico|webp)$` 匹配图片文件
-   - `/api/` 处理API请求并进行反向代理
-   - `/` 处理其他请求
-
-3. **URL重写**
-   - 使用`rewrite`去除API请求的前缀
-   - 支持正则表达式匹配
-
-4. **缓存控制**
-   - 静态资源设置30天缓存
-   - 图片设置7天缓存
-   - 使用`expires`和`Cache-Control`控制
-
-5. **反向代理设置**
-   - 配置代理头信息
-   - 设置超时时间
-   - 启用WebSocket支持
-
-### 3.5 反向代理详解
-
-反向代理是一种服务器端代理技术，它接收客户端的请求，然后将请求转发给内部网络上的服务器，并将从服务器上得到的结果返回给客户端。
-
-#### 1. 反向代理的作用
-
-- **负载均衡**：分发请求到多个服务器
-- **安全防护**：隐藏真实服务器
-- **缓存静态内容**：提高访问速度
-- **SSL终端**：集中管理SSL证书
-
-#### 2. 反向代理配置要点
+#### 3. 负载均衡实践
 
 ```nginx
-location /api/ {
-    # 1. 去除/api前缀
-    rewrite ^/api/(.*) /$1 break;
-    
-    # 2. 设置上游服务器
-    proxy_pass http://backend_servers;
-    
-    # 3. 配置代理协议
-    proxy_http_version 1.1;
-    
-    # 4. WebSocket支持
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    
-    # 5. 传递客户端信息
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    
-    # 6. 超时设置
-    proxy_connect_timeout 60s;
-    proxy_send_timeout 60s;
-    proxy_read_timeout 60s;
-}
-```
-
-### 3.6 负载均衡调度算法
-
-#### 1. 轮询（默认）
-```nginx
-upstream backend {
+# 定义后端服务器组
+upstream backend_servers {
+    # 1. 轮询策略（默认）
     server 127.0.0.1:3000;
     server 127.0.0.1:3001;
-}
-```
-- 按顺序分配请求
-- 适合服务器性能相近的场景
 
-#### 2. 加权轮询
-```nginx
-upstream backend {
-    server 127.0.0.1:3000 weight=3;
-    server 127.0.0.1:3001 weight=1;
-}
-```
-- 按权重比例分配请求
-- 适合服务器性能不均的场景
+    # 2. 权重策略示例
+    # server 127.0.0.1:3000 weight=3;
+    # server 127.0.0.1:3001 weight=1;
 
-#### 3. IP哈希
-```nginx
-upstream backend {
-    ip_hash;
-    server 127.0.0.1:3000;
-    server 127.0.0.1:3001;
-}
-```
-- 根据客户端IP分配固定服务器
-- 适合需要会话保持的场景
+    # 3. IP哈希示例
+    # ip_hash;
+    # server 127.0.0.1:3000;
+    # server 127.0.0.1:3001;
 
-#### 4. 最少连接
-```nginx
-upstream backend {
-    least_conn;
-    server 127.0.0.1:3000;
-    server 127.0.0.1:3001;
+    # 4. 健康检查示例
+    # server 127.0.0.1:3000 max_fails=3 fail_timeout=30s;
+    # server 127.0.0.1:3001 backup;
 }
-```
-- 优先分配连接数最少的服务器
-- 适合请求处理时间差异大的场景
 
-#### 5. 服务器状态控制
-```nginx
-upstream backend {
-    server 127.0.0.1:3000 max_fails=3 fail_timeout=30s;
-    server 127.0.0.1:3001 backup;
-}
 ```
+
 - `max_fails`：允许请求失败次数
 - `fail_timeout`：失败后暂停时间
 - `backup`：备用服务器
 - `down`：标记服务器永久下线
 
-反向代理是指服务器接收客户端请求，然后将请求转发给内部网络上的其他服务器，并将结果返回给客户端。客户端只知道代理服务器，而不知道实际处理请求的服务器。
+#### 4. 实践测试
 
-### Nginx配置文件结构
+1. **启动测试服务器**
+```bash
+# 启动第一个Node.js服务
+PORT=3000 node server.js &
 
-```nginx
-# 前端项目配置
-server {
-    listen 80;                # 监听80端口
-    server_name example.com;   # 域名配置
-    
-    # 前端文件目录
-    root /var/www/html/dist;  # Vue项目构建文件目录
-    index index.html;         # 默认首页
-    
-    # 处理Vue路由
-    location / {
-        # 尝试寻找文件，如果不存在则返回index.html
-        try_files $uri $uri/ /index.html;
-    }
-    
-    # API代理配置
-    location /api/ {
-        # 将请求转发到后端服务器
-        proxy_pass http://backend_servers/;
-        
-        # 设置请求头信息
-        proxy_set_header Host $host;  # 保持原始域名
-        proxy_set_header X-Real-IP $remote_addr;  # 记录真实IP
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;  # 记录代理路径
-        proxy_set_header X-Forwarded-Proto $scheme;  # 记录协议类型
-        
-        # 超时设置
-        proxy_connect_timeout 60s;  # 连接超时
-        proxy_send_timeout 60s;     # 发送超时
-        proxy_read_timeout 60s;     # 读取超时
-    }
-}
-
-# 后端服务器组配置
-upstream backend_servers {
-    # 1. 轮询策略：按顺序分配请求
-    server 127.0.0.1:8001;  # 后端服务器1
-    server 127.0.0.1:8002;  # 后端服务器2
-    
-    # 2. 加权轮询：根据权重分配请求
-    server 127.0.0.1:8003 weight=3;  # 权重为3
-    server 127.0.0.1:8004 weight=1;  # 权重为1
-    
-    # 3. IP哈希：根据IP地址固定分配到特定服务器
-    # ip_hash;
-    
-    # 4. 最少连接：优先分配给连接数最少的服务器
-    # least_conn;
-    
-    # 保持连接配置
-    keepalive 32;  # 保持32个空闲连接
-}
+# 启动第二个Node.js服务
+PORT=3001 node server.js &
 ```
 
-### 负载均衡策略详解
+2. **测试API接口**
+```bash
 
-1. **轮询（Round Robin）**
-   - 原理：按顺序将请求分配给不同服务器
-   - 优点：配置简单，适合所有服务器性能相近的情况
-   - 缺点：不考虑服务器实际负载情况
+# 测试命令
+```bash
+# 测试轮询效果
+# 使用ab进行负载均衡测试
+ab -n 1000 -c 50 -k https://vue-backup.liujun.com/api/users
 
-2. **加权轮询（Weighted Round Robin）**
-   - 原理：根据服务器权重分配请求
-   - 优点：可以根据服务器性能分配不同权重
-   - 适用：服务器性能不均衡的情况
+# 测试会话保持
+curl -k https://vue-backup.liujun.com/api/users
 
-3. **IP哈希（IP Hash）**
-   - 原理：根据客户端IP计算哈希值分配服务器
-   - 优点：同一用户固定访问同一服务器
-   - 适用：需要会话保持的场景
+curl -k -w "\n响应时间: %{time_total}s\n" https://vue-backup.liujun.com/api/users
+```
 
-4. **最少连接（Least Connections）**
-   - 原理：优先分配给当前连接数最少的服务器
-   - 优点：能够动态适应服务器负载变化
-   - 适用：请求处理时间差异大的场景
+3. **检查日志**
+```bash
+# 查看Nginx访问日志
+tail -f /var/log/nginx/vue-backup.liujun.com.access.log
 
-5. **URL哈希（URL Hash）**
-    - 原理：根据请求的URL进行哈希分配
-    - 优点：相同URL的请求总是发送到同一服务器
-    - 适用：缓存服务器的场景
+# 查看Nginx错误日志
+tail -f /var/log/nginx/vue-backup.liujun.com.error.log
+
+# 查看Node.js服务日志
+PORT=3000 pm2 logs
+PORT=3001 pm2 logs
+```
+
+
+
+
 
