@@ -219,7 +219,7 @@ sudo vim /etc/nginx/conf.d/python-backend.liujun.com.conf
 
 ```nginx
 # 后端服务器组（定义一组服务器，用于负载均衡）
-upstream backend_servers {
+upstream python_backend {
     # 后端服务器列表
     # 内容请更换为你的Python后端服务地址与IP，另一个可以找你的同学合作
     server 192.168.110.203:8070 weight=1 max_fails=2 fail_timeout=30s;
@@ -259,7 +259,7 @@ server {
     # API代理配置 - 处理所有以/api/开头的请求
     location /api/ {
         # 将请求转发到之前定义的后端服务器组
-        proxy_pass http://backend_servers;
+        proxy_pass http://python_backend;
         
         # 配置代理协议版本（HTTP/1.1支持长连接，提高性能）
         proxy_http_version 1.1;
