@@ -437,9 +437,7 @@ mvn -version
 
 ```bash
 # 编辑Maven全局配置文件
-sudo vim /usr/local/maven/conf/settings.xml
-# 或者使用实际安装路径
-# sudo vim /usr/local/apache-maven-3.9.10/conf/settings.xml
+sudo vim /usr/local/apache-maven-3.9.10/conf/settings.xml
 ```
 
 在`<mirrors>`标签中添加以下内容：
@@ -748,4 +746,384 @@ location /api/ {
 4. **灵活性**：可以在不修改后端代码的情况下调整URL结构
 5. **便于维护**：可以轻松更改后端服务地址而不影响前端
 
+
+## Go环境部署
+
+### 基本概念
+
+> **什么是Go？** Go（又称Golang）是由Google开发的一种静态强类型、编译型、并发型，并具有垃圾回收功能的编程语言。Go语言专门针对多处理器系统应用程序的编程进行了优化，使用Go编译的程序可以媲美C或C++代码的速度，而且更加安全、支持并行进程。
+>
+> **Go的主要特点：**
+> - **简洁**：语法简单，易于学习
+> - **高效**：编译速度快，运行性能高
+> - **并发**：内置并发支持，goroutine和channel
+> - **垃圾回收**：自动内存管理
+> - **静态类型**：编译时类型检查
+> - **跨平台**：支持交叉编译，一次编写多平台运行
+
+### 安装Go环境
+
+#### 1. 安装Go
+
+```bash
+# 下载Go（如果下载缓慢，可以使用老师提供的安装包）
+wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz
+
+# 如果使用老师提供的安装包，可以通过rz命令上传
+# rz -y
+
+# 解压Go到指定目录
+sudo tar -xzf go1.24.4.linux-amd64.tar.gz -C /usr/local
+
+# 配置Go环境变量
+sudo vim /etc/profile
+
+# 在文件末尾添加以下内容
+# Go 环境变量
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export GOBIN=$GOPATH/bin
+export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+export GO111MODULE=on
+export GOPROXY=https://goproxy.cn,direct
+
+# 保存并退出vim（按ESC，然后输入:wq回车）
+
+# 使环境变量生效
+source /etc/profile
+
+# 验证Go安装
+go version
+```
+
+> **环境变量说明：**
+> - `GOROOT`：Go语言安装路径
+> - `GOPATH`：Go工作区路径，存放Go项目代码和依赖包
+> - `GOBIN`：Go可执行文件安装路径
+> - `PATH`：添加Go的bin目录到系统路径，使得可以直接运行go命令
+> - `GO111MODULE`：启用Go模块支持
+> - `GOPROXY`：设置Go模块代理，加速依赖下载
+
+#### 2. 配置Go国内源
+
+由于Go默认的模块代理在国外，下载依赖可能较慢，建议配置国内源加速依赖下载。Go提供了GOPROXY环境变量来配置代理。
+
+##### 常用的Go国内代理源
+
+1. **七牛云 Goproxy.cn（推荐）**
+   ```
+   https://goproxy.cn,direct
+   ```
+
+2. **阿里云**
+   ```
+   https://mirrors.aliyun.com/goproxy/,direct
+   ```
+
+3. **腾讯云**
+   ```
+   https://mirrors.tencent.com/go/,direct
+   ```
+
+4. **百度**
+   ```
+   https://goproxy.bj.bcebos.com/,direct
+   ```
+
+##### Linux系统配置方法
+
+```bash
+# 编辑环境变量配置文件
+sudo vim /etc/profile
+
+# 添加或修改GOPROXY配置
+export GOPROXY=https://goproxy.cn,direct
+
+# 使配置生效
+source /etc/profile
+```
+
+
+### 部署Go后端服务
+
+#### 1. 创建项目目录
+
+```bash
+# 创建项目目录
+mkdir -p /opt/nginx/go-backend.liujun.com
+
+# 进入项目目录
+cd /opt/nginx/go-backend.liujun.com
+
+# 克隆示例项目
+git clone https://gitee.com/Tender-Liu/go-starter.git .
+```
+
+> **说明：** 我们创建了一个专门的目录来存放Go应用，并从Gitee克隆了一个示例项目。使用`.`作为git clone的目标路径，可以将代码直接克隆到当前目录，而不是创建一个新的子目录。
+
+#### 2. 安装依赖
+
+```bash
+# 初始化并下载依赖
+go mod tidy
+```
+
+> **说明：** `go mod tidy` 命令会添加缺少的模块并移除不需要的模块，确保 `go.mod` 文件与代码保持同步。如果下载依赖较慢，可以参考前面配置的Go国内源加速下载。
+
+#### 3. 运行应用
+
+```bash
+# 直接运行应用（开发模式）
+go run main.go
+
+# 或者先构建再运行（生产模式）
+go build -o app
+./app
+```
+
+> **说明：** `go run` 命令适合开发环境，它会编译并立即运行程序。`go build` 命令会编译生成可执行文件，适合生产环境部署。
+
+#### 4. 测试应用
+
+```bash
+# 在Linux服务器上使用curl测试
+curl http://localhost:8080/swagger/index.html
+
+# 也可以在浏览器中访问
+# http://<服务器IP>:8080/swagger/index.html
+```
+
+> **说明：** 测试成功后，按`Ctrl+C`退出应用。在生产环境中，我们需要让应用在后台运行，下面将介绍如何实现。
+
+#### 5. 后台运行应用
+
+```bash
+# 使用nohup命令在后台运行应用
+nohup ./app > app.log 2>&1 &
+
+# 查看应用是否成功启动
+netstat -lnpt | grep app
+
+# 查看日志
+tail -f app.log
+```
+
+> **说明：** `nohup`命令可以让应用在用户退出登录后继续运行，`&`符号将进程放入后台。`> app.log 2>&1`将标准输出和错误输出重定向到app.log文件。
+
+#### 6. 停止应用
+
+```bash
+# 查找应用进程ID
+netstat -lnpt| grep 8080
+
+# 停止应用
+kill <进程ID>
+```
+
+> **说明：** 使用`kill`命令可以优雅地停止应用。如果应用没有响应，可以使用`kill -9 <进程ID>`强制终止。
+
+#### 配置Nginx反向代理
+
+为了通过域名访问应用，并支持HTTPS、API前缀、Swagger页面和静态资源缓存，我们需要配置Nginx反向代理。
+
+```bash
+# 创建SSL证书目录
+sudo mkdir -p /etc/nginx/ssl/go-backend.liujun.com
+
+# 生成自签名SSL证书
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/go-backend.liujun.com/private.key \
+    -out /etc/nginx/ssl/go-backend.liujun.com/certificate.crt \
+    -subj "/CN=go-backend.liujun.com"
+
+# 创建Nginx配置文件
+sudo vim /etc/nginx/conf.d/go-backend.liujun.com.conf
+```
+
+添加以下内容：
+
+```nginx
+# 后端服务器组
+upstream go_backend {
+    # 后端服务器列表
+    # 内容请更换为你的Go后端服务地址与IP
+    server 192.168.110.203:8080 weight=1 max_fails=2 fail_timeout=30s;
+    # 如果有多个后端服务器，可以添加更多server行
+    # server 192.168.110.204:8080 weight=1 max_fails=2 fail_timeout=30s;
+}
+
+# HTTPS server
+server {
+    listen 443 ssl;
+    server_name go-backend.liujun.com;
+    
+    # 日志配置
+    access_log /var/log/nginx/go-backend.liujun.com.access.log;
+    error_log /var/log/nginx/go-backend.liujun.com.error.log;
+    
+    # SSL配置
+    ssl_certificate /etc/nginx/ssl/go-backend.liujun.com/certificate.crt;
+    ssl_certificate_key /etc/nginx/ssl/go-backend.liujun.com/private.key;
+    
+    # SSL优化配置
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # API代理 - 保留/api前缀
+    location /api/ {
+        # 注意：这里不去除/api前缀，因为后端服务的API已经包含/api前缀
+        proxy_pass http://go_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # 增加超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # 静态资源缓存配置
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        proxy_pass http://go_backend;
+        proxy_set_header Host $host;
+        
+        # 静态资源缓存设置
+        expires 1y;                                # 设置缓存过期时间为1年
+        add_header Cache-Control "public, no-transform";  # 允许所有缓存服务器缓存，且不允许转换
+        access_log off;                           # 关闭访问日志，减少磁盘IO
+    }
+
+}
+
+# HTTP重定向到HTTPS
+server {
+    listen 80;
+    server_name go-backend.liujun.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+> **说明：** 
+> 1. 上述配置创建了一个HTTPS服务器，保留了API的`/api`前缀，因为后端服务的API已经包含该前缀
+> 2. 为静态资源配置了长期缓存，提高访问性能
+> 3. 将HTTP请求重定向到HTTPS，提高安全性
+
+#### 测试Nginx配置并重新加载
+
+```bash
+# 测试Nginx配置
+sudo nginx -t
+
+# 如果配置正确，重新加载Nginx
+sudo nginx -s reload
+```
+
+> **说明：** 确保Nginx配置正确后，重新加载Nginx使配置生效。
+
+#### 配置本地域名解析（开发测试环境）
+
+在Windows系统上，编辑`C:\Windows\System32\drivers\etc\hosts`文件，添加以下内容：
+
+```
+# Go后端服务
+192.168.110.203 go-backend.liujun.com
+```
+
+> **说明：** 将IP地址替换为你的Nginx服务器IP地址。
+
+#### 测试访问
+
+在浏览器中访问以下URL测试不同功能：
+
+```
+# API测试
+https://go-backend.liujun.com/api/products
+
+# Swagger文档
+https://go-backend.liujun.com/swagger/index.html
+
+```
+
+> **说明：** 
+> - 由于使用的是自签名证书，浏览器可能会显示安全警告，可以点击"高级"或"继续访问"来继续
+> - 确保所有路径都能正确访问，特别是API和Swagger文档
+> - 检查静态资源是否正确缓存（可以通过浏览器开发者工具的Network标签查看）
+
+### 常见问题与解决方案
+
+#### 1. Nginx配置错误
+
+**问题表现：**
+- `nginx -t` 命令报错
+- Nginx无法启动或重新加载
+
+**解决方案：**
+- 检查配置文件语法，特别是大括号、分号等
+- 确认SSL证书和密钥文件路径正确
+- 检查upstream服务器地址和端口是否正确
+- 查看Nginx错误日志：`sudo cat /var/log/nginx/error.log`
+
+#### 2. API请求返回502错误
+
+**问题表现：**
+- 浏览器访问API返回502 Bad Gateway
+
+**解决方案：**
+- 确认Go后端服务正在运行：`ps aux | grep go`
+- 检查Go服务监听地址和端口是否与Nginx配置匹配
+- 检查防火墙是否允许Nginx和Go服务之间的通信
+- 查看Nginx错误日志：`sudo cat /var/log/nginx/error.log`
+
+
+### Linux后端服务部署流程总结
+
+本文详细介绍了Python、Java、Go和Node.js四种主流后端语言在Linux环境下的安装与部署全流程。通过系统化的步骤，帮助开发者和运维人员高效完成从环境搭建到服务上线的全过程。
+
+#### 通用部署流程
+
+1. **环境准备**
+   - 创建专用项目目录（/opt/nginx/项目域名）
+   - 安装语言运行时环境（Python/JDK/Go/Node.js）
+   - 配置包管理工具（pip/Maven/go mod/npm）
+   - 安装项目依赖（requirements.txt/pom.xml/go.mod/package.json）
+
+2. **应用构建与运行**
+   - 开发环境测试运行（确保基本功能正常）
+   - 生产环境构建优化（编译/打包/压缩）
+   - 配置环境变量与运行参数
+   - 启动应用并验证基本功能
+
+3. **后台持久化运行**
+   - 使用nohup实现应用后台运行
+   - 配置日志输出与错误重定向
+   - 设置开机自启（可选）
+   - 监控端口与进程状态
+
+4. **Nginx反向代理与SSL配置**
+   - 生成SSL证书（自签名或正规CA）
+   - 配置HTTPS反向代理（支持API路由）
+   - 实现负载均衡（多实例部署）
+   - 配置静态资源缓存策略
+   - 设置HTTP到HTTPS的301重定向
+
+5. **测试验证与性能优化**
+   - 测试API访问与功能完整性
+   - 验证Swagger/API文档可用性
+   - 检查静态资源加载速度
+   - 优化服务器参数与应用配置
+   - 配置监控与告警（可选）
+
+#### 各语言部署特点
+
+- **Python**: 虚拟环境隔离(venv)，依赖管理简单，适合快速开发和原型验证
+- **Java**: 构建过程复杂但规范，JVM配置灵活，适合企业级应用
+- **Go**: 静态编译，部署简单，性能优异，适合高并发服务
+- **Node.js**: 事件驱动，适合I/O密集型应用，前后端技术栈统一
+
+通过掌握这些部署流程，可以根据项目需求灵活选择合适的技术栈，并确保服务稳定、安全、高效地运行。
 
