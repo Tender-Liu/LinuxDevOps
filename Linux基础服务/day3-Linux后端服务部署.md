@@ -1032,16 +1032,8 @@ curl -k https://vue-backup.liujun.com/api/test
 
 #### 4. 实践测试
 
-1. **启动测试服务器**
-```bash
-# 启动第一个Node.js服务
-PORT=3000 node server.js &
 
-# 启动第二个Node.js服务
-PORT=3001 node server.js &
-```
-
-2. **测试API接口**
+1. **测试API接口**
 ```bash
 # 测试API版本
 curl -k https://vue-backup.liujun.com/api/version
@@ -1053,7 +1045,7 @@ curl -k https://vue-backup.liujun.com/api/users
 curl -k -w "\n响应时间: %{time_total}s\n" https://vue-backup.liujun.com/api/users
 ```
 
-3. **检查日志**
+2. **检查日志**
 ```bash
 # 查看Nginx访问日志
 tail -f /var/log/nginx/vue-backup.liujun.com.access.log
