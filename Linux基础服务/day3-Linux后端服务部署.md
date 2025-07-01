@@ -58,7 +58,7 @@ http {
     default_type application/octet-stream;
     
     # 定义JSON格式的日志  注意最后的分号
-    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time"}';  
+    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time"}'; 
     
     # 访问日志路径
     access_log /var/log/nginx/access.log json_combined;
@@ -105,6 +105,11 @@ http {
     include /etc/nginx/conf.d/*.conf;
     include /etc/nginx/sites-enabled/*;
 }
+```
+
+```bash
+# 更新完成配置后，重启nginx
+pkill nginx && nginx
 ```
 
 ### Nginx配置文件说明
@@ -315,6 +320,8 @@ sudo sysctl net.ipv4.tcp_fin_timeout
    server {
        listen 443 ssl;
        server_name touch.liujun.com;
+       access_log /var/log/nginx/touch.liujun.com.access.log json_combined;
+       error_log /var/log/nginx/touch.liujun.com.error.log warn;
        
        # 证书文件路径
        ssl_certificate /etc/nginx/ssl/touch.liujun.com/certificate.crt;
@@ -545,6 +552,8 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 server {
     listen 443 ssl;
     server_name vue-web.liujun.com;
+    access_log /var/log/nginx/vue-web.liujun.com.access.log json_combined;
+    error_log /var/log/nginx/vue-web.liujun.com.error.log warn;
     
     # 证书文件路径
     ssl_certificate /etc/nginx/ssl/vue-web.liujun.com/certificate.crt;
@@ -678,7 +687,7 @@ curl -X DELETE http://localhost:3000/api/users/1
 nohup npm start > output.log 2>&1 &
 
 # 查看进程
-ps aux | grep node
+netstat -lnpt| grep node
 
 # 停止服务
 kill <进程ID>
@@ -953,13 +962,18 @@ server {
 server {
     listen 443 ssl;
     server_name vue-backup.liujun.com;
+    access_log /var/log/nginx/vue-backup.liujun.com.access.log json_combined;
+    error_log /var/log/nginx/vue-backup.liujun.com.error.log warn;
 
     # SSL配置
-    ssl_certificate /etc/nginx/ssl/vue-backup.liujun.com/server.crt;
-    ssl_certificate_key /etc/nginx/ssl/vue-backup.liujun.com/server.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
+    # SSL优化配置
+    ssl_protocols TLSv1.2 TLSv1.3;                     # 只允许TLS1.2和1.3协议，禁用不安全的老版本
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;  # 使用强加密套件
+    ssl_prefer_server_ciphers on;                      # 优先使用服务器的加密套件
+    ssl_session_cache shared:SSL:10m;                  # SSL会话缓存，提高性能
+    ssl_session_timeout 10m;                           # 缓存会话的超时时间
+    ssl_stapling on;                                   # 启用OCSP Stapling
+    ssl_stapling_verify on;                           # 验证OCSP响应
 
     # API代理配置
     location /api/ {
@@ -1030,35 +1044,16 @@ curl -k https://vue-backup.liujun.com/api/version
 curl -k https://vue-backup.liujun.com/api/users
 
 # 测试API响应时间
-curl -k -w "\n响应时间: %{time_total}s\n" https://vue-backup.liujun.com/api/test
+curl -k -w "\n响应时间: %{time_total}s\n" https://vue-backup.liujun.com/api/users
 ```
 
-3. **测试负载均衡**
-```bash
-# 测试轮询分发
-for i in {1..4}; do
-    curl -k https://vue-backup.liujun.com/api/server-info
-    echo
-done
-
-# 测试会话保持（启用ip_hash后）
-for i in {1..4}; do
-    curl -k https://vue-backup.liujun.com/api/server-info
-    echo
-done
-```
-
-4. **检查日志**
+3. **检查日志**
 ```bash
 # 查看Nginx访问日志
-tail -f /var/log/nginx/access.log
+tail -f /var/log/nginx/vue-backup.liujun.com.access.log
 
 # 查看Nginx错误日志
-tail -f /var/log/nginx/error.log
-
-# 查看Node.js服务日志
-PORT=3000 pm2 logs
-PORT=3001 pm2 logs
+tail -f /var/log/nginx/vue-backup.liujun.com.error.log
 ```
 
 ### 3.3 实践配置示例
@@ -1083,10 +1078,14 @@ server {
     server_name vue-backup.liujun.com;
 
     # SSL配置
-    ssl_certificate /etc/nginx/ssl/vue-backup.liujun.com/server.crt;
-    ssl_certificate_key /etc/nginx/ssl/vue-backup.liujun.com/server.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    # SSL优化配置
+    ssl_protocols TLSv1.2 TLSv1.3;                     # 只允许TLS1.2和1.3协议，禁用不安全的老版本
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;  # 使用强加密套件
+    ssl_prefer_server_ciphers on;                      # 优先使用服务器的加密套件
+    ssl_session_cache shared:SSL:10m;                  # SSL会话缓存，提高性能
+    ssl_session_timeout 10m;                           # 缓存会话的超时时间
+    ssl_stapling on;                                   # 启用OCSP Stapling
+    ssl_stapling_verify on;                           # 验证OCSP响应
 
     # 安全响应头
     add_header X-Frame-Options "SAMEORIGIN";
