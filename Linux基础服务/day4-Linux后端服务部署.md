@@ -85,7 +85,7 @@ cd /opt/nginx/python-backend.liujun.com
 
 # 从码云(Gitee)克隆一个FastAPI项目模板
 # 这会下载一个现成的FastAPI项目到当前目录
-git clone https://gitee.com/Tender-Liu/fastapi-starter.git
+git clone https://gitee.com/Tender-Liu/fastapi-starter.git .
 
 # 2. 为项目创建虚拟环境
 # 虚拟环境是一个独立的Python环境，可以避免不同项目之间的依赖冲突
