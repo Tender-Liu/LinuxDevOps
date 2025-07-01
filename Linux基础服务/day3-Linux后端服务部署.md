@@ -506,7 +506,7 @@ git clone https://gitee.com/anydev/vue-manage-system.git .
 
 2. **构建项目**
 ```bash
-he# 安装项目依赖
+# 安装项目依赖
 npm install  # 这个命令会创建node_modules目录，存放所有项目依赖的包
 
 # 查看生成的node_modules目录
