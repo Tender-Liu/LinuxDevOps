@@ -946,9 +946,6 @@ upstream backend_servers {
     # 后端服务器列表
     server 127.0.0.1:3000 weight=1 max_fails=2 fail_timeout=30s;
     server 127.0.0.1:3001 weight=1 max_fails=2 fail_timeout=30s;
-
-    # 备用服务器
-    server 127.0.0.1:3002 backup;
 }
 
 # HTTP重定向到HTTPS
