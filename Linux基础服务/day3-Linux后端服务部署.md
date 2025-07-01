@@ -930,8 +930,8 @@ mkdir -p /etc/nginx/ssl/vue-backup.liujun.com
 
 # 生成自签名SSL证书
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
--keyout /etc/nginx/ssl/vue-backup.liujun.com/server.key \
--out /etc/nginx/ssl/vue-backup.liujun.com/server.crt \
+-keyout /etc/nginx/ssl/vue-backup.liujun.com/private.key \
+-out /etc/nginx/ssl/vue-backup.liujun.com/certificate.crt \
 -subj "/C=CN/ST=Beijing/L=Beijing/O=liujun/CN=vue-backup.liujun.com"
 ```
 
