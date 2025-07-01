@@ -936,6 +936,11 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 ```
 
 #### 2. Location实践
+```bash
+# 创建配置文件（文件名应与域名一致）
+sudo vim /etc/nginx/conf.d/vue-backup.liujun.com.conf
+```
+
 ```nginx
 # 基础配置
 # 后端服务器组
