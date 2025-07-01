@@ -501,7 +501,7 @@ mkdir -p /opt/nginx/vue-web.liujun.com
 cd /opt/nginx/vue-web.liujun.com
 
 # 克隆Vue项目
-git clone https://github.com/lin-xin/vue-manage-system.git .
+git clone https://gitee.com/anydev/vue-manage-system.git .
 ```
 
 2. **构建项目**
