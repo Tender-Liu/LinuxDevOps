@@ -959,6 +959,10 @@ server {
 server {
     listen 443 ssl;
     server_name vue-backup.liujun.com;
+    # 证书文件路径
+    ssl_certificate /etc/nginx/ssl/vue-backup.liujun.com/certificate.crt;
+    ssl_certificate_key /etc/nginx/ssl/vue-backup.liujun.com/private.key;
+
     access_log /var/log/nginx/vue-backup.liujun.com.access.log json_combined;
     error_log /var/log/nginx/vue-backup.liujun.com.error.log warn;
 
