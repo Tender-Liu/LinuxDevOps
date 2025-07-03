@@ -532,124 +532,112 @@ sudo vim /etc/keepalived/keepalived.conf
 将以下内容粘贴到文件中（替换原有内容）：
 
 ```bash
-# 全局定义部分，包含 Keepalived 的全局设置
+! Configuration File for keepalived
+
+# 全局定义部分
 global_defs {
-    # 路由器 ID，用于在日志中标识此节点，区分主备节点
+    # 路由标识符，在局域网内应该唯一
     router_id LVS_MASTER
 }
 
-# VRRP 实例定义，用于实现高可用性和主备切换
+# VRRP实例配置
 vrrp_instance VI_1 {
-    # 节点初始状态，MASTER 表示此节点为主节点
+    # 指定实例的初始状态为MASTER
     state MASTER
-    # 网络接口名称，用于发送和接收 VRRP 心跳包
+    # 指定HA监测网络的接口
     interface ens33
-    # 虚拟路由器 ID，必须与备用节点相同，范围 0-255
-    virtual_router_id 51
-    # 优先级，范围 1-255，数值越大优先级越高，主节点应高于备用节点
+    # 虚拟路由标识符(0-255)，MASTER和BACKUP必须一致
+    virtual_router_id 163
+    # 优先级(1-254)，MASTER的优先级必须大于BACKUP的优先级
     priority 100
-    # VRRP 通告间隔（秒），主备节点需一致，用于心跳检查
+    # 组播信息发送间隔，默认1秒
     advert_int 1
-    # 认证设置，确保主备节点通信安全
+    # 认证配置
     authentication {
-        # 认证类型，PASS 表示简单密码认证
+        # 认证类型
         auth_type PASS
-        # 认证密码，主备节点必须一致
-        auth_pass 1111
+        # 认证密码
+        auth_pass 123456
     }
-    # 虚拟 IP 地址（VIP），主备切换时由持有者绑定到接口
+    # 虚拟IP地址
     virtual_ipaddress {
-        192.168.110.200
+        192.168.110.163
     }
 }
 
-# 虚拟服务定义，用于 LVS 负载均衡，端口 80
-virtual_server 192.168.110.200 80 {
-    # 健康检查循环间隔（秒），用于检测后端服务器状态
+# HTTP服务虚拟服务器配置
+virtual_server 192.168.110.163 80 {
+    # 健康检查时间间隔
     delay_loop 6
-    # 负载均衡算法，rr 表示轮询（round-robin）
+    # 负载均衡算法(rr表示轮询)
     lb_algo rr
-    # 负载均衡模式，DR 表示直接路由模式（需要后端服务器配置 VIP）
-    lb_kind DR
-    # 协议类型，TCP 或 UDP
+    # LVS模式(Masq表示NAT模式)
+    lb_kind Masq
+    # 会话保持时间
+    persistence_timeout 0
+    # 转发协议
     protocol TCP
-    # 后端真实服务器 1，IP 和端口
-    real_server 192.168.110.203 10080 {
-        # 权重，影响流量分配，1 表示默认权重
+
+    # 第一个真实服务器
+    real_server 192.168.110.16 10080 {
+        # 权重
         weight 1
-        # TCP 健康检查设置
+        # TCP检查
         TCP_CHECK {
-            # 连接超时时间（秒）
-            connect_timeout 3
-            # 重试次数，若连接失败则重试
-            nb_get_retry 3
-            # 重试前等待时间（秒）
-            delay_before_retry 3
-            # 检查的后端端口
-            connect_port 10080
-        }
-    }
-    # 后端真实服务器 2，IP 和端口
-    real_server 192.168.110.204 10080 {
-        # 权重，影响流量分配
-        weight 1
-        # TCP 健康检查设置
-        TCP_CHECK {
-            # 连接超时时间（秒）
+            # 连接超时时间
             connect_timeout 3
             # 重试次数
             nb_get_retry 3
-            # 重试前等待时间（秒）
+            # 重试间隔
             delay_before_retry 3
-            # 检查的后端端口
+            # 检查的端口号
+            connect_port 10080
+        }
+    }
+
+    # 第二个真实服务器
+    real_server 192.168.110.208 10080 {
+        weight 1
+        TCP_CHECK {
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
             connect_port 10080
         }
     }
 }
 
-# 虚拟服务定义，用于 LVS 负载均衡，端口 443
-virtual_server 192.168.110.200 443 {
-    # 健康检查循环间隔（秒）
+# HTTPS服务虚拟服务器配置
+virtual_server 192.168.110.163 443 {
     delay_loop 6
-    # 负载均衡算法，rr 表示轮询
     lb_algo rr
-    # 负载均衡模式，DR 表示直接路由模式
-    lb_kind DR
-    # 协议类型，TCP 或 UDP
+    lb_kind Masq
+    persistence_timeout 0
     protocol TCP
-    # 后端真实服务器 1，IP 和端口
-    real_server 192.168.110.203 10443 {
-        # 权重，影响流量分配
+
+    # 第一个真实服务器
+    real_server 192.168.110.16 10443 {
         weight 1
-        # TCP 健康检查设置
         TCP_CHECK {
-            # 连接超时时间（秒）
             connect_timeout 3
-            # 重试次数
             nb_get_retry 3
-            # 重试前等待时间（秒）
             delay_before_retry 3
-            # 检查的后端端口
             connect_port 10443
         }
     }
-    # 后端真实服务器 2，IP 和端口
-    real_server 192.168.110.204 10443 {
-        # 权重，影响流量分配
+
+    # 第二个真实服务器
+    real_server 192.168.110.208 10443 {
         weight 1
-        # TCP 健康检查设置
         TCP_CHECK {
-            # 连接超时时间（秒）
             connect_timeout 3
-            # 重试次数
             nb_get_retry 3
-            # 重试前等待时间（秒）
             delay_before_retry 3
-            # 检查的后端端口
             connect_port 10443
         }
     }
 }
+
 
 
 # 保存并退出vim（按ESC，然后输入:wq回车）
@@ -673,120 +661,107 @@ sudo vim /etc/keepalived/keepalived.conf
 将以下内容粘贴到文件中（替换原有内容）：
 
 ```bash
-# 全局定义部分，包含 Keepalived 的全局设置
+! Configuration File for keepalived
+
+# 全局定义部分
 global_defs {
-    # 路由器 ID，用于在日志中标识此节点，区分主备节点
+    # 路由标识符，在局域网内应该唯一
     router_id LVS_BACKUP
 }
 
-# VRRP 实例定义，用于实现高可用性和主备切换
+# VRRP实例配置
 vrrp_instance VI_1 {
-    # 节点初始状态，BACKUP 表示此节点为备用节点
+    # 指定实例的初始状态为MASTER
     state BACKUP
-    # 网络接口名称，用于发送和接收 VRRP 心跳包
+    # 指定HA监测网络的接口
     interface ens33
-    # 虚拟路由器 ID，必须与主节点相同，范围 0-255
-    virtual_router_id 51
-    # 优先级，范围 1-255，数值越大优先级越高，备用节点应低于主节点
-    priority 50
-    # VRRP 通告间隔（秒），主备节点需一致，用于心跳检查
+    # 虚拟路由标识符(0-255)，MASTER和BACKUP必须一致
+    virtual_router_id 163
+    # 优先级(1-254)，MASTER的优先级必须大于BACKUP的优先级
+    priority 100
+    # 组播信息发送间隔，默认1秒
     advert_int 1
-    # 认证设置，确保主备节点通信安全
+    # 认证配置
     authentication {
-        # 认证类型，PASS 表示简单密码认证
+        # 认证类型
         auth_type PASS
-        # 认证密码，主备节点必须一致
-        auth_pass 1111
+        # 认证密码
+        auth_pass 123456
     }
-    # 虚拟 IP 地址（VIP），主备切换时由持有者绑定到接口
+    # 虚拟IP地址
     virtual_ipaddress {
-        192.168.110.200
+        192.168.110.163
     }
 }
 
-# 虚拟服务定义，用于 LVS 负载均衡，端口 80
-virtual_server 192.168.110.200 80 {
-    # 健康检查循环间隔（秒），用于检测后端服务器状态
+# HTTP服务虚拟服务器配置
+virtual_server 192.168.110.163 80 {
+    # 健康检查时间间隔
     delay_loop 6
-    # 负载均衡算法，rr 表示轮询（round-robin）
+    # 负载均衡算法(rr表示轮询)
     lb_algo rr
-    # 负载均衡模式，DR 表示直接路由模式（需要后端服务器配置 VIP）
-    lb_kind DR
-    # 协议类型，TCP 或 UDP
+    # LVS模式(Masq表示NAT模式)
+    lb_kind Masq
+    # 会话保持时间
+    persistence_timeout 0
+    # 转发协议
     protocol TCP
-    # 后端真实服务器 1，IP 和端口
-    real_server 192.168.110.203 10080 {
-        # 权重，影响流量分配，1 表示默认权重
+
+    # 第一个真实服务器
+    real_server 192.168.110.16 10080 {
+        # 权重
         weight 1
-        # TCP 健康检查设置
+        # TCP检查
         TCP_CHECK {
-            # 连接超时时间（秒）
-            connect_timeout 3
-            # 重试次数，若连接失败则重试
-            nb_get_retry 3
-            # 重试前等待时间（秒）
-            delay_before_retry 3
-            # 检查的后端端口
-            connect_port 10080
-        }
-    }
-    # 后端真实服务器 2，IP 和端口
-    real_server 192.168.110.204 10080 {
-        # 权重，影响流量分配
-        weight 1
-        # TCP 健康检查设置
-        TCP_CHECK {
-            # 连接超时时间（秒）
+            # 连接超时时间
             connect_timeout 3
             # 重试次数
             nb_get_retry 3
-            # 重试前等待时间（秒）
+            # 重试间隔
             delay_before_retry 3
-            # 检查的后端端口
+            # 检查的端口号
+            connect_port 10080
+        }
+    }
+
+    # 第二个真实服务器
+    real_server 192.168.110.208 10080 {
+        weight 1
+        TCP_CHECK {
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
             connect_port 10080
         }
     }
 }
 
-# 虚拟服务定义，用于 LVS 负载均衡，端口 443
-virtual_server 192.168.110.200 443 {
-    # 健康检查循环间隔（秒）
+# HTTPS服务虚拟服务器配置
+virtual_server 192.168.110.163 443 {
     delay_loop 6
-    # 负载均衡算法，rr 表示轮询
     lb_algo rr
-    # 负载均衡模式，DR 表示直接路由模式
-    lb_kind DR
-    # 协议类型，TCP 或 UDP
+    lb_kind Masq
+    persistence_timeout 0
     protocol TCP
-    # 后端真实服务器 1，IP 和端口
-    real_server 192.168.110.203 10443 {
-        # 权重，影响流量分配
+
+    # 第一个真实服务器
+    real_server 192.168.110.16 10443 {
         weight 1
-        # TCP 健康检查设置
         TCP_CHECK {
-            # 连接超时时间（秒）
             connect_timeout 3
-            # 重试次数
             nb_get_retry 3
-            # 重试前等待时间（秒）
             delay_before_retry 3
-            # 检查的后端端口
             connect_port 10443
         }
     }
-    # 后端真实服务器 2，IP 和端口
-    real_server 192.168.110.204 10443 {
-        # 权重，影响流量分配
+
+    # 第二个真实服务器
+    real_server 192.168.110.208 10443 {
         weight 1
-        # TCP 健康检查设置
         TCP_CHECK {
-            # 连接超时时间（秒）
             connect_timeout 3
-            # 重试次数
             nb_get_retry 3
-            # 重试前等待时间（秒）
             delay_before_retry 3
-            # 检查的后端端口
             connect_port 10443
         }
     }
