@@ -131,24 +131,24 @@ graph TB
     classDef labelStyle fill:#fff,stroke:none
     class label labelStyle
 
-    subgraph 四层负载均衡
+    subgraph 四层负载均衡 [四层负载均衡]
         LVS1
         LVS2
         VIP
     end
 
-    subgraph 七层负载均衡
+    subgraph 七层负载均衡 [七层负载均衡]
         HA1
         HA2
     end
 
-    subgraph Web服务器层
+    subgraph Web服务器层 [Web服务器层]
         N1
         N2
         N3
     end
 
-    subgraph 应用服务器层
+    subgraph 应用服务器层 [应用服务器层]
         A1
         A2
         A3
