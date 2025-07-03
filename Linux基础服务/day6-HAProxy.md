@@ -822,6 +822,31 @@ server {
 
 
 
+### Haproxy 独有的sock 操作
+
+HAProxy 支持通过 UNIX Socket 进行运行时管理和监控，可以动态调整后端服务器状态、查看统计信息等。常见 sock 操作语法如下：
+
+- **配置启用 socket**
+  在 global 段添加：
+  ```
+  global
+      stats socket /var/run/haproxy.sock mode 600 level admin
+  ```
+
+- **连接 socket 执行命令**
+  使用 socat 工具：
+  ```bash
+  echo "show info" | socat stdio /var/run/haproxy.sock
+  ```
+
+- **常用 sock 命令**
+  - `show info`：显示 HAProxy 进程信息
+  - `show stat`：显示统计数据
+  - `show sess`：显示当前会话
+  - `disable server backend/server`：下线指定后端服务器
+  - `enable server backend/server`：上线指定后端服务器
+
+> 说明：sock 操作适合进阶用户进行动态管理和自动化运维，有兴趣的同学可以查阅[官方文档](https://www.haproxy.com/documentation/hapee/latest/management/runtime-api/)深入学习。
 
         
 
