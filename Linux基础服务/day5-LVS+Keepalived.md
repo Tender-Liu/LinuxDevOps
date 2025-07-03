@@ -491,15 +491,16 @@ sudo ipvsadm -Ln
 **输出结果**
 
 ```bash
+root@ubuntu-virtual-machine:~# ipvsadm -Ln
 IP Virtual Server version 1.2.1 (size=4096)
 Prot LocalAddress:Port Scheduler Flags
   -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-TCP  192.168.110.200:80 rr
-  -> 192.168.110.203:10080       Masq    1      0          0         
-  -> 192.168.110.204:10080       Masq    1      0          0         
-TCP  192.168.110.200:443 rr
-  -> 192.168.110.203:10443       Masq    1      0          0         
-  -> 192.168.110.204:10443       Masq    1      0          0    
+TCP  192.168.110.163:80 rr
+  -> 192.168.110.16:10080         Masq    1      0          0         
+  -> 192.168.110.208:10080        Masq    1      0          0         
+TCP  192.168.110.163:443 rr
+  -> 192.168.110.16:10443         Masq    1      0          0         
+  -> 192.168.110.208:10443        Masq    1      0          0   
 ```
 
 **预期输出**：您会看到 VIP（192.168.110.200）的 80 和 443 端口转发规则，分别指向两台主机的 10080 和 10443 端口。
