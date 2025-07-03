@@ -83,7 +83,7 @@ HAProxy（High Availability Proxy）是一个开源的、高性能的负载均�
 ### 3.1 基本架构
 
 ```mermaid
-graph TB
+flowchart TB
     Client[用户请求]
 
     VIP[虚拟IP]
