@@ -717,8 +717,8 @@ ifconfig ens33
         ens33:
           dhcp4: false
           addresses:
-            - 192.168.1.100/24
-          gateway4: 192.168.1.1
+            - 192.168.110.10/24
+          gateway4: 192.168.110.1
           nameservers:
             addresses: [8.8.8.8, 114.114.114.114]
     ```
