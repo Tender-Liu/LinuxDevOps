@@ -83,7 +83,7 @@ HAProxy（High Availability Proxy）是一个开源的、高性能的负载均�
 ### 3.1 基本架构
 
 ```mermaid
-graph TB
+flowchart TB
     subgraph 用户层
         Client[用户请求]
     end
@@ -114,22 +114,22 @@ graph TB
     Client --> VIP
     VIP --> LVS1
     VIP --> LVS2
-    LVS1 --> |四层转发| HA1
-    LVS1 --> |四层转发| HA2
-    LVS2 --> |备用节点| HA1
-    LVS2 --> |备用节点| HA2
-    HA1 --> |七层转发| N1
-    HA1 --> |七层转发| N2
-    HA1 --> |七层转发| N3
-    HA2 --> |七层转发| N1
-    HA2 --> |七层转发| N2
-    HA2 --> |七层转发| N3
-    N1 --> |应用请求| A1
-    N1 --> |应用请求| A2
-    N2 --> |应用请求| A2
-    N2 --> |应用请求| A3
-    N3 --> |应用请求| A1
-    N3 --> |应用请求| A3
+    LVS1 -->|四层转发| HA1
+    LVS1 -->|四层转发| HA2
+    LVS2 -->|备用节点| HA1
+    LVS2 -->|备用节点| HA2
+    HA1 -->|七层转发| N1
+    HA1 -->|七层转发| N2
+    HA1 -->|七层转发| N3
+    HA2 -->|七层转发| N1
+    HA2 -->|七层转发| N2
+    HA2 -->|七层转发| N3
+    N1 -->|应用请求| A1
+    N1 -->|应用请求| A2
+    N2 -->|应用请求| A2
+    N2 -->|应用请求| A3
+    N3 -->|应用请求| A1
+    N3 -->|应用请求| A3
 ```
 
 ### 3.2 工作流程说明
@@ -479,7 +479,7 @@ listen stats
     stats enable               # 启用统计页面
     stats uri /stats           # 统计页面URL
     stats refresh 10s          # 刷新间隔
-    stats auth admin:StrongPassword123  # 访问认证
+    stats auth admin:123456  # 访问认证
     stats admin if TRUE        # 启用管理功能
     
     # Prometheus监控接口 - 这个以后要用到滴，给我加上加上
@@ -535,7 +535,293 @@ curl -u admin:StrongPassword123 http://192.168.110.5:8404/stats
 curl http://192.168.110.5:8404/metrics
 ```
 
-### 实验二 配置
+### 实验二 配置代理后端服务的负载均衡
+
+#### frontend 与 backend 作用说明
+- **frontend**：定义客户端请求的接入点，负责监听端口、协议解析、访问控制等，将请求分发到相应的backend。
+- **backend**：定义后端服务器池及其负载均衡策略，决定请求如何分发到后端服务器，并可配置健康检查、会话保持等。
+
+#### 需求（新版）
+本实验目标：
+- 让同学们掌握如何用 HAProxy 统一代理多个业务域名的 HTTP/HTTPS 流量。
+- 目前 Nginx 已将 80 和 443 端口预留给 HAProxy，Nginx 自身监听 10080 和 10443。
+- 所有外部流量（80/443）先进入 HAProxy，再根据域名分发到不同后端服务。
+- 涉及的业务域名有：
+  - go-backend.liujun.com
+  - java-backend.liujun.com
+  - python-backend.liujun.com
+  - stars.liujun.com
+  - touch.liujun.com
+  - vue-backup.liujun.com
+  - vue-web.liujun.com
+
+#### 实验整体架构图
+```mermaid
+flowchart TB
+    subgraph 用户层
+        Client[用户浏览器/请求]
+    end
+    subgraph 入口层
+        HAProxy[HAProxy\n监听80/443]
+    end
+    subgraph 业务服务层
+        GO[go-backend.liujun.com\nNginx:10080/10443]
+        JAVA[java-backend.liujun.com\nNginx:10080/10443]
+        PY[python-backend.liujun.com\nNginx:10080/10443]
+        STARS[stars.liujun.com\nNginx:10080/10443]
+        TOUCH[touch.liujun.com\nNginx:10080/10443]
+        VUEB[vue-backup.liujun.com\nNginx:10080/10443]
+        VUEW[vue-web.liujun.com\nNginx:10080/10443]
+    end
+    Client -->|HTTP/HTTPS 80/443| HAProxy
+    HAProxy -->|按域名分发| GO
+    HAProxy -->|按域名分发| JAVA
+    HAProxy -->|按域名分发| PY
+    HAProxy -->|按域名分发| STARS
+    HAProxy -->|按域名分发| TOUCH
+    HAProxy -->|按域名分发| VUEB
+    HAProxy -->|按域名分发| VUEW
+```
+#### HAProxy 配置文件示例
+假设所有后端 Nginx 监听 10080/10443 端口，HAProxy 监听 80/443 端口并根据域名分发流量：
+
+```bash
+# 编辑 HAProxy 配置文件
+vim /etc/haproxy/haproxy.cfg
+
+# 监听 80 端口（HTTP）
+frontend http-in
+    bind *:80
+    mode http
+    acl host_go hdr(host) -i go-backend.liujun.com
+    acl host_java hdr(host) -i java-backend.liujun.com
+    acl host_python hdr(host) -i python-backend.liujun.com
+    acl host_stars hdr(host) -i stars.liujun.com
+    acl host_touch hdr(host) -i touch.liujun.com
+    acl host_vueb hdr(host) -i vue-backup.liujun.com
+    acl host_vuew hdr(host) -i vue-web.liujun.com
+    use_backend go-backend if host_go
+    use_backend java-backend if host_java
+    use_backend python-backend if host_python
+    use_backend stars if host_stars
+    use_backend touch if host_touch
+    use_backend vueb if host_vueb
+    use_backend vuew if host_vuew
+    default_backend go-backend
+
+# 监听 443 端口（HTTPS，需证书）
+frontend https-in
+    bind *:443 ssl crt /etc/haproxy/certs/
+    mode http
+    acl host_go hdr(host) -i go-backend.liujun.com
+    acl host_java hdr(host) -i java-backend.liujun.com
+    acl host_python hdr(host) -i python-backend.liujun.com
+    acl host_stars hdr(host) -i stars.liujun.com
+    acl host_touch hdr(host) -i touch.liujun.com
+    acl host_vueb hdr(host) -i vue-backup.liujun.com
+    acl host_vuew hdr(host) -i vue-web.liujun.com
+    use_backend go-backend if host_go
+    use_backend java-backend if host_java
+    use_backend python-backend if host_python
+    use_backend stars if host_stars
+    use_backend touch if host_touch
+    use_backend vueb if host_vueb
+    use_backend vuew if host_vuew
+    default_backend go-backend
+
+# 各业务后端
+backend go-backend
+    server go1 127.0.0.1:10080 check
+backend java-backend
+    server java1 127.0.0.1:10080 check
+backend python-backend
+    server py1 127.0.0.1:10080 check
+backend stars
+    server stars1 127.0.0.1:10080 check
+backend touch
+    server touch1 127.0.0.1:10080 check
+backend vueb
+    server vueb1 127.0.0.1:10080 check
+backend vuew
+    server vuew1 127.0.0.1:10080 check
+```
+> 如有多个后端实例，可在 backend 中继续添加 server 行。
+
+#### 证书准备与复制
+
+如果你之前为 Nginx 生成了证书（如 /etc/nginx/ssl/ 目录），可以直接将对应域名的证书和私钥合并为 PEM 文件，复制到 HAProxy 的证书目录（如 /etc/haproxy/certs/）。操作示例：
+
+```bash
+# 创建 HAProxy 证书目录
+sudo mkdir -p /etc/haproxy/certs/
+# 以 go-backend.liujun.com 为例，合并证书和私钥为 PEM 文件
+sudo cat /etc/nginx/ssl/go-backend.liujun.com/certificate.crt /etc/nginx/ssl/go-backend.liujun.com/private.key > /etc/haproxy/certs/go-backend.liujun.com.pem
+# 其他域名同理
+sudo cat /etc/nginx/ssl/java-backend.liujun.com/certificate.crt /etc/nginx/ssl/java-backend.liujun.com/private.key > /etc/haproxy/certs/java-backend.liujun.com.pem
+sudo cat /etc/nginx/ssl/python-backend.liujun.com/certificate.crt /etc/nginx/ssl/python-backend.liujun.com/private.key > /etc/haproxy/certs/python-backend.liujun.com.pem
+# ... 依次处理所有业务域名
+```
+> 注意：HAProxy 需要 PEM 格式证书（即证书和私钥合并），配置文件中引用 PEM 文件路径即可。
+
+#### Nginx 配置文件调整
+
+由于 HTTPS 证书已由 HAProxy 统一处理，流量到达 Nginx 时为 HTTP 协议，因此需关闭原有的 HTTP 强制跳转 HTTPS 配置，改为直接提供 HTTP 服务。
+最后nginx就不管理https的证书啦，又轻松一点了
+
+##### 修改前配置（示例）
+```bash
+# 编辑nginx域名配置文件
+vim /etc/nginx/conf.d/python-backend.liujun.com.conf
+
+upstream python_backend {
+    server 192.168.110.198:8070 weight=1 max_fails=2 fail_timeout=30s;
+    server 192.168.110.102:8070 weight=1 max_fails=2 fail_timeout=30s;
+    server 192.168.110.143:8070 weight=1 max_fails=2 fail_timeout=30s;
+}
+
+server {
+    listen 10443 ssl;
+    server_name python-backend.liujun.com;
+    # 访问日志配置，记录所有访问请求
+    access_log /var/log/nginx/python-backend.liujun.com.access.log json_combined;
+    # 错误日志配置，记录警告级别以上的错误
+    error_log /var/log/nginx/python-backend.liujun.com.error.log warn;
+    
+    # 证书文件路径
+    ssl_certificate /etc/nginx/ssl/python-backend.liujun.com/certificate.crt;  # 公钥证书
+    ssl_certificate_key /etc/nginx/ssl/python-backend.liujun.com/private.key;  # 私钥文件
+    
+    # SSL优化配置（提高安全性和性能）
+    ssl_protocols TLSv1.2 TLSv1.3;                     # 只允许TLS1.2和1.3协议，禁用不安全的老版本
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;  # 使用强加密套件
+    ssl_prefer_server_ciphers on;                      # 优先使用服务器的加密套件，提高安全性
+    ssl_session_cache shared:SSL:10m;                  # SSL会话缓存，提高性能（10MB共享内存）
+    ssl_session_timeout 10m;                           # 缓存会话的超时时间（10分钟）
+    ssl_stapling on;                                   # 启用OCSP Stapling（提高性能和隐私）
+    ssl_stapling_verify on;                           # 验证OCSP响应的有效性
+
+    # API代理配置 - 处理所有以/api/开头的请求
+    location /api/ {
+        # 将请求转发到之前定义的后端服务器组
+        proxy_pass http://python_backend;
+        
+        # 配置代理协议版本（HTTP/1.1支持长连接，提高性能）
+        proxy_http_version 1.1;
+        
+        # WebSocket支持（如果你的应用使用WebSocket，这些设置是必需的）
+        # WebSocket是一种在单个TCP连接上进行全双工通信的协议
+        proxy_set_header Upgrade $http_upgrade;        # 支持协议升级
+        proxy_set_header Connection 'upgrade';         # 连接升级为WebSocket
+        
+        # 传递客户端信息到后端服务器（这样后端可以获取到真实的客户端信息）
+        proxy_set_header Host $host;                  # 传递原始主机名
+        proxy_set_header X-Real-IP $remote_addr;      # 传递客户端真实IP
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;  # 传递请求链路上的所有IP
+        proxy_set_header X-Forwarded-Proto $scheme;   # 传递原始协议（http/https）
+        
+        # 超时设置（防止长时间运行的请求占用资源）
+        proxy_connect_timeout 60s;  # 与后端服务器建立连接的超时时间
+        proxy_send_timeout 60s;     # 向后端服务器传输请求的超时时间
+        proxy_read_timeout 60s;     # 从后端服务器读取响应的超时时间
+    }
+
+    # 静态资源缓存配置 - 处理常见的静态文件类型
+    # ~* 表示不区分大小写的正则匹配，匹配所有以这些扩展名结尾的文件
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;                                # 设置缓存过期时间为1年
+        add_header Cache-Control "public, no-transform";  # 允许所有缓存服务器缓存，且不允许转换
+        access_log off;                           # 关闭访问日志，减少磁盘IO
+    }
+    
+} # 结束HTTPS server块
+
+# HTTP重定向到HTTPS - 安全增强
+# 这个server块处理所有HTTP请求，并将其重定向到HTTPS
+server {
+    listen 10080;                                  # 监听80端口（HTTP标准端口）
+    server_name python-backend.liujun.com;       # 注意：这里应该是python-backend.liujun.com而不是vue-web.liujun.com
+    
+    return 301 https://$server_name$request_uri;  # 重定向到对应的HTTPS地址
+}
+```
+
+##### 修改后配置（示例）
+```bash
+upstream python_backend {
+    server 192.168.110.198:8070 weight=1 max_fails=2 fail_timeout=30s;
+    server 192.168.110.102:8070 weight=1 max_fails=2 fail_timeout=30s;
+    server 192.168.110.143:8070 weight=1 max_fails=2 fail_timeout=30s;
+}
+
+server {
+    listen 10080;                                  # 监听80端口（HTTP标准端口）
+    server_name python-backend.liujun.com;
+    # 访问日志配置，记录所有访问请求
+    access_log /var/log/nginx/python-backend.liujun.com.access.log json_combined;
+    # 错误日志配置，记录警告级别以上的错误
+    error_log /var/log/nginx/python-backend.liujun.com.error.log warn;
+    
+    #return 301 https://$server_name$request_uri;  # 重定向到对应的HTTPS地址
+
+    # API代理配置 - 处理所有以/api/开头的请求
+    location /api/ {
+        # 将请求转发到之前定义的后端服务器组
+        proxy_pass http://python_backend;
+        
+        # 配置代理协议版本（HTTP/1.1支持长连接，提高性能）
+        proxy_http_version 1.1;
+        
+        # WebSocket支持（如果你的应用使用WebSocket，这些设置是必需的）
+        # WebSocket是一种在单个TCP连接上进行全双工通信的协议
+        proxy_set_header Upgrade $http_upgrade;        # 支持协议升级
+        proxy_set_header Connection 'upgrade';         # 连接升级为WebSocket
+        
+        # 传递客户端信息到后端服务器（这样后端可以获取到真实的客户端信息）
+        proxy_set_header Host $host;                  # 传递原始主机名
+        proxy_set_header X-Real-IP $remote_addr;      # 传递客户端真实IP
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;  # 传递请求链路上的所有IP
+        proxy_set_header X-Forwarded-Proto $scheme;   # 传递原始协议（http/https）
+        
+        # 超时设置（防止长时间运行的请求占用资源）
+        proxy_connect_timeout 60s;  # 与后端服务器建立连接的超时时间
+        proxy_send_timeout 60s;     # 向后端服务器传输请求的超时时间
+        proxy_read_timeout 60s;     # 从后端服务器读取响应的超时时间
+    }
+
+    # 静态资源缓存配置 - 处理常见的静态文件类型
+    # ~* 表示不区分大小写的正则匹配，匹配所有以这些扩展名结尾的文件
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;                                # 设置缓存过期时间为1年
+        add_header Cache-Control "public, no-transform";  # 允许所有缓存服务器缓存，且不允许转换
+        access_log off;                           # 关闭访问日志，减少磁盘IO
+    }
+}
+```
+
+#### 实验操作步骤
+1. **准备证书**：将所有业务域名的 SSL 证书（crt+key）合并为 pem 文件，放到 `/etc/haproxy/certs/` 目录下。
+2. **编辑配置**：将上述 haproxy.cfg 内容保存到 `/etc/haproxy/haproxy.cfg`。
+3. **检查配置**：
+   ```bash
+   sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+   ```
+   若无报错说明配置正确。
+4. **重启服务**：
+   ```bash
+   sudo systemctl restart haproxy
+   sudo systemctl enable haproxy
+   ```
+5. **测试访问**：本地 hosts 绑定域名后，访问 http(s)://各业务域名，验证能否正常分发到对应后端。
+6. **查看日志与状态**：
+   ```bash
+   sudo tail -f /var/log/haproxy.log
+   sudo ss -tnlp | grep haproxy
+   ```
+
+> 如需后端 Nginx 监听 10080/10443 端口，请确保 Nginx 配置正确并已启动。
+
+
+
 
         
 
