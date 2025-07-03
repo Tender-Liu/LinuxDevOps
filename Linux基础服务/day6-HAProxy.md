@@ -102,14 +102,26 @@ flowchart TB
     A3[应用服务器-3]
 
     Client --> VIP
-    VIP --> LVS1 & LVS2
-    LVS1 -->|四层转发| HA1 & HA2
-    LVS2 -.->|备用四层转发| HA1 & HA2
-    HA1 -->|七层转发| N1 & N2 & N3
-    HA2 -->|七层转发| N1 & N2 & N3
-    N1 -->|应用请求| A1 & A2
-    N2 -->|应用请求| A2 & A3
-    N3 -->|应用请求| A1 & A3
+    VIP --> LVS1
+    VIP --> LVS2
+    LVS1 -->|四层转发| HA1
+    LVS1 -->|四层转发| HA2
+    LVS2 -.->|备用四层转发| HA1
+    LVS2 -.->|备用四层转发| HA2
+    
+    HA1 -->|七层转发| N1
+    HA1 -->|七层转发| N2
+    HA1 -->|七层转发| N3
+    HA2 -->|七层转发| N1
+    HA2 -->|七层转发| N2
+    HA2 -->|七层转发| N3
+    
+    N1 -->|应用请求| A1
+    N1 -->|应用请求| A2
+    N2 -->|应用请求| A2
+    N2 -->|应用请求| A3
+    N3 -->|应用请求| A1
+    N3 -->|应用请求| A3
 
     style VIP fill:#f9f,stroke:#333
     style LVS1 fill:#bbf,stroke:#333
@@ -117,32 +129,6 @@ flowchart TB
     style HA1 fill:#bfb,stroke:#333
     style HA2 fill:#bfb,stroke:#333
 
-    %% 添加说明标签
-    classDef labelStyle fill:#fff,stroke:none
-    class label labelStyle
-
-    subgraph 四层负载均衡
-        LVS1
-        LVS2
-        VIP
-    end
-
-    subgraph 七层负载均衡
-        HA1
-        HA2
-    end
-
-    subgraph Web服务器层
-        N1
-        N2
-        N3
-    end
-
-    subgraph 应用服务器层
-        A1
-        A2
-        A3
-    end
 
 ```
 
