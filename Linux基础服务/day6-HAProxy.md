@@ -580,7 +580,7 @@ curl http://192.168.110.5:8404/metrics
 
 #### 实验整体架构图
 ```mermaid
-flowchart TB
+graph TB
     subgraph 用户层
         Client[用户浏览器/请求]
     end
