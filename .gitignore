@@ -1,0 +1,34 @@
+# 忽略Python编译文件
+__pycache__/
+*.py[cod]
+
+# 忽略日志文件
+*.log
+
+# 忽略操作系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略IDE配置文件
+.vscode/
+.idea/
+
+# 忽略临时文件
+*.tmp
+*.swp
+
+# 忽略Linux相关临时文件
+*~
+
+# 忽略Python虚拟环境
+venv/
+.env/
+
+# 忽略其他常见文件
+*.bak
+*.old
+*.orig
+*.rej
+
+# 忽略考试题答案文件夹
+考试题答案/
