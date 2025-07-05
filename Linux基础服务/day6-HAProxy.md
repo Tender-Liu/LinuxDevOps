@@ -545,6 +545,8 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 # 检查服务状态
 systemctl status haproxy
 
+# 检查服务状态
+
 # 查看日志
 tail -f /var/log/messages
 ```
