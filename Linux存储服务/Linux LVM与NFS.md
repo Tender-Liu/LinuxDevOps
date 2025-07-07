@@ -1161,3 +1161,563 @@ ls /mnt/my_snap_test
     * 快照作用：用于备份和恢复，空间不足时快照可能损坏，需预留空间。
     * 缩小逻辑卷注意事项：可能导致数据丢失，文件系统需先缩小，备份是防止意外损失的必要步骤。
 
+## 第五部分：NFS（网络文件系统）基础与磁盘共享
+在 Linux 环境中，NFS（Network File System，网络文件系统）是一种用于在网络上共享文件的分布式文件系统协议。它允许一台计算机（客户端）通过网络访问另一台计算机（服务器）上的文件和目录，就像访问本地文件系统一样。NFS 广泛应用于企业环境、开发团队和家庭网络中，用于实现资源共享和数据集中管理。本部分将详细介绍 NFS 的基本概念、工作原理、配置步骤以及安全注意事项，帮助零基础学习者快速上手 NFS 的使用和管理。
+
+### 1. NFS 基础概念
+#### 1.1 什么是 NFS？
+* 定义：NFS 是一种基于网络的分布式文件系统协议，最初由 Sun Microsystems 在 1984 年开发，当前广泛使用的版本是 NFSv4。
+* 功能：NFS 允许客户端通过网络挂载服务器上的目录，并在客户端上像操作本地文件一样读写这些共享文件。
+* 工作模式：基于客户端-服务器模型，服务器端提供共享目录，客户端通过挂载（mount）访问这些目录。
+* 支持平台：NFS 是跨平台的，不仅限于 Linux，也支持 Unix、Windows（通过特定工具）等系统。
+
+#### 1.2 NFS 的核心组件
+* NFS 服务器：运行 NFS 服务端软件（如 nfs-kernel-server），负责导出（export）共享目录，监听客户端请求。
+* NFS 客户端：运行 NFS 客户端软件，负责挂载服务器导出的目录并与之交互。
+* RPC（Remote Procedure Call）：NFS 依赖 RPC 协议进行通信，RPC 服务（如 rpcbind）负责端口映射和管理。
+* 挂载点（Mount Point）：客户端上用于挂载 NFS 共享目录的本地目录。
+
+#### 1.3 NFS 的优势与局限性
+* 优势：
+    * 资源共享：允许多个客户端同时访问服务器上的文件，适合团队协作或集中存储。
+    * 跨平台支持：可在不同操作系统间共享文件，兼容性强。
+    * 简单易用：配置相对简单，适合快速搭建文件共享环境。
+    * 性能优化：NFSv4 引入了性能改进和更好的安全性。
+* 局限性：
+    * 网络依赖：性能受网络延迟和带宽限制，网络不稳定时可能影响访问。
+    * 安全性挑战：默认配置下安全性较低，需额外设置防火墙或认证机制。
+    * 复杂环境限制：在高并发或大数据量场景下，NFS 可能不如其他分布式文件系统（如 Ceph）高效。
+
+#### 1.4 NFS 架构图
+以下是 NFS 的基本架构图，直观展示服务器与客户端之间的交互流程：
+
+```mermaid
+graph TD
+  A[NFS 服务器] -->|导出共享目录| B[网络通信]
+  B -->|挂载共享目录| C[NFS 客户端 1]
+  B -->|挂载共享目录| D[NFS 客户端 2]
+  A --> E[共享目录 /mnt/share]
+  C --> F[挂载点 /mnt/server_share]
+  D --> G[挂载点 /mnt/server_share]
+  style A fill:#f9f,stroke:#333,stroke-width:2px
+  style C fill:#bbf,stroke:#333,stroke-width:2px
+  style D fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+**说明**：上图展示了 NFS 服务器导出共享目录，通过网络与多个客户端通信，客户端将共享目录挂载到本地挂载点，实现文件访问。
+
+### 2. NFS 相关工具与命令
+NFS 的管理和使用依赖一系列工具和命令，以下是常用工具及其功能的详细介绍（基于 Ubuntu 系统）：
+
+* nfs-kernel-server：NFS 服务器端软件包，用于导出共享目录。
+    * 安装命令：
+        ```bash
+        sudo apt update
+        sudo apt install nfs-kernel-server
+
+        ```
+
+* nfs-common：NFS 客户端软件包，包含挂载和访问 NFS 共享的工具。
+    * 安装命令：
+        ```bash
+        sudo apt update
+        sudo apt install nfs-common
+        ```
+
+* exportfs：管理 NFS 导出的共享目录。
+    * 语法：sudo exportfs -a（应用配置文件中的导出设置）
+    * 示例：
+    ```bash
+    sudo exportfs -a
+    sudo exportfs -v
+    ```
+
+    **解释**：-a 应用 /etc/exports 文件中的设置，-v 显示当前导出的目录。
+
+* showmount：查看 NFS 服务器导出的共享目录。
+    * 语法：showmount -e 服务器IP
+    * 示例：
+        ```bash
+        showmount -e 192.168.1.100
+        ```
+
+        **解释**：显示 IP 为 192.168.1.100 的 NFS 服务器导出的目录。
+
+
+* mount：挂载 NFS 共享目录到客户端本地挂载点。
+    * 语法：sudo mount 服务器IP:共享目录 本地挂载点
+    * 示例：
+        ```bash
+        sudo mount 192.168.1.100:/mnt/share /mnt/server_share
+
+        ```
+
+        **解释**：将服务器的 /mnt/share 挂载到客户端的 /mnt/server_share。
+
+* rpcbind：管理 RPC 服务，NFS 依赖其进行通信。
+    * 启动命令：
+        ```bash
+        sudo systemctl start rpcbind
+        sudo systemctl stop rpcbind
+        sudo systemctl enable rpcbind
+        sudo systemctl disable rpcbind
+        ```
+
+### 3. NFS 配置与实践步骤（以 Ubuntu 为例）
+以下是在 Ubuntu 系统中配置和使用 NFS 的详细步骤，适合零基础学习者操作。建议在虚拟机或测试环境中实践，避免对生产环境造成影响。我们假设有两台机器：一台作为 NFS 服务器（IP: 192.168.110.6），另一台作为 NFS 客户端（IP: 192.168.110.5）。
+
+#### 3.1 NFS 服务器端配置
+##### 步骤 1：安装 NFS 服务器软件
+* 在服务器端安装 nfs-kernel-server：
+```bash
+sudo apt update
+sudo apt install nfs-kernel-server
+```
+
+##### 步骤 2：创建共享目录
+* 创建一个用于共享的目录，并设置权限：
+
+```bash
+# 解释：/mnt/share 是共享目录，权限设置为 755 允许访问，nobody:nogroup 避免权限冲突。
+sudo mkdir -p /mnt/share
+sudo chmod 755 /mnt/share
+sudo chown nobody:nogroup /mnt/share
+
+```
+
+##### 步骤 3：配置导出目录
+* 编辑 NFS 导出配置文件 /etc/exports：
+    ```bash
+    sudo vim /etc/exports
+
+    ```
+
+* 添加以下内容，指定共享目录和允许访问的客户端：
+    ```bash
+    /mnt/share 192.168.110.0/24(rw,sync,no_subtree_check)
+    ```
+
+* 保存并退出编辑器。
+
+**参数解释：**
+
+* 192.168.110.0/24：允许该网段内的所有客户端访问（可指定单个 IP，如 192.168.110.5）。
+* rw：允许读写权限（可设为 ro 只读）。
+* sync：同步写入，确保数据一致性。
+* no_subtree_check：禁用子目录检查，提高性能。
+
+##### 步骤 4：应用配置并启动服务
+* 应用导出配置：
+    ```bash
+    sudo exportfs -a
+
+    ```
+* 重启 NFS 服务以应用更改：
+    ```bash
+    sudo systemctl restart nfs-kernel-server
+    sudo systemctl enable nfs-kernel-server
+
+    ```
+* 检查导出的目录：
+    ```bash
+    sudo exportfs -v
+
+    ```
+
+    **输出示例：**
+
+    ```bash
+    /mnt/share      192.168.110.6/24(rw,wdelay,hide,crossmnt,secure,root_squash,no_all_squash,no_subtree_check,sec=sys,rw,secure,root_squash,no_all_squash)
+
+    ```
+
+#### 3.2 NFS 客户端配置
+##### 步骤 1：安装 NFS 客户端软件
+* 在客户端安装 nfs-common：
+```bash
+```
+
+
+##### 步骤 2：查看服务器导出的目录
+* 检查 NFS 服务器导出的共享目录：
+    ```bash
+    sudo apt update
+    sudo apt install nfs-common
+
+    ```
+
+    **输出示例：**
+
+    ```bash
+    Export list for 192.168.110.6:
+    /mnt/share 192.168.110.0/24
+
+    ```
+
+##### 步骤 3：创建挂载点并挂载共享目录
+* 创建本地挂载点目录： 
+    ```bash
+    sudo mkdir -p /mnt/server_share
+    ```
+
+* 挂载 NFS 共享目录：
+    ```bash
+    sudo mount 192.168.110.6:/mnt/share /mnt/server_share
+
+    ```
+
+* 确认挂载结果：
+    ```bash
+    df -h
+    ```
+
+    **输出示例：**
+
+    ```bash
+    Filesystem                   Size  Used Avail Use% Mounted on
+    192.168.110.6:/mnt/share    9.8G   37M  9.3G   1% /mnt/server_share
+
+    ```
+
+#### 步骤 4：设置开机自动挂载（不做）
+* 编辑 /etc/fstab 文件，添加自动挂载配置：
+    ```bash
+    sudo vim /etc/fstab
+
+    ```
+
+* 添加以下内容：
+    ```bash
+    192.168.110.6:/mnt/share /mnt/server_share nfs defaults 0 0
+
+    ```
+
+* 保存并退出，测试配置是否正确：
+    ```bash
+    sudo mount -a
+
+    ```
+
+**解释**：确保开机时自动挂载 NFS 共享目录。
+
+
+#### 3.3 测试 NFS 共享
+* 在服务器的共享目录中创建测试文件：
+    ```bash
+    echo "Hello from NFS Server" | sudo tee /mnt/share/test.txt
+
+    ```
+
+* 在客户端查看文件：
+    ```bash
+    cat /mnt/server_share/test.txt
+
+    ```
+
+    **输出示例：**
+
+    ```bash
+    Hello from NFS Server
+    ```
+
+* 在客户端创建文件，测试写权限：
+    ```bash
+    echo "Hello from Client" | tee /mnt/server_share/client_test.txt
+    ```
+
+* 在服务器端确认文件：
+    ```bash
+    cat /mnt/share/client_test.txt
+    ```
+
+### 4. NFS 安全注意事项
+NFS 默认配置安全性较低，实际使用时需采取以下措施提升安全性：
+
+* 限制访问范围：在 /etc/exports 中指定允许访问的 IP 或网段，避免使用 * 通配符。
+    * 示例：/mnt/share 192.168.1.101(rw,sync) 只允许特定客户端访问。
+* 设置只读权限：如果不需要写入权限，使用 ro 参数限制为只读。
+    * 示例：/mnt/share 192.168.1.0/24(ro,sync)
+* 启用防火墙：限制 NFS 相关端口（2049、111 等）仅对可信网络开放。
+* 用户映射与权限：默认情况下，NFS 使用 root_squash 将 root 用户映射为匿名用户，防止客户端 root 用户直接操作服务器文件。
+    * 可通过 no_root_squash 禁用，但不推荐。
+* 使用 NFSv4 增强安全：NFSv4 支持 Kerberos 认证，提供更强的访问控制和数据加密。
+    * 配置 Kerberos 需额外设置，适合高安全需求场景。
+* 避免暴露敏感数据：不要共享包含敏感信息的目录，如 /etc 或用户家目录。
+
+#### 5. 常见问题与排查
+在配置和使用 NFS 过程中，可能会遇到一些常见问题，以下是解决方法：
+
+* 问题 1：客户端无法挂载，提示“Permission denied”
+    * 原因：服务器端 /etc/exports 配置错误，或客户端 IP 未被允许访问。
+    * 解决：检查 /etc/exports 文件，确保客户端 IP 在允许范围内，并运行 sudo exportfs -a 重新应用配置。
+* 问题 2：挂载时提示“Connection timed out”
+    * 原因：服务器防火墙阻止了 NFS 端口，或服务器未运行 NFS 服务。
+    * 解决：检查服务器防火墙规则，确保端口 2049 和 111 开放；确认 NFS 服务运行（sudo systemctl status nfs-kernel-server）。
+* 问题 3：挂载后无法写入，提示“Read-only file system”
+    * 原因：服务器端配置了 ro（只读）权限。
+    * 解决：修改 /etc/exports 文件，将 ro 改为 rw，并重新应用配置。
+* 问题 4：性能缓慢
+    * 原因：网络延迟或服务器负载过高。
+    * 解决：检查网络连接，优化服务器性能，或考虑使用其他协议（如 SMB）。
+
+#### 6. 总结
+NFS 是一种简单高效的网络文件系统，适合在局域网内实现文件共享和磁盘资源集中管理。以下是 NFS 的核心功能和配置要点总结：
+
+| 功能                | 描述                          | 相关命令/文件            |
+|---------------------|-------------------------------|--------------------------|
+| 安装 NFS 服务器     | 提供共享目录服务              | nfs-kernel-server        |
+| 安装 NFS 客户端     | 访问远程共享目录              | nfs-common               |
+| 配置共享目录        | 定义导出的目录和访问权限      | /etc/exports 文件        |
+| 应用导出配置        | 使配置生效                    | exportfs -a              |
+| 查看导出目录        | 检查服务器导出的共享目录      | showmount -e             |
+| 挂载共享目录        | 将远程目录挂载到本地          | mount                    |
+
+## 第六部分：综合实验（LVM + NFS）
+
+### 1. 实验目标
+* 掌握 LVM 存储管理：使用 LVM 创建物理卷（PV）、卷组（VG）和逻辑卷（LV），并动态调整存储空间。
+* 实现 NFS 文件共享：将 LVM 逻辑卷格式化并挂载为共享目录，通过 NFS 导出给客户端访问。
+* 模拟真实场景：搭建一个服务器端存储与共享环境，客户端通过网络访问共享存储，实现文件读写。
+* 培养综合能力：通过实验提升对存储管理和网络共享的综合理解，学习排查常见问题的方法。
+
+### 2. 实验环境准备
+
+#### 2.1 硬件与软件环境
+
+* 服务器端（NFS 服务器 + LVM 存储）：
+    * 操作系统：Ubuntu 20.04 或更高版本
+    * IP 地址：192.168.110.5（假设）
+    * 磁盘：至少两块附加虚拟磁盘（每块 10GB，用于 LVM 实验）
+    * 软件包：lvm2（LVM 工具）、nfs-kernel-server（NFS 服务器）
+* 客户端（NFS 客户端）：
+    * 操作系统：Ubuntu 20.04 或更高版本
+    * IP 地址：192.168.110.6（假设）
+    * 软件包：nfs-common（NFS 客户端工具）
+    * 网络环境：确保服务器和客户端在同一局域网内，可以相互 ping 通。
+
+#### 2.2 实验架构图
+以下是本实验的架构图，直观展示 LVM 和 NFS 的结合使用流程：
+
+```mermaid
+graph TD
+  A[服务器 192.168.1.100] -->|LVM 管理| B[物理磁盘]
+  B --> C[物理卷 PV]
+  C --> D[卷组 VG]
+  D --> E[逻辑卷 LV]
+  E --> F[格式化并挂载到 /mnt/share]
+  F -->|NFS 导出| G[网络通信]
+  G -->|NFS 挂载| H[客户端 192.168.1.101]
+  H --> I[挂载点 /mnt/server_share]
+  style A fill:#f9f,stroke:#333,stroke-width:2px
+  style H fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+**说明**：上图展示了服务器端通过 LVM 管理物理磁盘，创建逻辑卷并挂载为共享目录，通过 NFS 导出给客户端，客户端挂载后即可访问共享存储。
+
+### 3. 实验步骤（以 Ubuntu 为例）
+以下是详细的实验操作步骤，适合零基础学习者实践。我们将从服务器端的 LVM 配置开始，然后设置 NFS 共享，最后在客户端挂载并测试。
+
+#### 3.1 服务器端：配置 LVM 存储
+
+##### 步骤 1：添加虚拟磁盘并安装 LVM 工具
+* 在虚拟机中添加两块虚拟磁盘（每块 5GB）。
+* 安装 LVM 工具：
+    ```bash
+    sudo apt update
+    sudo apt install lvm2
+
+    ```
+
+* 确认新添加的磁盘设备：
+    ```bash
+    lsblk
+    ```
+
+##### 步骤 2：创建物理卷（PV）
+* 将磁盘初始化为物理卷：
+```bash
+sudo pvcreate /dev/sdb /dev/sdc
+
+```
+* 查看物理卷状态：
+```bash
+sudo pvs
+
+```
+
+##### 步骤 3：创建卷组（VG）
+* 使用物理卷创建卷组：
+```bash
+sudo vgcreate shared_vg /dev/sdb /dev/sdc
+
+```
+
+* 查看卷组状态：
+```bash
+sudo vgs
+
+```
+
+##### 步骤 4：创建逻辑卷（LV）
+* 从卷组中分配逻辑卷：
+```bash
+sudo lvcreate -L 15G -n shared_lv shared_vg
+
+```
+
+* 查看逻辑卷状态：
+```bash
+sudo lvs
+
+```
+
+##### 步骤 5：格式化并挂载逻辑卷
+* 格式化为 ext4 文件系统：
+```bash
+sudo mkfs.ext4 /dev/shared_vg/shared_lv
+
+```
+
+* 创建挂载点并挂载：
+```bash
+sudo mkdir /mnt/share
+sudo mount /dev/shared_vg/shared_lv /mnt/share
+
+```
+
+* 确认挂载结果：
+```bash
+df -h
+
+```
+
+* 设置权限，确保 NFS 共享时可访问：
+```bash
+sudo chmod 755 /mnt/share
+sudo chown nobody:nogroup /mnt/share
+
+```
+
+#### 3.2 服务器端：配置 NFS 共享
+
+##### 步骤 1：安装 NFS 服务器软件
+
+- 安装 `nfs-kernel-server`：
+  ```bash
+  sudo apt update
+  sudo apt install nfs-kernel-server
+  ```
+
+##### 步骤 2：配置导出目录
+
+- 编辑 NFS 导出配置文件 `/etc/exports`：
+  ```bash
+  sudo nano /etc/exports
+  ```
+- 添加以下内容：
+  ```
+  /mnt/share 192.168.1.0/24(rw,sync,no_subtree_check)
+  ```
+
+##### 步骤 3：应用配置并启动服务
+
+- 应用导出配置：
+  ```bash
+  sudo exportfs -a
+  ```
+- 重启 NFS 服务：
+  ```bash
+  sudo systemctl restart nfs-kernel-server
+  sudo systemctl enable nfs-kernel-server
+  ```
+- 检查导出的目录：
+  ```bash
+  sudo exportfs -v
+  ```
+
+
+#### 3.3 客户端：挂载 NFS 共享目录
+
+##### 步骤 1：安装 NFS 客户端软件
+
+- 在客户端安装 `nfs-common`：
+  ```bash
+  sudo apt update
+  sudo apt install nfs-common
+  ```
+
+##### 步骤 2：查看服务器导出的目录
+
+- 检查 NFS 服务器导出的共享目录：
+  ```bash
+  showmount -e 192.168.1.100
+  ```
+
+##### 步骤 3：创建挂载点并挂载共享目录
+
+- 创建本地挂载点目录：
+  ```bash
+  sudo mkdir -p /mnt/server_share
+  ```
+- 挂载 NFS 共享目录：
+  ```bash
+  sudo mount 192.168.1.100:/mnt/share /mnt/server_share
+  ```
+- 确认挂载结果：
+  ```bash
+  df -h
+  ```
+
+##### 步骤 4：设置开机自动挂载（可选）
+
+- 编辑 `/etc/fstab` 文件，添加自动挂载配置：
+  ```bash
+  sudo nano /etc/fstab
+  ```
+- 添加以下内容：
+  ```
+  192.168.1.100:/mnt/share /mnt/server_share nfs defaults 0 0
+  ```
+- 测试配置：
+  ```bash
+  sudo mount -a
+  ```
+
+#### 3.4 测试 LVM + NFS 共享
+
+- 在服务器的共享目录中创建测试文件：
+  ```bash
+  echo "Hello from LVM+NFS Server" | sudo tee /mnt/share/test.txt
+  ```
+- 在客户端查看文件：
+  ```bash
+  cat /mnt/server_share/test.txt
+  ```
+- 在客户端创建文件，测试写权限：
+  ```bash
+  echo "Hello from Client" | tee /mnt/server_share/client_test.txt
+  ```
+- 在服务器端确认文件：
+  ```bash
+  cat /mnt/share/client_test.txt
+  ```
+
+#### 3.5 动态调整 LVM 逻辑卷大小
+
+- **扩展逻辑卷**（假设增加 2GB）：
+  1. 确认卷组有足够空间：
+     ```bash
+     sudo vgs
+     ```
+  2. 扩展逻辑卷：
+     ```bash
+     sudo lvextend -L +2G /dev/shared_vg/shared_lv
+     ```
+  3. 调整文件系统大小：
+     ```bash
+     sudo resize2fs /dev/shared_vg/shared_lv
+     ```
+  4. 确认新大小：
+     ```bash
+     df -h
+     ```
