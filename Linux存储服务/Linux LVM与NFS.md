@@ -634,7 +634,7 @@ df -h
     * 如果误删了分区数据，能否恢复？有哪些工具或方法可以尝试？
     * ext4 和 xfs 文件系统在性能和功能上有什么区别？你会为系统根分区选择哪种文件系统，为什么？
     * 提交内容：写下你的答案和思考过程。
-    
+
 * 解题思路：
     * MBR 和 GPT 区别：从分区表支持的磁盘大小、分区数量、适用场景等方面对比，查阅资料或参考课程内容。GPT 适合大容量磁盘（>2TB）和需要多个分区的场景。
     * 数据恢复：思考误删分区后数据是否可恢复，了解常见恢复工具（如 TestDisk、Photorec）和方法（如避免写入新数据以防止覆盖）。
@@ -644,3 +644,420 @@ df -h
     * MBR 支持最大 2TB 磁盘和 4 个主分区，GPT 支持更大磁盘和几乎无限分区；选择 GPT 的场景包括大容量磁盘和现代系统。
     * 误删分区数据有时可恢复，需立即停止写入操作，使用工具如 TestDisk 尝试恢复分区表，或 Photorec 恢复文件。
     * ext4 稳定且兼容性好，适合系统根分区；xfs 高性能但不支持缩小，适合数据存储。我会选 ext4 作为根分区，因其稳定且易恢复。
+
+
+## 第四部分：LVM（逻辑卷管理）与动态卷组
+
+### LVM 基础介绍
+在 Linux 中，LVM（Logical Volume Manager，逻辑卷管理）是一种先进的存储管理技术，它允许用户在磁盘分区之上创建灵活的逻辑卷，从而实现动态调整存储空间、快照功能等高级特性。相比传统的静态分区，LVM 提供了更高的灵活性和管理便利性，特别适合需要频繁调整存储空间或进行数据备份的场景。以下内容将详细介绍 LVM 的基本概念、核心组件、常用命令及其参数，以及具体操作步骤，适合零基础学习者。
+
+### LVM 的基本概念
+* 物理卷（Physical Volume, PV）：LVM 的基础构建块，通常是一个磁盘分区或整块磁盘，经过初始化后成为 LVM 管理的物理存储单元。
+* 卷组（Volume Group, VG）：由一个或多个物理卷组成，是逻辑卷的存储池，类似于一个大的虚拟磁盘。
+* 逻辑卷（Logical Volume, LV）：从卷组中分配的空间，类似于传统分区，可以格式化为文件系统并挂载使用。
+* 快照（Snapshot）：逻辑卷的只读副本，用于数据备份或恢复，记录某一时刻的数据状态。
+* 动态调整：LVM 允许在线扩展或缩小逻辑卷和卷组，无需重新分区或格式化。
+
+### LVM 的优势
+* 灵活性：可以动态调整逻辑卷大小，无需停机或数据迁移。
+* 快照功能：便于数据备份和恢复，适合数据库或关键数据保护。
+* 跨磁盘管理：可以将多个磁盘整合为一个卷组，统一分配存储空间。
+* 易于管理：通过逻辑卷管理复杂的存储需求，简化操作。
+
+### LVM 管理流程图
+以下是 LVM 管理的基本流程图，直观展示从物理磁盘到逻辑卷的创建和管理过程：
+```bash
+graph TD
+  A[物理磁盘/分区] --> B[创建物理卷 PV]
+  B --> C[组成卷组 VG]
+  C --> D[分配逻辑卷 LV]
+  D --> E[格式化文件系统]
+  E --> F[挂载并使用]
+  D --> G[动态调整大小]
+  D --> H[创建快照 Snapshot]
+  style A fill:#f9f,stroke:#333,stroke-width:2px
+```
+
+**说明**：上图展示了 LVM 的核心管理流程，从物理磁盘开始，创建物理卷、卷组和逻辑卷，格式化后挂载使用，同时支持动态调整和快照功能。
+
+### LVM 相关工具与命令
+LVM 管理依赖一组专用工具和命令，以下是常用工具及其功能的详细介绍：
+
+* pvcreate：将磁盘分区或整块磁盘初始化为物理卷（PV）。
+    * 语法：sudo pvcreate /dev/sdXn
+    * 示例:
+    ```bash
+    sudo pvcreate /dev/sdb1
+    ```
+
+    **解释**：将 /dev/sdb1 初始化为物理卷。
+
+* vgcreate：创建卷组（VG），由一个或多个物理卷组成。
+    * 语法：sudo vgcreate 卷组名 物理卷1 [物理卷2 ...]
+    * 示例:
+        ```bash
+        sudo vgcreate my_vg /dev/sdb1 /dev/sdc1
+
+        ```
+
+        **解释**：创建名为 my_vg 的卷组，包含 /dev/sdb1 和 /dev/sdc1 两个物理卷。
+
+* lvcreate：从卷组中创建逻辑卷（LV）。
+    * 语法：sudo lvcreate -L 大小 -n 逻辑卷名 卷组名
+    * 常用参数：
+        * -L：指定逻辑卷大小，如 10G（10GB）。
+        * -n：指定逻辑卷名称。
+    * 示例：
+        ```bash
+        sudo lvcreate -L 10G -n my_lv my_vg
+
+        ```
+
+        **解释**：从 my_vg 卷组中创建一个大小为 10GB 的逻辑卷，命名为 my_lv。
+
+* lvextend：扩展逻辑卷大小。
+    * 语法：sudo lvextend -L +大小 /dev/卷组名/逻辑卷名
+    * 示例
+        ```bash
+        sudo lvextend -L +5G /dev/my_vg/my_lv
+
+        ```
+
+        **解释**：将 my_lv 逻辑卷大小增加 5GB。
+
+* lvreduce：缩小逻辑卷大小（需谨慎，建议先备份数据）。
+    * 语法：sudo lvreduce -L -大小 /dev/卷组名/逻辑卷名
+    * 示例：
+        ```bash
+        sudo lvreduce -L -2G /dev/my_vg/my_lv
+        ```
+
+        **解释**：将 my_lv 逻辑卷大小减少 2GB。
+
+* lvresize：调整逻辑卷大小（可扩展或缩小）。
+    * 语法：sudo lvresize -L 大小 /dev/卷组名/逻辑卷名
+    * 示例：
+        ```bash
+        sudo lvresize -L 12G /dev/my_vg/my_lv
+        ```
+
+        **解释**：将 my_lv 逻辑卷大小调整为 12GB。
+
+* lvsnapshot：创建逻辑卷的快照。
+    * 语法：sudo lvcreate -L 大小 -s -n 快照名 /dev/卷组名/逻辑卷名
+    * 示例：
+        ```bash
+        sudo lvcreate -L 2G -s -n my_snap /dev/my_vg/my_lv
+
+        ```
+
+        **解释**：为 my_lv 创建一个 2GB 大小的快照，命名为 my_snap。
+
+* pvs, vgs, lvs：查看物理卷、卷组和逻辑卷的状态。
+    * 语法：sudo pvs, sudo vgs, sudo lvs
+    * 示例：
+        ```bash
+        sudo pvs
+        sudo vgs
+        sudo lvs
+        ```
+
+        **解释**：分别显示物理卷、卷组和逻辑卷的详细信息。
+
+**注意**：LVM 操作通常需要管理员权限，使用 sudo 执行命令。
+
+### LVM 实践步骤（以 Ubuntu 为例）
+以下是在 Ubuntu 系统中创建和管理 LVM 的详细步骤，适合零基础学习者操作。建议在虚拟机中实践，避免对真实数据造成影响。
+
+#### 步骤 1：准备磁盘分区
+1. 添加虚拟磁盘：
+    * 在虚拟机（如 VirtualBox）中添加两块新磁盘（如每块 10GB）。
+    * 重启虚拟机或使用以下命令重新扫描磁盘：
+    ```bash
+    sudo echo "- - -" > /sys/class/scsi_host/host0/scan
+
+    ```
+
+2. 确认磁盘设备：
+    * 使用 lsblk 查看新添加的磁盘（如 /dev/sdb 和 /dev/sdc）。
+    ```bash
+    lsblk
+    ```
+
+3. 创建分区（可选）：
+    * 如果需要使用磁盘分区而非整块磁盘，可用 fdisk 或 parted 创建分区。
+    * 示例：为 /dev/sdb 创建一个分区：
+        ```bash
+        sudo fdisk /dev/sdb
+        # 输入 n 创建新分区，选择 p（主分区），分区号 1，默认起始和结束扇区
+        # 输入 w 保存并退出
+
+        ```
+
+#### 步骤 2：创建物理卷（PV）
+* 将磁盘或分区初始化为物理卷：
+    ```bash
+    sudo pvcreate /dev/sdb1 /dev/sdc
+    ```
+
+    **解释**：将 /dev/sdb1（分区）和 /dev/sdc（整块磁盘）初始化为物理卷。
+
+* 查看物理卷状态：
+    ```bash
+    sudo pvs
+
+    ```
+
+    **输出示例：**
+
+    ```bash
+    PV         VG    Fmt  Attr PSize   PFree  
+    /dev/sdb1        lvm2 ---  10.00g 10.00g
+    /dev/sdc         lvm2 ---  10.00g 10.00g
+
+    ```
+
+#### 步骤 3：创建卷组（VG）
+* 使用物理卷创建卷组：
+    ```bash
+    sudo vgcreate my_vg /dev/sdb1 /dev/sdc
+
+    ```
+
+    **解释**：创建一个名为 my_vg 的卷组，包含两个物理卷，总容量约为 20GB。
+
+* 查看卷组状态：
+    ```bash
+    sudo vgs
+
+    ```
+
+    **输出示例：**
+
+    ```bash
+    VG     #PV #LV #SN Attr   VSize   VFree  
+    my_vg   2   0   0 wz--n-  19.99g 19.99g
+
+    ```
+
+#### 步骤 4：创建逻辑卷（LV）
+* 从卷组中分配逻辑卷：
+    ```bash
+    sudo lvcreate -L 10G -n my_lv my_vg
+
+    ```
+
+    **解释**：从 my_vg 卷组中创建一个 10GB 的逻辑卷，命名为 my_lv。
+
+* 查看逻辑卷状态：
+    ```bash
+    sudo lvs
+    ```
+
+    **输出示例：**
+
+    ```bash
+    LV     VG     Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+    my_lv  my_vg -wi-a-----  10.00g                                                    
+
+    ```
+#### 步骤 5：格式化与挂载逻辑卷
+* 格式化为 ext4 文件系统：
+    ```bash
+    sudo mkfs.ext4 /dev/my_vg/my_lv
+
+    ```
+
+* 创建挂载点并挂载：
+    ```bash
+    sudo mkdir /mnt/my_lvm
+    sudo mount /dev/my_vg/my_lv /mnt/my_lvm
+
+    ```
+
+* 确认挂载结果：
+    ```bash
+    df -h
+
+    ```
+
+    **输出示例：**
+
+    ```bash
+    Filesystem             Size  Used Avail Use% Mounted on
+    /dev/my_vg/my_lv      9.8G   37M  9.3G   1% /mnt/my_lvm
+
+    ```
+
+#### 步骤 6：动态调整逻辑卷大小
+* 扩展逻辑卷（假设增加 5GB）：
+    * 确认卷组有足够空间：
+        ```bash
+        sudo vgs
+        ```
+
+    * 扩展逻辑卷：
+        ```bash
+        sudo lvextend -L +5G /dev/my_vg/my_lv
+        ```
+
+    * 调整文件系统大小以使用新空间：
+        ```bash
+        sudo resize2fs /dev/my_vg/my_lv
+        ```
+    
+    * 确认新大小：
+        ```bash
+        df -h
+        ```
+
+**注意**：缩小逻辑卷有数据丢失风险，操作前务必备份。
+
+#### 步骤 7：创建快照（Snapshot）
+* 创建逻辑卷快照：
+    ```bash
+    sudo lvcreate -L 2G -s -n my_snap /dev/my_vg/my_lv
+
+    ```
+
+    **解释**：为 my_lv 创建一个 2GB 的快照，命名为 my_snap。
+
+* 查看快照状态：
+    ```bash
+    sudo lvs
+    ```
+
+* 挂载快照查看数据（只读）：
+    ```bash
+    sudo mkdir /mnt/my_snap
+    sudo mount -o ro /dev/my_vg/my_snap /mnt/my_snap
+    ls /mnt/my_snap
+
+    ```
+
+**注意**：快照占用空间会随原逻辑卷数据变化而增加，需预留足够空间。
+
+#### LVM 注意事项
+* 备份数据：调整逻辑卷大小或创建快照前，建议备份重要数据。
+* 空间管理：快照和逻辑卷扩展需要卷组有足够空闲空间，需提前规划。
+* 性能影响：快照过多可能影响性能，建议定期清理无用快照。
+* 文件系统支持：动态调整大小需文件系统支持（如 ext4、xfs），某些文件系统（如 xfs）不支持缩小。
+
+#### 总结
+LVM 是一种强大的存储管理工具，通过物理卷、卷组和逻辑卷的层级结构，实现了存储空间的灵活分配和动态调整。以下是 LVM 的核心功能总结：
+
+| 功能            | 描述                        | 相关命令                      |
+|-----------------|-----------------------------|-------------------------------|
+| 创建物理卷      | 初始化磁盘或分区为 PV       | pvcreate                      |
+| 创建卷组        | 将多个 PV 组成 VG           | vgcreate                      |
+| 创建逻辑卷      | 从 VG 中分配 LV             | lvcreate                      |
+| 动态调整大小    | 扩展或缩小 LV               | lvextend, lvreduce, lvresize  |
+| 创建快照        | 为 LV 创建只读副本          | lvcreate -s                   |
+| 查看状态        | 查看 PV、VG、LV 信息        | pvs, vgs, lvs                 |
+
+
+### 练习作业
+为了帮助零基础学习者巩固 LVM 知识，以下是一些实践作业，建议在虚拟机中操作，确保安全。每个练习都附带了解题思路和参考命令。
+
+#### 1. 基础练习：创建 LVM 结构
+* 任务描述：
+    * 在虚拟机中添加两块新磁盘（如每块 5GB）。
+    * 将两块磁盘初始化为物理卷，组成一个卷组。
+    * 从卷组中创建一个 6GB 的逻辑卷，格式化为 ext4 文件系统。
+    * 挂载到 /mnt/my_lvm_test 目录，使用 df -h 确认挂载成功。
+    * 提交内容：记录操作步骤和关键命令输出（如 pvs、vgs、lvs 和 df -h 结果）。
+
+* 解题思路：
+    * 添加两块虚拟磁盘并确认设备名。
+    * 使用 pvcreate 初始化物理卷。
+    * 使用 vgcreate 创建卷组。
+    * 使用 lvcreate 创建逻辑卷。
+    * 格式化并挂载逻辑卷，确认结果。
+
+* 参考命令：
+```bash
+# 确认新磁盘
+lsblk
+# 初始化物理卷（假设磁盘为 /dev/sdb 和 /dev/sdc）
+sudo pvcreate /dev/sdb /dev/sdc
+sudo pvs
+# 创建卷组
+sudo vgcreate test_vg /dev/sdb /dev/sdc
+sudo vgs
+# 创建逻辑卷
+sudo lvcreate -L 6G -n test_lv test_vg
+sudo lvs
+# 格式化并挂载
+sudo mkfs.ext4 /dev/test_vg/test_lv
+sudo mkdir /mnt/my_lvm_test
+sudo mount /dev/test_vg/test_lv /mnt/my_lvm_test
+df -h
+
+```
+
+#### 2. 动态调整练习：扩展逻辑卷
+* 任务描述：
+    * 将上一步创建的逻辑卷扩展 2GB。
+    * 调整文件系统大小以使用新空间。
+    * 使用 df -h 确认扩展成功。
+    * 提交内容：记录操作步骤和关键命令输出（如 lvs 和 df -h 结果）。
+
+* 解题思路：
+    * 确认卷组有足够空间。
+    * 使用 lvextend 扩展逻辑卷。
+    * 使用 resize2fs 调整文件系统大小。
+    * 确认扩展结果。
+
+* 参考命令：
+```bash
+# 确认卷组空间
+sudo vgs
+# 扩展逻辑卷
+sudo lvextend -L +2G /dev/test_vg/test_lv
+sudo lvs
+# 调整文件系统大小
+sudo resize2fs /dev/test_vg/test_lv
+# 确认结果
+df -h
+
+```
+
+#### 3. 快照练习：创建和查看快照
+
+* 任务描述：
+    * 为上一步的逻辑卷创建一个 1GB 的快照。
+    * 挂载快照到 /mnt/my_snap_test 目录（只读模式）。
+    * 查看快照内容，确认与原逻辑卷一致。
+    * 提交内容：记录操作步骤和关键命令输出（如 lvs 和挂载结果）。
+
+* 解题思路：
+    * 确认卷组有足够空间创建快照。
+    * 使用 lvcreate -s 创建快照。
+    * 挂载快照并查看内容。
+
+* 参考命令：
+```bash
+# 确认卷组空间
+sudo vgs
+# 创建快照
+sudo lvcreate -L 1G -s -n test_snap /dev/test_vg/test_lv
+sudo lvs
+# 挂载快照（只读）
+sudo mkdir /mnt/my_snap_test
+sudo mount -o ro /dev/test_vg/test_snap /mnt/my_snap_test
+ls /mnt/my_snap_test
+
+```
+
+#### 4. 思考题
+* 任务描述：
+    * LVM 相比传统分区的优点是什么？在什么场景下适合使用 LVM？
+    * 快照（Snapshot）的作用是什么？快照空间不足时会发生什么？
+    * 缩小逻辑卷时需要注意哪些问题？为什么操作前要备份数据？
+    * 提交内容：写下你的答案和思考过程。
+
+* 解题思路：
+    * LVM 优点：思考 LVM 的灵活性、动态调整、快照等功能，适合服务器、数据库等需要动态存储的场景。
+    * 快照作用：用于备份和恢复，空间不足时快照可能损坏，需预留空间。
+    * 缩小逻辑卷注意事项：可能导致数据丢失，文件系统需先缩小，备份是防止意外损失的必要步骤。
+
