@@ -240,16 +240,171 @@ sdb
         * -f：显示文件系统信息（如挂载点、文件系统类型）。
         * -d：仅显示磁盘设备，不显示分区。
     * 示例：
+        ```bash
+        lsblk
+        lsblk -f
+        ```
+        **输出示例：**
+        ```bash
+            NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+        sda      8:0    0   20G  0 disk 
+        ├─sda1   8:1    0  512M  0 part /boot
+        └─sda2   8:2    0 19.5G  0 part /
+        sdb      8:16   0   10G  0 disk 
+
+        ```
+
+        **解释**：sda 是第一块磁盘，sda1 和 sda2 是其分区；sdb 是第二块磁盘，未分区。
+
+* fdisk -l：列出所有磁盘的分区表信息（需要管理员权限）。
+    * 语法：sudo fdisk -l [设备名]
+    * 常用参数：
+        * 无参数：列出所有磁盘的分区信息。
+        * /dev/sdX：指定特定磁盘查看。
+    * 示例：
+        ```bash
+        sudo fdisk -l /dev/sdb
+
+        ```
+
+        **输出示例：**
+
+        ```bash
+        Disk /dev/sdb: 10 GiB, 10737418240 bytes, 20971520 sectors
+        Disk model: VBOX HARDDISK   
+        Units: sectors of 1 * 512 = 512 bytes
+        Sector size (logical/physical): 512 bytes / 512 bytes
+        I/O size (minimum/optimal): 512 bytes / 512 bytes
+        Disklabel type: dos
+        Disk identifier: 0x00000000
+
+        ```
+
+        **解释**：输出显示 /dev/sdb 是一块 10GB 的磁盘，尚未创建分区表。
+
+**注意**：在操作磁盘之前，务必通过以上命令确认目标磁盘，避免误操作导致数据丢失。
+
+### fdisk：传统分区工具
+#### 工具介绍
+fdisk 是一个传统的命令行分区工具，主要用于管理 MBR（Master Boot Record）分区表，适用于小于 2TB 的磁盘。它通过交互式界面操作，适合对小型磁盘进行分区管理。
+
+#### 基本用法与参数
+* 启动 fdisk：
+
+    * 语法：sudo fdisk /dev/sdX
+    * 参数：/dev/sdX 是目标磁盘设备名，如 /dev/sdb。
+    * 示例：
+        ```bash
+        sudo fdisk /dev/sdb
+        ```
+
+        **解释**：进入 /dev/sdb 的分区管理模式，之后通过交互式命令操作。
+
+* 常用交互式命令：
+    * `p`：显示当前分区表。
+    * `n`：创建新分区。
+        * 选项：`p`（主分区）或 `e`（扩展分区）。
+        * 分区号：通常从 1 开始。
+    * 起始和结束扇区：可按默认值分配全部空间。
+    * `d`：删除分区。
+        * 选项：输入分区号删除指定分区。
+    * `t`：更改分区类型。
+        * 选项：输入分区号和类型代码（如 83 表示 Linux 分区）。
+    * `w`：保存修改并退出。
+    * `q`：不保存修改直接退出。
+    * `m`：显示帮助菜单。
+
+#### 实践步骤（以 Ubuntu 为例）
+1. 添加虚拟磁盘：
+    * 在虚拟机（如 VMware）中添加一块新磁盘（如 5GB）。
+    * 重启虚拟机或使用以下命令重新扫描磁盘：
+        ```bash
+        sudo echo "- - -" > /sys/class/scsi_host/host0/scan
+
+        ```
+2. 确认磁盘设备：
+    * 使用 lsblk 查看新添加的磁盘（如 /dev/sdb）。
     ```bash
     lsblk
-    lsblk -f
     ```
-**输出示例：**
-```bash
-    NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
-sda      8:0    0   20G  0 disk 
-├─sda1   8:1    0  512M  0 part /boot
-└─sda2   8:2    0 19.5G  0 part /
-sdb      8:16   0   10G  0 disk 
 
-```
+3. 进入 fdisk 模式：
+    * 对新磁盘进行分区操作：
+    ```bash
+    sudo fdisk /dev/sdb
+    ```
+
+4. 创建分区：
+    * 输入 `n` 创建新分区。
+    * 选择 `p`（主分区）。
+    * 分区号选择 `1`。
+    * 起始和结束扇区按默认值（回车），分配全部空间。
+    * 输入 `p` 查看分区表，确认分区创建成功。
+    * 输入 `w` 保存并退出。
+
+5. 格式化分区：
+    * 将新分区格式化为 ext4 文件系统（推荐给普通用户）：
+        ```bash
+        sudo mkfs.ext4 /dev/sdb1
+
+        ```
+
+6. 验证结果：
+    * 使用以下命令查看分区和文件系统信息：
+        ```bash
+        lsblk -f
+        ```
+
+**注意事项**
+
+* `fdisk` 修改分区表后，系统可能需要重启或使用 partprobe 命令更新分区信息：
+    ```bash
+    sudo partprobe /dev/sdb
+    ```
+* 操作时务必确认目标磁盘，避免误操作已有数据磁盘。
+
+###  parted：现代分区工具
+#### 工具介绍
+
+parted 是一个功能更强大的分区工具，支持 GPT（GUID Partition Table）和 MBR 分区表，适用于大于 2TB 的磁盘，也兼容小型磁盘。相比 fdisk，parted 支持非交互式操作，适合脚本自动化，且功能更全面。
+
+#### 基本用法与参数
+* 启动 parted：
+    * 语法：sudo parted /dev/sdX
+    * 参数：/dev/sdX 是目标磁盘设备名，如 /dev/sdc。
+    * 示例：
+        ```bash
+        sudo parted /dev/sdc
+        ```
+
+        **解释**：进入 /dev/sdc 的分区管理模式，通过交互式命令操作。
+
+* 常用交互式命令：
+
+    * print：显示当前分区表。
+    * mklabel：创建分区表类型。
+        * 选项：gpt（创建 GPT 分区表）或 msdos（创建 MBR 分区表）。
+    * mkpart：创建新分区。
+        * 语法：mkpart [分区类型] [起始位置] [结束位置]
+        * 选项：primary（主分区），起始和结束位置可用百分比（如 0% 100%）。
+    * rm：删除分区。
+        * 语法：rm [分区号]
+    * quit：退出 parted。
+    * help：显示帮助信息。
+
+* 非交互式操作（适合脚本）：
+    * 语法：sudo parted /dev/sdX [命令]
+    * 示例：创建 GPT 分区表并分配一个主分区：
+        ```bash
+        sudo parted /dev/sdc mklabel gpt
+        sudo parted /dev/sdc mkpart primary 0% 100%
+
+        ```
+
+#### 实践步骤（以 Ubuntu 为例）
+1. 添加虚拟磁盘：
+    * 在虚拟机中添加另一块新磁盘（如 10GB，设备名为 /dev/sdc）。
+    * 使用 lsblk 确认新磁盘。
+        ```bash
+        lsblk
+        ```

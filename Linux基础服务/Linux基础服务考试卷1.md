@@ -246,7 +246,7 @@
       - 创建目录: /opt/nginx/vue-admin.{你的名字}.com
       - 克隆项目: git clone https://gitee.com/nuoMis/vue-admin.git
       - 安装依赖: yarn install
-      - 项目打包: yarn build
+      - 项目打包: yarn run build:dev
 
     * SSL证书配置（3分）
       - 创建证书目录: /opt/nginx/ssl/vue-admin.{你的名字}.com/
