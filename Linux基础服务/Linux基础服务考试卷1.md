@@ -211,7 +211,7 @@
       - 确保目录权限正确
 
     * 项目部署（2分）
-      - 克隆项目: git clone https://gitee.com/pear-admin/pear-admin-boot.git
+      - 克隆项目: git clone https://gitee.com/pear-admin/pear-admin-layui.git
       - 确保项目文件完整性
 
     * SSL证书配置（2分）
