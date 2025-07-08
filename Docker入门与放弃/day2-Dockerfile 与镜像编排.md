@@ -4,9 +4,25 @@ Docker 镜像构建过程与分层原理。
 面试常见问题：Dockerfile 的构建过程是怎样的？如何优化镜像大小？
 Dockerfile 详解
 核心指令：FROM、RUN、CMD、ENTRYPOINT、COPY、ADD、WORKDIR、EXPOSE、ENV 等。
-语法案例 1：构建一个简单的 Ubuntu + Vim 镜像。
+语法案例 1：构建一个简单的 前端静态页面
 语法案例 2：构建一个 Nginx 镜像，添加自定义网页。
+# 创建网站根目录
+sudo mkdir -p /opt/nginx/touch.liujun.com
+sudo mkdir -p /opt/nginx/stars.liujun.com
+# 授权
+chmod 755 /opt/nginx/touch.liujun.com
+chmod 755 /opt/nginx/stars.liujun.com
+# 克隆项目代码
+cd /opt/nginx/touch.liujun.com
+git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
+
+cd /opt/nginx/stars.liujun.com
+git clone https://github.com/wangyasai/Stars-Emmision .
+
+
 语法案例 3：构建一个多阶段构建镜像（如 Node.js 应用）。
+
+
 项目实践：Dockerfile 编写
 Python 项目：构建 Flask 应用镜像。
 Java 项目：构建 Spring Boot 应用镜像。

@@ -154,7 +154,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 ### 3.2 镜像管理命令总结表格
 | 操作            | 命令                                              | 说明                                           |
 |-----------------|--------------------------------------------------|------------------------------------------------|
-| 拉取镜像        | `docker pull <image_name>:<tag>`                | 从 Docker Hub 下载镜像，如 `nginx:latest`     |
+| 拉取镜像        | `docker pull <image_name>:<tag>`                | 从 Docker Hub 下载镜像，如 `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest`     |
 | 查看镜像列表    | `docker images`                                 | 显示本地所有镜像，包括名称、大小、创建时间等   |
 | 查看镜像层级结构| `docker history <image_name>:<tag>`            | 显示镜像的每一层构建历史，了解镜像组成         |
 | 导出镜像        | `docker save -o <file_name>.tar <image_name>:<tag>` | 将镜像保存为 tar 文件，用于备份或传输          |
@@ -164,7 +164,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 #### 步骤 1：拉取 Nginx 镜像：
 * 命令：
     ```bash
-    docker pull nginx:latest
+    docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
 
     ```
 * 说明：`latest` 是标签，表示最新版本。拉取过程会显示进度条，完成后镜像存储在本地。
@@ -175,12 +175,12 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
     docker images
 
     ```
-* 预期输出：看到 nginx:latest 及其大小（如 133MB）。
+* 预期输出：看到 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest 及其大小（如 133MB）。
 
 #### 步骤 3：查看镜像层级结构：
 * 命令：
     ```bash
-    docker history nginx:latest
+    docker history swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
 
     ```
 * 说明：显示镜像的每一层构建步骤（如添加文件、运行命令），每一层是一个只读文件系统，叠加形成完整镜像。
@@ -189,7 +189,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 #### 步骤 4：导出镜像到文件：
 * 命令： 
     ```bash
-    docker save -o nginx_backup.tar nginx:latest
+    docker save -o nginx_backup.tar swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
 
     ```
 
@@ -198,7 +198,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 #### 步骤 5：删除本地镜像并导入：
 * 删除镜像：
     ```bash
-    docker rmi nginx:latest
+    docker rmi swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
 
     ```
 * 确认删除：
@@ -218,7 +218,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
     docker images
 
     ```
-* 预期输出：`nginx:latest` 重新出现在列表中。
+* 预期输出：`swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest` 重新出现在列表中。
 
 ### 3.4 镜像管理流程图（使用 Mermaid 展示）
 ```mermaid
@@ -261,13 +261,14 @@ graph TD
 #### 步骤 1：运行 Nginx 容器：
 * 命令：
     ```bash
-    docker run -d -p 8080:80 --name my-nginx nginx:latest
+    docker run -d -p 8080:80 --name my-nginx swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
 
     ```
 * 说明：
     * -d：后台运行容器，不占用终端。
     * -p 8080:80：将容器内部的 80 端口映射到主机的 8080 端口，访问 http://localhost:8080 即可看到 Nginx 默认页面。
     * --name my-nginx：给容器命名，方便后续操作。
+    * 使用指定的镜像 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest。
 
 #### 步骤 2：查看运行中的容器：
 * 命令：
@@ -285,4 +286,319 @@ graph TD
     ```
 
 * 说明：显示容器的详细信息，包括 IP 地址、端口映射、挂载点等，输出为 JSON 格式。
+
+#### 步骤 4：进入容器内部：
+* 命令：
+    ```bash
+    docker exec -it my-nginx /bin/bash
+
+    ```
+
+* 说明：进入容器后，可以执行命令，如查看文件：
+    ```bash
+    ls /usr/share/nginx/html
+
+    ```
+* 退出容器：
+    ```bash
+    exit
+    ```
+#### 步骤 5：查看容器日志：
+* 命令：
+    ```bash
+    docker logs my-nginx
+
+    ```
+
+* 说明：显示 Nginx 的运行日志，如访问记录或错误信息。
+
+#### 步骤 6：停止并删除容器：
+* 命令：
+    ```bash
+    docker stop my-nginx
+    docker rm my-nginx
+
+    ```
+
+* 说明：停止容器后删除，确保不占用资源。
+
+### 4.4 容器管理流程图（使用 Mermaid 展示）
+```mermaid
+graph TD
+    A[用户] -->|docker run| B[创建容器]
+    B --> C[容器运行中]
+    A -->|docker ps| C
+    A -->|docker inspect| C
+    A -->|docker exec| D[进入容器内部]
+    A -->|docker logs| E[查看日志]
+    A -->|docker stop| F[容器停止]
+    F -->|docker start| C
+    F -->|docker rm| G[容器删除]
+
+```
+
+## 5. 简单镜像制作
+
+### 5.1 使用 commit 命令基于容器制作镜像
+* `背景`：当你对一个容器进行了修改（如安装软件、更改配置），可以使用 commit 命令将容器保存为一个新镜像，供后续使用。
+* `抽象例子`：这就像你对一个手机 App 做了个性化设置后，将这个状态保存为一个新版本的安装包，方便以后直接安装这个定制版本。
+* `命令`：
+    ```bash
+    docker commit <container_id/name> <new_image_name>:<tag>
+
+    ```
+
+### 5.2 案例：基于 Nginx 容器添加自定义配置，制作自定义镜像
+#### 步骤 1：运行一个 Nginx 容器：
+* 命令：
+    ```bash
+    docker run -it --name nginx-custom swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest /bin/bash
+
+    ```
+* 说明：启动一个交互式 Nginx 容器，进入内部，使用指定的镜像。
+
+#### 步骤 2：在容器内安装工具或修改配置：
+* 命令：
+    ```bash
+    apt update
+    apt install -y vim
+    echo "server { listen 80; server_name custom.example.com; location / { root /usr/share/nginx/html; index index.html; } }" > /etc/nginx/conf.d/custom.conf
+
+    ```
+* 说明：更新包索引并安装 Vim 编辑器，同时添加一个简单的自定义 Nginx 配置文件。
+* 退出容器：
+    ```bash
+    exit
+
+    ```
+
+#### 步骤 3：提交容器为新镜像：
+* 命令：
+    ```bash
+    docker commit nginx-custom my-nginx-custom:latest
+
+    ```
+* 说明：将容器 nginx-custom 保存为新镜像 my-nginx-custom:latest。
+
+#### 步骤 4：验证新镜像：
+* 查看镜像列表：
+    ```bash
+    docker images
+
+    ```
+
+* 运行新镜像：
+    ```bash
+    docker run -d -p 8081:80 my-nginx-custom:latest
+
+    ```
+
+* 检查是否正常运行：
+    ```bash
+    docker ps
+
+    ```
+
+* 预期输出：看到新容器运行在 8081 端口。
+
+* 清理测试容器：
+    ```bash
+    docker stop <container_id>
+    docker rm <container_id>
+
+    ```
+
+#### 步骤 5：清理临时容器：
+* 命令：
+    ```bash
+    docker rm nginx-custom
+    ```
+
+### 5.3 镜像制作流程图（使用 Mermaid 展示）
+```mermaid
+graph TD
+    A[启动容器] -->|docker run| B[容器运行中]
+    B -->|修改容器内容| C[安装软件/配置]
+    C -->|docker commit| D[新镜像]
+    D -->|docker run| E[基于新镜像启动容器]
+
+```
+
+## 6. 容器部署应用
+### 6.1 案例：部署一个静态网页应用（基于 /opt/nginx/start.liujun.com）
+* `背景`：通过容器部署一个静态网页，展示 Docker 如何快速运行一个 Web 服务，使用您提供的项目目录 /opt/nginx/start.liujun.com 作为静态页面目录。
+* `抽象例子`：这就像用一个便携式展示柜（容器）展示你的作品（网页），你可以随时把展示柜搬到任何地方（主机），作品都能正常展示。
+
+#### 步骤 1：确认静态网页目录：
+* 确保 /opt/nginx/start.liujun.com 目录存在且包含静态网页文件（如 index.html）：
+    ```bash
+    # 创建项目路径
+    mkdir /opt/nginx/touch.liujun.com
+    # 进入站点目录
+    cd /opt/nginx/touch.liujun.com
+    # 克隆项目代码（注意末尾的点，表示克隆到当前目录）
+    git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
+
+    ```
+* 说明：确保目录和文件权限正确，Docker 容器能够访问（建议目录权限为 755 或 775）。
+    ```bash
+    # 递归授权项目所有文件
+    chmod -R 775 /opt/nginx/touch.liujun.com
+    ```
+#### 步骤 2：运行 Nginx 容器，挂载本地目录：
+* 命令：
+    ```bash
+    docker run -d -p 8080:80 \
+        -v /opt/nginx/start.liujun.com:/usr/share/nginx/html \
+        --name web-app \
+        swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
+
+    ```
+
+* 说明：
+    * `-v /opt/nginx/start.liujun.com:/usr/share/nginx/html`: 将主机目录挂载到容器的 Nginx 默认网页目录，容器会显示主机上的网页内容。
+    * `-p 8080:80`：映射端口，访问主机 8080 端口即可看到网页。
+    * 使用指定的镜像 `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest`。
+
+#### 步骤 3：访问网页：
+* 在浏览器中访问 `http://localhost:8080`，应看到您的静态网页内容（如 “Welcome to start.liujun.com”）。
+* 说明：如果无法访问，检查容器是否运行（docker ps），或端口是否被占用，或者挂载目录权限是否正确。
+
+#### 步骤 4：停止并删除容器：
+* 命令：
+    ```bash
+    docker stop web-app
+    docker rm web-app
+
+    ```
+* 说明：清理容器，释放资源。
+
+### 6.2 部署应用流程图（使用 Mermaid 展示）
+```mermaid
+graph TD
+    A[准备应用文件] -->|静态网页目录| B[主机目录 /opt/nginx/start.liujun.com]
+    B -->|docker run -v| C[启动容器]
+    C -->|端口映射 -p| D[访问网页]
+    B -->|修改文件| E[更新内容]
+    E -->|自动同步| D
+
+```
+
+## 7. 总结与小测验
+### 7.1 总结
+* Docker 的基本概念：
+    * 容器是轻量级虚拟化技术，共享主机内核，隔离应用环境。
+    * Docker 是容器管理平台，核心组件包括 Engine（运行时）、Hub（镜像仓库）、镜像（模板）和容器（运行实例）。
+
+* 操作流程：
+    * 拉取镜像（如 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest）、查看和管理镜像（images、history）。
+    * 运行容器（run）、管理容器（ps、stop、exec）。
+    * 制作镜像（commit）和部署简单应用（Nginx 网页）。
+
+* 学习成果：学习者应掌握 Docker 的基本命令（镜像和容器管理）以及简单应用的容器化部署。
+
+### 7.2 小测验
+1. 命令填空：
+    * 拉取镜像的命令是：docker ______ <image_name>。
+    * 查看运行中容器的命令是：docker ______。
+    * 进入容器的命令是：docker ______ -it <container_id> /bin/bash。
+    * 将容器保存为镜像的命令是：docker ______ <container_id> <new_image_name>。
+
+2. 简答题：
+    * 容器和镜像的关系是什么？举一个生活中的例子说明。
+    * 为什么容器比虚拟机更轻量？从资源占用和启动速度两方面回答。
+3. 实践题：
+    * 运行一个 Nginx 容器，使用镜像 `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest`，端口映射到主机的 8082，并命名为 `test-nginx`。写出完整命令。
+
+## 8. 思考题（面试准备）
+1. Docker 的镜像分层机制是什么？
+    * 提示：思考镜像如何存储和构建，docker history 命令的作用。镜像分层如何帮助节省存储空间？
+2. 如何选择合适的镜像大小和版本？
+    * 提示：考虑镜像标签（如 latest、alpine）、应用需求和安全性。为什么小型镜像（如 Alpine）更受欢迎？
+
+
+## 作业：使用 Docker 挂载并发布 touch.liujun.com 静态网页项目
+### 目标
+* 使用 Docker 部署一个静态网页项目，将主机目录 /opt/nginx/touch.liujun.com 挂载到容器中，通过 Nginx 提供 Web 服务。
+* 确保项目内容可以通过浏览器访问。
+
+### 前提条件
+* 已安装 Docker 环境（参考前面的教案内容）。
+* 主机上有 /opt/nginx/touch.liujun.com 目录，并已克隆 Light-Year-Admin-Template 项目。
+* 使用指定的 Nginx 镜像：swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest。
+
+### 步骤详解
+
+```mermaid
+graph TD
+    A[准备项目代码] -->|克隆代码到主机目录| B[主机目录 /opt/nginx/touch.liujun.com]
+    B -->|docker run -v| C[启动 Nginx 容器]
+    C -->|端口映射 -p 8081:80| D[访问网页 http://localhost:8081]
+    B -->|修改文件| E[更新内容]
+    E -->|自动同步| D
+
+```
+
+#### 步骤 1：准备项目目录和代码
+* 创建目录并克隆项目代码：
+    * 命令：
+        ```bash
+        # 创建目录（如果不存在）
+        sudo mkdir -p /opt/nginx/touch.liujun.com
+        # 进入站点目录
+        cd /opt/nginx/touch.liujun.com
+        # 克隆项目代码（注意末尾的点，表示克隆到当前目录）
+        git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
+
+        ```
+    * 说明：
+        * mkdir -p 确保目录存在，如果已存在则不会报错。
+        * git clone 会将 Light-Year-Admin-Template 项目的代码下载到当前目录 /opt/nginx/touch.liujun.com。
+        * 如果您已经完成这一步，可以跳过此命令。
+
+* 检查项目文件：
+    * 命令：
+        ```bash
+        ls -l /opt/nginx/touch.liujun.com
+        ```
+    * 说明：确保目录中包含项目文件（如 index.html 或其他 HTML 文件）。Light-Year-Admin-Template 是一个前端模板，通常会在根目录或子目录（如 html）下包含入口文件 index.html。
+    * 如果找不到 index.html，可以进一步查看子目录：
+        ```bash
+        find /opt/nginx/touch.liujun.com -name "index.html"
+        ```
+    * 预期输出：类似 /opt/nginx/touch.liujun.com/index.html 或 /opt/nginx/touch.liujun.com/html/index.html。
+
+
+#### 步骤 2：运行 Nginx 容器并挂载项目目录
+* 启动容器：
+    * 命令：
+        ```bash
+        docker run -d -p 8081:80 \
+            -v /opt/nginx/touch.liujun.com:/usr/share/nginx/html \
+            --name touch-web-app \
+            swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
+
+        ```
+    * 说明：
+        * -d：后台运行容器，不占用终端。
+        * -p 8081:80：将容器内部的 80 端口映射到主机的 8081 端口，访问 http://localhost:8081 即可看到网页内容。选择 8081 端口以避免与之前的案例（8080）冲突。
+        * -v /opt/nginx/touch.liujun.com:/usr/share/nginx/html：将主机目录 /opt/nginx/touch.liujun.com 挂载到容器的 Nginx 默认网页目录 /usr/share/nginx/html，容器会显示主机上的项目内容。
+        * --name touch-web-app：给容器命名，方便后续管理。
+        * 使用指定的镜像 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest。
+
+* 检查容器状态：
+    * 命令：
+        ```bash
+        docker ps
+        ```
+    * 预期输出：看到 touch-web-app 容器，状态为 Up，端口映射为 0.0.0.0:8081->80/tcp。
+
+#### 步骤 3：访问网页并验证
+* 访问网页：
+    * 在浏览器中访问 http://localhost:8081，应看到 Light-Year-Admin-Template 的页面内容。
+    * 说明：如果页面无法显示，可能是以下原因：
+        * 容器未正常运行：检查 docker ps 输出。
+        * 端口被占用：尝试其他端口（如 -p 8082:80）。
+        * 挂载目录权限问题：确保 /opt/nginx/touch.liujun.com 目录权限允许 Docker 访问（建议 sudo chmod -R 755 /opt/nginx/touch.liujun.com）。
+        * 项目入口文件不在根目录：如果 index.html 在子目录（如 html），需要调整挂载路径或配置 Nginx。
 
