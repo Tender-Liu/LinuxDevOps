@@ -79,7 +79,7 @@ flowchart TD
 sudo apt install chrony
 
 # 编辑配置文件
-sudo vim /etc/chrony.conf
+sudo vim /etc/chrony/chrony.conf
 server ntp.aliyun.com iburst
 server time1.cloud.tencent.com iburst
 
@@ -153,7 +153,7 @@ sudo apt update
 sudo apt install -y chrony
 
 # 步骤2: 配置NTP服务器(编辑/etc/chrony.conf)
-sudo tee -a /etc/chrony.conf <<EOF
+sudo tee -a /etc/chrony/chrony.conf <<EOF
 # 阿里云NTP服务器
 server ntp.aliyun.com iburst
 # 腾讯云NTP服务器
