@@ -433,17 +433,17 @@ graph TD
 * 确保 /opt/nginx/start.liujun.com 目录存在且包含静态网页文件（如 index.html）：
     ```bash
     # 创建项目路径
-    mkdir /opt/nginx/touch.liujun.com
+    mkdir /opt/nginx/stars.liujun.com
     # 进入站点目录
-    cd /opt/nginx/touch.liujun.com
+    cd /opt/nginx/stars.liujun.com
     # 克隆项目代码（注意末尾的点，表示克隆到当前目录）
-    git clone https://gitee.com/yinqi/Light-Year-Admin-Template.git .
+    git clone https://github.com/wangyasai/Stars-Emmision .
 
     ```
 * 说明：确保目录和文件权限正确，Docker 容器能够访问（建议目录权限为 755 或 775）。
     ```bash
     # 递归授权项目所有文件
-    chmod -R 775 /opt/nginx/touch.liujun.com
+    chmod -R 775 /opt/nginx/stars.liujun.com
     ```
 #### 步骤 2：运行 Nginx 容器，挂载本地目录：
 * 命令：
