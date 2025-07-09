@@ -103,7 +103,6 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 * 检查 Docker 版本：
     ```bash
     docker --version
-
     ```
 
 * 运行一个测试容器，确保 Docker 正常工作：
@@ -165,7 +164,6 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 * 命令：
     ```bash
     docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
-
     ```
 * 说明：`latest` 是标签，表示最新版本。拉取过程会显示进度条，完成后镜像存储在本地。
 
@@ -173,7 +171,6 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 * 命令：
     ```bash
     docker images
-
     ```
 * 预期输出：看到 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest 及其大小（如 133MB）。
 
