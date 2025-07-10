@@ -209,10 +209,12 @@ FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:alpine3.20
 WORKDIR /app
 
 # 复制静态页面到容器的 /app 目录
-COPY /opt/nginx/touch.liujun.com /app
+# COPY /opt/nginx/touch.liujun.com /app
+COPY .   .
 
 # 替换默认的 Nginx 配置文件
-COPY /opt/nginx/touch.liujun.com/nginx.conf /etc/nginx/nginx.conf
+# COPY /opt/nginx/touch.liujun.com/nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx.conf /etc/nginx/nginx.conf
 
 # 暴露 HTTP 端口（默认 80）
 EXPOSE 80
