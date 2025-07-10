@@ -891,12 +891,66 @@ ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar spring-boot.jar"]
 
 3. 使用方法
    ```bash
-   # 构建镜像
-   docker build -t spring-boot-app .
-   
-   # 运行容器
-   docker run -d -p 8080:8080 spring-boot-app
+    # 构建镜像
+    docker build -t spring-boot-hello-world/master:v1.0 .
 
+    # 运行容器
+    docker run -d -p 9005:8080 --name spring-boot-hello-world spring-boot-hello-world/master:v1.0
+    ```
 
 ### Go的Dockerfile与构建测试
+```bash
+# 第一阶段：构建 Go 项目
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/golang:1.24-alpine AS build
 
+# 设置工作目录
+WORKDIR /app
+
+# 复制项目文件到容器
+COPY . .
+
+# 配置 Go 代理，加速依赖下载
+ENV GOPROXY=https://goproxy.cn,direct
+
+# 下载依赖并构建项目
+RUN go mod tidy \
+    && go build -o app ./main.go
+
+# 第二阶段：运行 Go 应用
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/alpine:latest
+
+# 创建工作目录
+WORKDIR /app
+
+# 从第一阶段复制构建好的可执行文件
+COPY --from=build /app/app .
+
+# 暴露 8080 端口（根据项目实际情况调整）
+EXPOSE 8080
+
+# 启动应用
+CMD ["./app"]
+
+```
+
+**说明：**
+
+1. 第一阶段（构建阶段）：
+    * 使用 golang:1.24-alpine 作为基础镜像，轻量且包含 Go 编译环境。
+    * 复制项目文件到容器，设置 GOPROXY 环境变量以加速依赖下载。
+    * 执行 go mod tidy 确保依赖完整，然后编译项目生成可执行文件 app。
+2. 第二阶段（运行阶段）：
+    * 使用 alpine:latest 作为基础镜像，进一步减少镜像体积（Alpine 是一个极轻量级的 Linux 发行版）。
+    * 只复制第一阶段生成的 app 可执行文件，丢弃 Go 编译环境和源码。
+    * 暴露 8080 端口（如果项目端口不同，请根据实际情况修改）。
+    * 使用 CMD 指定启动命令为 ./app。
+3. 镜像优化：
+    * 通过多阶段构建，最终镜像只包含运行时所需的可执行文件，体积大幅减小。
+    * 使用 Alpine 镜像作为运行环境，减少不必要的依赖和工具。
+
+4. 构建镜像 `docker build -t go-starter/master:v1.0 .`
+
+5. 启动一个容器，将容器的 8080 端口映射到主机的 9006 端口：
+    ```bash
+    docker run -d -p 9006:8080 --name go-starter go-starter/master:v1.0
+    ```
