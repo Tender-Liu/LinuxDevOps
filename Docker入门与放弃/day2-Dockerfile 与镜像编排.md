@@ -261,7 +261,7 @@ docker run -d -p 9000:80 --name light-year-admin-template light-year-admin-templ
 * `--name light-year-admin-template`：给容器取个名字，方便管理。
 * `light-year-admin-template/master:1.0`：指定使用的镜像。
 
-运行后，打开浏览器，访问 http://localhost:9000，你应该能看到静态页面。如果页面正常显示，说明镜像构建和容器运行成功！
+运行后，打开浏览器，访问 `http://localhost:9000`，你应该能看到静态页面。如果页面正常显示，说明镜像构建和容器运行成功！
 
 ### 实践案例 2：构建一个 Nginx 镜像，添加自定义网页
 这个案例和案例 1 类似，只是再重复一次以加深印象。我们依然用 Light-Year-Admin-Template 项目，步骤如下：
@@ -293,7 +293,7 @@ docker build -t stars-emmision/master:v1.0 .
 docker run -d -p 9001:80 --name stars-emmision stars-emmision/master:v1.0
 ```
 
-访问 http://localhost:9001，确认页面正常显示。
+访问 `http://localhost:9001`，确认页面正常显示。
 
 
 ## 分阶段构建与镜像大小优化
@@ -575,7 +575,7 @@ docker images
 docker run -d -p 9002:80 --name vue-manage-system vue-manage-system/master:v1.0
 ```
 
-访问 http://localhost:9002，确认页面正常显示。如果页面加载成功，说明镜像构建和容器运行无误。
+访问 `http://localhost:9002`，确认页面正常显示。如果页面加载成功，说明镜像构建和容器运行无误。
 
 #### Mermaid 架构图：Vue 项目多阶段构建
 ```mermaid
@@ -692,7 +692,7 @@ docker run -d -p 9003:3000 --name typescript-starter typescript-starter/master:v
 
 ```
 
-访问 http://localhost:9003，确认应用是否正常响应。如果响应成功，说明镜像构建和容器运行无误。
+访问 `http://localhost:9003`，确认应用是否正常响应。如果响应成功，说明镜像构建和容器运行无误。
 
 #### Mermaid 架构图：Node.js 项目多阶段构建
 ```mermaid
@@ -780,7 +780,7 @@ graph TD
     B -->|运行 main.py| C[后端服务]
 
 ```
-
+访问 `http://localhost:9004`，确认应用是否正常响应。如果响应成功，说明镜像构建和容器运行无误。
 
 ## 问题排查与最佳实践
 
@@ -802,28 +802,97 @@ graph TD
 * 使用 `.dockerignore`：排除不必要的文件（如 `.git`、临时文件）。
 * 定期清理：删除无用镜像和容器（`docker system prune`）。
 
+### 面试常见问题
+1. 为什么使用多阶段构建？
+    * 答：多阶段构建可以分离构建和运行环境，丢弃不必要的构建工具和依赖，生成更小、更安全的镜像，减少存储和传输成本。
+2. `CMD` 和 `ENTRYPOINT` 的区别是什么？
+    * 答：CMD 是容器启动时的默认命令，可以被运行时参数覆盖；ENTRYPOINT 是固定的入口命令，通常不可覆盖，常用于定义容器主进程。
 
+## 学员作业 讲直接学习的GO 与 Java 自己发布出来
 
+### 请自我准备Go与Java的源码
+```bash
+# 创建项目目录
+mkdir -p /opt/nginx/java-backend.liujun.com
 
+# 进入项目目录
+cd /opt/nginx/java-backend.liujun.com
 
+# 克隆示例项目
+git clone https://gitee.com/Tender-Liu/spring-boot-hello-world.git .
 
+# 创建项目目录
+mkdir -p /opt/nginx/go-backend.liujun.com
 
+# 进入项目目录
+cd /opt/nginx/go-backend.liujun.com
+
+# 克隆示例项目
+git clone https://gitee.com/Tender-Liu/go-starter.git .
+```
+
+### Java的Dockerfile与构建测试
+喂喂喂, 自己cd到项目里面去，我就写cd到目录了
 
 ```bash
-项目实践：Dockerfile 编写
-Python 项目：构建 Flask 应用镜像。
-Java 项目：构建 Spring Boot 应用镜像。
-Node.js 项目：构建 Express 应用镜像。
-前端页面：构建 React/Vue 应用镜像。
-Go 项目：构建 Go Web 应用镜像，使用多阶段构建优化镜像大小。
-镜像优化与最佳实践
-减少镜像层级，清理缓存文件。
-使用多阶段构建（Multi-stage Build）。
-案例：优化一个 Python 应用镜像，减少大小。
-总结与小测验
-总结：Dockerfile 的核心指令与镜像构建优化。
-小测验：编写一个简单的 Dockerfile，回答构建失败的可能原因。
-思考题（面试准备）
-什么是多阶段构建？如何减少镜像体积？
-CMD 和 ENTRYPOINT 的区别是什么？
+# 第一阶段：构建阶段
+# 第一阶段：构建阶段
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/maven:3.9.9-eclipse-temurin-17-alpine AS builder
+
+# 设置工作目录
+WORKDIR /build
+
+# 复制整个项目目录
+COPY . .
+
+# 配置 Maven 镜像源
+RUN mkdir -p /usr/share/maven/conf/ && \
+    sed -i '/<mirrors>/a\    <mirror>\n      <id>aliyun</id>\n      <mirrorOf>central</mirrorOf>\n      <name>Aliyun Maven Repository</name>\n      <url>https://maven.aliyun.com/repository/public</url>\n    </mirror>\n    <mirror>\n      <id>aliyun-central</id>\n      <mirrorOf>central</mirrorOf>\n      <name>Aliyun Central</name>\n      <url>https://maven.aliyun.com/repository/central</url>\n    </mirror>\n    <mirror>\n      <id>aliyun-jcenter</id>\n      <mirrorOf>jcenter</mirrorOf>\n      <name>Aliyun JCenter</name>\n      <url>https://maven.aliyun.com/repository/jcenter</url>\n    </mirror>' /usr/share/maven/conf/settings.xml
+
+# 执行构建
+RUN mvn clean package -DskipTests
+
+# 第二阶段：运行阶段
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/eclipse-temurin:17-jdk-alpine
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制 jar 文件
+COPY --from=builder /build/target/spring-boot-2-hello-world-*-SNAPSHOT.jar spring-boot.jar
+
+# 设置 JVM 参数
+ENV JAVA_OPTS="-Xms128m -Xmx256m"
+
+# 暴露端口（Spring Boot 默认端口）
+EXPOSE 8080
+
+# 启动命令
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar spring-boot.jar"]
+
 ```
+
+**解释**
+
+1. 第一阶段：构建阶段
+   - 使用华为云镜像源的 Maven 3.9.9 镜像作为基础镜像
+   - 设置工作目录为 `/build`
+   - 复制所有源代码和配置文件
+   - 配置阿里云 Maven 镜像源加速依赖下载
+   - 执行 Maven 构建命令，跳过测试
+
+2. 第二阶段：运行阶段
+   - 使用华为云镜像源的 JDK 17 镜像
+   - 设置应用运行目录为 `/app`
+   - 从构建阶段复制构建好的 JAR 包并重命名
+   - 配置 JVM 参数：初始堆内存 128MB，最大堆内存 256MB
+   - 暴露 8080 端口
+   - 设置启动命令运行 Spring Boot 应用
+
+3. 使用方法
+   ```bash
+   # 构建镜像
+   docker build -t spring-boot-app .
+   
+   # 运行容器
+   docker run -d -p 8080:8080 spring-boot-app
