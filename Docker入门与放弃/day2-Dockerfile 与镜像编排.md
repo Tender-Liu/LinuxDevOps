@@ -426,6 +426,91 @@ git clone https://gitee.com/anydev/vue-manage-system.git .
 
 # nginx.conf 配置文件自己准备哈
 ```
+#### 准备nignx.conf 配置文件
+```bash
+vim /opt/nginx/vue-web.liujun.com/nginx.conf
+# 以下是文件内容
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+    multi_accept on;
+    use epoll;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # 定义JSON格式的日志
+    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time", "upstream_addr":"$upstream_addr"}';
+
+    access_log /var/log/nginx/access.log json_combined;
+
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout  65;
+    types_hash_max_size 2048;
+
+    # Gzip 压缩配置 - 为了更好的前端性能，建议开启
+    gzip on;
+    gzip_min_length 1k;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/javascript application/json application/javascript application/x-javascript application/xml application/xml+rss;
+    gzip_vary on;
+    gzip_disable "MSIE [1-6]\.";
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        # Vue 项目构建后的目录
+        root /app;
+        index index.html;
+
+        # 支持 Vue Router 的 history 模式
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+        }
+
+        # 禁止缓存 index.html
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+            add_header Pragma "no-cache";
+            expires -1;
+        }
+
+        # 禁止访问隐藏文件
+        location ~ /\. {
+            deny all;
+        }
+
+        # 静态资源缓存配置
+        # Vue CLI 构建后的文件会带有 hash，所以可以设置较长的缓存时间
+        location /assets {
+            expires 1y;
+            add_header Cache-Control "public";
+            access_log off;
+        }
+
+        # 针对常见静态文件的缓存配置
+        location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc)$ {
+            expires 30d;
+            access_log off;
+            add_header Cache-Control "public";
+        }
+
+    }
+}
+
+```
 
 #### 编写 Dockerfile
 在 `/opt/nginx/vue-web.liujun.com` 目录下，创建 Dockerfile，内容如下：
@@ -519,135 +604,203 @@ git clone https://gitee.com/Tender-Liu/typescript-starter.git .
 
 ```
 
-#### 准备nignx.conf 配置文件
+#### 编写 Dockerfile
+在 `/opt/nginx/vue-backup.liujun.com` 目录下，创建 `Dockerfile`，内容如下：
 ```bash
-vim /opt/nginx/vue-web.liujun.com/nginx.conf
-# 以下是文件内容
+# 第一阶段：构建阶段
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/node:20-alpine3.20 AS builder
 
-user  nginx;
-worker_processes  auto;
+# 设置工作目录
+WORKDIR /app
 
-error_log  /var/log/nginx/error.log warn;
-pid        /var/run/nginx.pid;
+# 首先复制 package.json 和 package-lock.json
+COPY package*.json ./
 
-events {
-    worker_connections  1024;
-    multi_accept on;
-    use epoll;
-}
+# 配置 npm 镜像源并安装所有依赖
+RUN npm install
 
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
+# 复制源代码
+COPY . .
 
-    # 定义JSON格式的日志
-    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time", "upstream_addr":"$upstream_addr"}';
+# 构建项目
+RUN npm run build && npm cache clean --force
 
-    access_log /var/log/nginx/access.log json_combined;
+# 第二阶段：运行阶段
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/node:20-alpine3.20
 
-    sendfile        on;
-    tcp_nopush      on;
-    tcp_nodelay     on;
-    keepalive_timeout  65;
-    types_hash_max_size 2048;
+# 设置环境变量
+ENV NODE_ENV=production
 
-    # Gzip 压缩配置 - 为了更好的前端性能，建议开启
-    gzip on;
-    gzip_min_length 1k;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/javascript application/json application/javascript application/x-javascript application/xml application/xml+rss;
-    gzip_vary on;
-    gzip_disable "MSIE [1-6]\.";
+# 创建工作目录
+WORKDIR /app
 
-    server {
-        listen       80;
-        server_name  localhost;
+# 复制所有必要文件
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/tsconfig*.json ./
 
-        # Vue 项目构建后的目录
-        root /app;
-        index index.html;
+# 设置用户
+USER node
 
-        # 支持 Vue Router 的 history 模式
-        location / {
-            try_files $uri $uri/ /index.html;
-            add_header Cache-Control "no-store, no-cache, must-revalidate";
-        }
+# 暴露端口
+EXPOSE 3000
 
-        # 禁止缓存 index.html
-        location = /index.html {
-            add_header Cache-Control "no-store, no-cache, must-revalidate";
-            add_header Pragma "no-cache";
-            expires -1;
-        }
+# 使用 npm run start 启动应用
+CMD ["npm", "run", "start"]
+```
 
-        # 禁止访问隐藏文件
-        location ~ /\. {
-            deny all;
-        }
+**说明：**
+1. **第一阶段（构建阶段）**
+   * 基于 Node.js 20 Alpine 镜像构建
+   * 复制项目文件并安装依赖
+   * 执行 `npm run build` 生成生产环境代码
+   * 清理 npm 缓存减小体积
 
-        # 静态资源缓存配置
-        # Vue CLI 构建后的文件会带有 hash，所以可以设置较长的缓存时间
-        location /assets {
-            expires 1y;
-            add_header Cache-Control "public";
-            access_log off;
-        }
+2. **第二阶段（运行阶段）**
+   * 使用同样的基础镜像，但只保留运行必需文件
+   * 从构建阶段复制：dist/、node_modules/、配置文件等
+   * 设置 NODE_ENV 为 production 环境
+   * 使用非 root 用户运行应用
 
-        # 针对常见静态文件的缓存配置
-        location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc)$ {
-            expires 30d;
-            access_log off;
-            add_header Cache-Control "public";
-        }
+3. **优化特点**
+   * 多阶段构建减小最终镜像体积
+   * 合理的文件复制顺序利用 Docker 缓存
+   * 仅保留生产环境必需的文件
+   * 暴露 3000 端口并使用 `npm run start` 启动应用
 
-    }
-}
+
+#### 构建镜像
+在 `/opt/nginx/vue-backup.liujun.com` 目录下，执行以下命令构建镜像：
+
+```bash
+docker build -t typescript-starter/master:v1.0 .
+```
+
+构建完成后，查看镜像大小：
+
+```bash
+docker images
+```
+
+#### 运行容器并测试
+启动一个容器，将容器的 3000 端口映射到主机的 9003 端口：
+
+```bash
+docker run -d -p 9003:3000 --name typescript-starter typescript-starter/master:v1.0
+
+```
+
+访问 http://localhost:9003，确认应用是否正常响应。如果响应成功，说明镜像构建和容器运行无误。
+
+#### Mermaid 架构图：Node.js 项目多阶段构建
+```mermaid
+graph TD
+    A[Stage 1: Node.js 构建阶段] -->|生成 dist 文件夹| B[Stage 2: Node.js 运行阶段]
+    A -->|丢弃开发依赖| C[丢弃内容]
+    B -->|最终镜像: node-backend:1.0| D[后端服务]
+    C -.->|不包含| D
+
+```
+
+### Python FastAPI 后端项目：构建后端服务镜像 
+
+#### 项目背景与目标
+FastAPI 是一个高性能的 Python Web 框架，我们的目标是构建一个 FastAPI 应用的镜像。项目启动端口为 8070，映射到主机的 9004 端口进行测试。
+
+#### 准备项目文件
+你已经克隆了 FastAPI 项目并完成依赖安装，操作如下：
+
+```bash
+# 创建项目目录
+mkdir -p /opt/nginx/python-backend.liujun.com
+cd /opt/nginx/python-backend.liujun.com
+
+# 克隆项目源码
+git clone https://gitee.com/Tender-Liu/fastapi-starter.git .
 
 ```
 
 #### 编写 Dockerfile
-在 `/opt/nginx/vue-backup.liujun.com` 目录下，创建 `Dockerfile`，内容如下：
 ```bash
-# 第一阶段：构建 Node.js 项目
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/node:20-alpine3.20 AS build
+# 使用轻量级 Python 基础镜像
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim
 
-# 设置工作目录
+# 创建工作目录
 WORKDIR /app
 
 # 复制项目文件到容器
 COPY . .
 
-# 配置 npm 镜像源，加速下载
-RUN npm config set registry https://registry.npmmirror.com
+# 配置 pip 镜像源，加速下载
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
+    && pip config set global.trusted-host mirrors.aliyun.com
 
-# 安装依赖并构建项目，清理缓存
-RUN npm install && npm run build && npm cache clean --force
+# 安装依赖并清理缓存
+RUN pip install -r requirements.txt --no-cache-dir
 
-# 第二阶段：运行 Node.js 应用
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/node:20-alpine3.20
+# 暴露 8070 端口
+EXPOSE 8070
 
-# 创建工作目录
-WORKDIR /app
+# 启动 FastAPI 应用
+CMD ["python", "main.py"]
 
-# 从第一阶段复制构建好的文件
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/package-lock.json ./package-lock.json
+```
 
-# 安装生产环境依赖（不安装开发依赖）
-RUN npm install --production && npm cache clean --force
+**说明：**
 
-# 暴露 3000 端口
-EXPOSE 3000
+* 基础镜像：使用 python:3.9-slim 作为基础镜像，比完整版镜像小很多。
+* 镜像优化：使用 --no-cache-dir 参数，避免 pip 缓存占用空间。
+* 注意：由于 FastAPI 项目通常不需要编译步骤，这里未使用多阶段构建。如果项目涉及复杂构建，可以考虑多阶段构建。
 
-# 启动应用
-CMD ["node", "dist/index.js"]
+#### 构建镜像
+在 `/opt/nginx/python-backend.liujun.com` 目录下，执行以下命令构建镜像：
+```bash
+docker build -t fastapi-starter/master:1.0 .
+```
+
+构建完成后，查看镜像大小：
+
+```bash
+docker images
+```
+
+#### 运行容器并测试
+启动一个容器，将容器的 8070 端口映射到主机的 9004 端口：
+
+```bash
+docker run -d -p 9004:8070 --name fastapi-starter fastapi-starter/master:1.0 
+```
+
+#### Mermaid 架构图：Python FastAPI 项目构建
+```mermaid
+graph TD
+    A[Stage 1: Python 构建阶段] -->|安装依赖| B[最终镜像: python-backend:1.0]
+    B -->|运行 main.py| C[后端服务]
 
 ```
 
 
+## 问题排查与最佳实践
 
+### 常见问题排查
 
+1. 构建失败问题：
+    * 检查 `Dockerfil` 语法是否正确（如拼写错误）。
+    * 确保基础镜像存在（运行 `docker pull` 测试）。
+    * 查看错误日志，定位具体问题（如依赖安装失败）。
+
+2. 容器启动失败：
+    * 检查端口是否被占用（`docker ps` 查看）。
+    * 查看容器日志（`docker logs <container_name>`）。
+    * 确保 `CMD` 或 `ENTRYPOINT` 命令正确。
+
+### 最佳实践
+* 镜像命名规范：使用清晰的命名和标签（如 fastapi-starter/master:1.0 ），便于管理。
+    * 项目名/代码分支:构建时间与版本
+* 使用 `.dockerignore`：排除不必要的文件（如 `.git`、临时文件）。
+* 定期清理：删除无用镜像和容器（`docker system prune`）。
 
 
 
