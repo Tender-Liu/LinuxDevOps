@@ -183,7 +183,7 @@ docker logs vue-manage-system
 **总结：** 绑定挂载适合开发和临时数据共享，命名卷更适合生产环境和持久化数据管理。
 
 #### 1.2 结构图：存储卷对比（Mermaid 图）
-```bash
+```mermaid
 graph TD
     A[Docker 存储卷] --> B[绑定挂载 Bind Mount]
     A --> C[命名卷 Named Volume]
@@ -467,18 +467,21 @@ FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/golang:1.24-alpi
 # 设置工作目录
 WORKDIR /app
 
-# 复制项目代码到容器
+# 设置 Go 模块代理为阿里云
+ENV GO111MODULE=on
+ENV GOPROXY=https://mirrors.aliyun.com/goproxy/,direct
+
+# 复制整个项目代码
 COPY . .
 
-# 下载依赖并构建
+# 初始化模块并下载依赖
 RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux go build -o pear-admin ./main.go
+
+# 构建应用
+RUN go build -o pear-admin ./main.go
 
 # 使用轻量级镜像运行
 FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/alpine:latest
-
-# 安装必要的工具
-RUN apk --no-cache add ca-certificates
 
 # 设置工作目录
 WORKDIR /app
@@ -486,14 +489,20 @@ WORKDIR /app
 # 复制构建好的二进制文件
 COPY --from=builder /app/pear-admin .
 
-# 复制配置文件（如果有）
-COPY --from=builder /app/config.toml .
+# 复制必要的配置文件和静态资源
+COPY --from=builder /app/config.toml ./config.toml
+COPY --from=builder /app/static ./static
+COPY --from=builder /app/template ./template
+
+# 设置环境变量
+ENV GIN_MODE=release
 
 # 暴露端口
 EXPOSE 8009
 
 # 运行应用
 CMD ["./pear-admin"]
+
 
 ```
 
@@ -523,7 +532,7 @@ director = 'runtime/log'
 [app]
 HttpPort = 8009
 PageSize = 20
-RunMode = "debug"
+RunMode = "info"
 JwtSecret = "0102$%#&*^*&150405"
 ImgSavePath = "static/upload"
 ImgUrlPath = "runtime/upload/images"
@@ -533,8 +542,6 @@ ImgUrlPath = "runtime/upload/images"
 #### 编写 Docker Compose 文件 docker-compose.yml
 定义三个服务：pear-admin（应用）、mysql（数据库）和 redis（缓存）。
 ```bash
-version: '3.8'  # 指定 Docker Compose 文件的版本，3.8 是一个比较新的版本，支持较多的功能和兼容性
-
 services:  # 定义应用中的服务（可以理解为多个容器）
   pear-admin:  # 第一个服务，名字叫 pear-admin，可以自定义
     build: .  # 从当前目录下的 Dockerfile 构建镜像（说明你有自己的自定义镜像）
@@ -550,10 +557,11 @@ services:  # 定义应用中的服务（可以理解为多个容器）
     volumes:  # 挂载数据卷，用于文件共享或持久化
       - ./config.toml:/app/config.toml  # 将本地目录下的 config.toml 文件挂载到容器内的 /app/config.toml 路径
       - pear-log:/app/runtime/log  # 将自定义的数据卷 pear-log 挂载到容器内的 /app/runtime/log 路径，用于存储日志
+    command: sh -c 'sleep 5 && ./pear-admin'  # 等待5秒钟以后，在启动这个项目
     restart: always  # 重启策略，容器退出时总是重启（比如崩溃后自动恢复）
 
   mysql:  # 第二个服务，名字叫 mysql
-    image: mysql:8.0  # 使用官方的 MySQL 镜像，版本为 8.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/mysql:8.0.30  # 使用官方的 MySQL 镜像，版本为 8.0
     container_name: mysql  # 容器名称，方便识别
     environment:  # 设置环境变量，用于配置 MySQL
       MYSQL_ROOT_PASSWORD: root123  # 设置 MySQL 的 root 用户密码为 root123
@@ -569,7 +577,7 @@ services:  # 定义应用中的服务（可以理解为多个容器）
     restart: always  # 重启策略，容器退出时总是重启
 
   redis:  # 第三个服务，名字叫 redis
-    image: redis:latest  # 使用官方的 Redis 镜像，最新版本
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:latest  # 使用官方的 Redis 镜像，最新版本
     container_name: redis  # 容器名称，方便识别
     ports:  # 端口映射
       - "6379:6379"  # 将主机的 6379 端口映射到容器的 6379 端口，外部可以通过主机 6379 访问 Redis
@@ -604,8 +612,6 @@ volumes:  # 定义数据卷
 
 #### 系统垃圾的，用这个，我给你加了资源限制
 ```bash
-version: '3.8'  # 指定 Docker Compose 文件的版本，3.8 是一个较新的版本，支持更多功能和兼容性
-
 services:  # 定义应用中的服务，每个服务对应一个或多个容器
   pear-admin:  # 第一个服务，名字叫 pear-admin，通常是你的主应用
     build: .  # 从当前目录下的 Dockerfile 构建镜像，说明你有自定义镜像
@@ -621,6 +627,7 @@ services:  # 定义应用中的服务，每个服务对应一个或多个容器
     volumes:  # 挂载数据卷，用于文件共享或持久化
       - ./config.toml:/app/config.toml  # 将本地目录下的 config.toml 文件挂载到容器内的 /app/config.toml 路径
       - pear-log:/app/runtime/log  # 将自定义数据卷 pear-log 挂载到容器内的 /app/runtime/log，用于存储日志
+    command: sh -c 'sleep 5 && ./pear-admin'  # 等待5秒钟以后，在启动这个项目
     restart: always  # 重启策略，容器退出时总是重启（比如崩溃后自动恢复）
     deploy:  # 资源限制配置，用于限制内存和 CPU 使用，防止主机资源耗尽
       resources:
@@ -632,7 +639,7 @@ services:  # 定义应用中的服务，每个服务对应一个或多个容器
           memory: "512M"  # 预留 512MB 内存
 
   mysql:  # 第二个服务，名字叫 mysql，通常是数据库服务
-    image: mysql:8.0  # 使用官方 MySQL 镜像，版本为 8.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/mysql:8.0.30  # 使用官方 MySQL 镜像，版本为 8.0
     container_name: mysql  # 容器名称，方便识别
     environment:  # 设置环境变量，用于配置 MySQL
       MYSQL_ROOT_PASSWORD: root123  # 设置 MySQL 的 root 用户密码为 root123
@@ -656,7 +663,7 @@ services:  # 定义应用中的服务，每个服务对应一个或多个容器
           memory: "512M"  # 预留 512MB 内存
 
   redis:  # 第三个服务，名字叫 redis，通常是缓存服务
-    image: redis:latest  # 使用官方 Redis 镜像，最新版本
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:latest  # 使用官方 Redis 镜像，最新版本
     container_name: redis  # 容器名称，方便识别
     ports:  # 端口映射
       - "6379:6379"  # 将主机的 6379 端口映射到容器的 6379 端口，外部可以通过主机 6379 访问 Redis
@@ -699,7 +706,7 @@ volumes:  # 定义数据卷
     ```bash
     docker compose build pear-admin
     ```
-2. 启动服务： `docker-compose up -d`
+2. 启动服务： `docker compose up -d`
 3. 查看日志，确保服务正常运行：
     ```bash
     docker-compose logs pear-admin
@@ -710,7 +717,7 @@ volumes:  # 定义数据卷
 
 5. 停止与清理：(留着先别做)
     ```bash
-    docker-compose down
+    docker compose down
     ```
 
 
