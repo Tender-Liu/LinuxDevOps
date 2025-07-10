@@ -724,35 +724,66 @@ git clone https://gitee.com/Tender-Liu/fastapi-starter.git .
 
 #### 编写 Dockerfile
 ```bash
-# 使用轻量级 Python 基础镜像
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim
+# 第一阶段：依赖安装
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim AS builder
 
 # 创建工作目录
 WORKDIR /app
 
-# 复制项目文件到容器
+# 只复制依赖文件
+COPY requirements.txt .
+
+# 创建虚拟环境在 /app/.venv
+RUN python -m venv .venv
+
+# 激活虚拟环境并安装依赖
+ENV PATH="/app/.venv/bin:$PATH"
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
+    && pip config set global.trusted-host mirrors.aliyun.com \
+    && pip install --no-cache-dir -r requirements.txt
+
+# 第二阶段：运行环境
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim
+
+# 设置维护者信息
+LABEL maintainer="liujun <liujun@example.com>"
+
+# 创建工作目录
+WORKDIR /app
+
+# 从 builder 阶段复制虚拟环境
+COPY --from=builder /app/.venv .venv
+
+# 复制应用代码
 COPY . .
 
-# 配置 pip 镜像源，加速下载
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
-    && pip config set global.trusted-host mirrors.aliyun.com
-
-# 安装依赖并清理缓存
-RUN pip install -r requirements.txt --no-cache-dir
+# 设置虚拟环境 PATH
+ENV PATH="/app/.venv/bin:$PATH"
 
 # 暴露 8070 端口
 EXPOSE 8070
 
-# 启动 FastAPI 应用
-CMD ["python", "main.py"]
+# 使用虚拟环境中的 python 启动
+CMD ["/app/.venv/bin/python", "main.py"]
 
 ```
 
 **说明：**
 
-* 基础镜像：使用 python:3.9-slim 作为基础镜像，比完整版镜像小很多。
-* 镜像优化：使用 --no-cache-dir 参数，避免 pip 缓存占用空间。
-* 注意：由于 FastAPI 项目通常不需要编译步骤，这里未使用多阶段构建。如果项目涉及复杂构建，可以考虑多阶段构建。
+* 基础镜像：再次使用 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim 作为基础镜像，确保运行环境干净且轻量。
+* 维护者信息：通过 LABEL 指令添加维护者信息，便于镜像管理。
+* 工作目录：设置工作目录为 /app，与第一阶段保持一致。
+* 复制虚拟环境：使用 COPY --from=builder 从第一阶段（builder）复制虚拟环境目录 .venv 到当前镜像。这意味着只复制了安装好的依赖，而不包含第一阶段的其他内容（如构建工具或临时文件）。
+* 复制应用代码：将整个项目代码复制到镜像中。由于代码通常较小，这一操作不会显著增加镜像体积。
+* 设置虚拟环境路径：通过 ENV PATH="/app/.venv/bin:$PATH" 确保容器启动时使用虚拟环境中的 Python 和相关工具。
+* 暴露端口：使用 EXPOSE 8070 声明容器监听 8070 端口（假设这是 FastAPI 项目的默认端口）。
+* 启动命令：使用 CMD ["/app/.venv/bin/python", "main.py"] 指定容器启动时运行虚拟环境中的 Python 解释器，并执行 main.py 文件。
+
+**优化点：**
+
+* 只从第一阶段复制虚拟环境目录 .venv，丢弃了不必要的构建文件，减少镜像体积。
+* 使用虚拟环境中的 Python 启动应用，确保依赖隔离，避免与镜像全局环境冲突。
+* 运行环境镜像保持干净，只包含必要的依赖和代码。
 
 #### 构建镜像
 在 `/opt/nginx/python-backend.liujun.com` 目录下，执行以下命令构建镜像：
@@ -776,8 +807,10 @@ docker run -d -p 9004:8070 --name fastapi-starter fastapi-starter/master:1.0
 #### Mermaid 架构图：Python FastAPI 项目构建
 ```mermaid
 graph TD
-    A[Stage 1: Python 构建阶段] -->|安装依赖| B[最终镜像: python-backend:1.0]
-    B -->|运行 main.py| C[后端服务]
+    A[Stage 1: Builder 阶段] -->|生成虚拟环境依赖| B[Stage 2: Runtime 阶段]
+    A -->|丢弃构建缓存| C[丢弃内容]
+    B -->|最终镜像: python-backend| D[FastAPI 服务]
+    C -.->|不包含| D
 
 ```
 访问 `http://localhost:9004`，确认应用是否正常响应。如果响应成功，说明镜像构建和容器运行无误。
@@ -936,14 +969,14 @@ CMD ["./app"]
 **说明：**
 
 1. 第一阶段（构建阶段）：
-    * 使用 golang:1.24-alpine 作为基础镜像，轻量且包含 Go 编译环境。
+    * 使用 `golang:1.24-alpine` 作为基础镜像，轻量且包含 Go 编译环境。
     * 复制项目文件到容器，设置 GOPROXY 环境变量以加速依赖下载。
     * 执行 go mod tidy 确保依赖完整，然后编译项目生成可执行文件 app。
 2. 第二阶段（运行阶段）：
-    * 使用 alpine:latest 作为基础镜像，进一步减少镜像体积（Alpine 是一个极轻量级的 Linux 发行版）。
+    * 使用 `alpine:latest` 作为基础镜像，进一步减少镜像体积（Alpine 是一个极轻量级的 Linux 发行版）。
     * 只复制第一阶段生成的 app 可执行文件，丢弃 Go 编译环境和源码。
     * 暴露 8080 端口（如果项目端口不同，请根据实际情况修改）。
-    * 使用 CMD 指定启动命令为 ./app。
+    * 使用 CMD 指定启动命令为 `./app`。
 3. 镜像优化：
     * 通过多阶段构建，最终镜像只包含运行时所需的可执行文件，体积大幅减小。
     * 使用 Alpine 镜像作为运行环境，减少不必要的依赖和工具。
