@@ -568,6 +568,7 @@ services:  # 定义应用中的服务（可以理解为多个容器）
       MYSQL_DATABASE: pear_admin  # 创建一个名为 pear_admin 的数据库
       MYSQL_USER: admin  # 创建一个用户名为 admin 的用户
       MYSQL_PASSWORD: admin123  # 设置用户 admin 的密码为 admin123
+      MYSQL_ROOT_HOST: '%'  # 允许从任何地址访问
     ports:  # 端口映射
       - "3306:3306"  # 将主机的 3306 端口映射到容器的 3306 端口，外部可以通过主机 3306 访问 MySQL
     volumes:  # 挂载数据卷
@@ -596,6 +597,7 @@ volumes:  # 定义数据卷
 ```
 
 **整体解释**
+
 这段 docker-compose.yml 文件定义了一个包含三个服务的应用：
 
 * pear-admin：这是一个自定义的服务，可能是你的主应用（比如一个后端服务）。它依赖于 mysql 和 redis，通过构建当前目录的 Dockerfile 生成镜像，并映射了 8009 端口供外部访问。配置文件和日志通过挂载方式与主机共享。
@@ -646,6 +648,7 @@ services:  # 定义应用中的服务，每个服务对应一个或多个容器
       MYSQL_DATABASE: pear_admin  # 创建一个名为 pear_admin 的数据库
       MYSQL_USER: admin  # 创建一个用户名为 admin 的用户
       MYSQL_PASSWORD: admin123  # 设置用户 admin 的密码为 admin123
+      MYSQL_ROOT_HOST: '%'  # 允许从任何地址访问
     ports:  # 端口映射
       - "3306:3306"  # 将主机的 3306 端口映射到容器的 3306 端口，外部可以通过主机 3306 访问 MySQL
     volumes:  # 挂载数据卷
