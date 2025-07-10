@@ -786,6 +786,13 @@ RUN python -m venv .venv \
 
 # 拷贝项目代码
 COPY . .
+
+# 暴露 8070 端口
+EXPOSE 8070
+
+# 使用虚拟环境中的 python 启动
+CMD ["/app/.venv/bin/python", "main.py"]
+
 ```
 
 **说明：**
