@@ -768,6 +768,26 @@ CMD ["/app/.venv/bin/python", "main.py"]
 
 ```
 
+#### Python 不分阶段构建，体积更小
+```bash
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim
+
+# 创建工作目录
+WORKDIR /app
+
+# 拷贝依赖文件并安装依赖到虚拟环境
+COPY requirements.txt .
+
+# 创建虚拟环境并激活路径
+RUN python -m venv .venv \
+    && ./.venv/bin/pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
+    && ./.venv/bin/pip config set global.trusted-host mirrors.aliyun.com \
+    && ./.venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# 拷贝项目代码
+COPY . .
+```
+
 **说明：**
 
 * 基础镜像：再次使用 swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim 作为基础镜像，确保运行环境干净且轻量。
