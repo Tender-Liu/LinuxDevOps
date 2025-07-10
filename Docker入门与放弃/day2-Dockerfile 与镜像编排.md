@@ -424,91 +424,6 @@ git clone https://gitee.com/anydev/vue-manage-system.git .
 
 # nginx.conf 配置文件自己准备哈
 ```
-#### 准备nignx.conf 配置文件
-```bash
-vim /opt/nginx/vue-web.liujun.com/nginx.conf
-# 以下是文件内容
-
-user  nginx;
-worker_processes  auto;
-
-error_log  /var/log/nginx/error.log warn;
-pid        /var/run/nginx.pid;
-
-events {
-    worker_connections  1024;
-    multi_accept on;
-    use epoll;
-}
-
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-
-    # 定义JSON格式的日志
-    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time", "upstream_addr":"$upstream_addr"}';
-
-    access_log /var/log/nginx/access.log json_combined;
-
-    sendfile        on;
-    tcp_nopush      on;
-    tcp_nodelay     on;
-    keepalive_timeout  65;
-    types_hash_max_size 2048;
-
-    # Gzip 压缩配置 - 为了更好的前端性能，建议开启
-    gzip on;
-    gzip_min_length 1k;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/javascript application/json application/javascript application/x-javascript application/xml application/xml+rss;
-    gzip_vary on;
-    gzip_disable "MSIE [1-6]\.";
-
-    server {
-        listen       80;
-        server_name  localhost;
-
-        # Vue 项目构建后的目录
-        root /app;
-        index index.html;
-
-        # 支持 Vue Router 的 history 模式
-        location / {
-            try_files $uri $uri/ /index.html;
-            add_header Cache-Control "no-store, no-cache, must-revalidate";
-        }
-
-        # 禁止缓存 index.html
-        location = /index.html {
-            add_header Cache-Control "no-store, no-cache, must-revalidate";
-            add_header Pragma "no-cache";
-            expires -1;
-        }
-
-        # 禁止访问隐藏文件
-        location ~ /\. {
-            deny all;
-        }
-
-        # 静态资源缓存配置
-        # Vue CLI 构建后的文件会带有 hash，所以可以设置较长的缓存时间
-        location /assets {
-            expires 1y;
-            add_header Cache-Control "public";
-            access_log off;
-        }
-
-        # 针对常见静态文件的缓存配置
-        location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc)$ {
-            expires 30d;
-            access_log off;
-            add_header Cache-Control "public";
-        }
-
-    }
-}
-
-```
 
 #### 编写 Dockerfile
 在 `/opt/nginx/vue-web.liujun.com` 目录下，创建 Dockerfile，内容如下：
@@ -602,6 +517,92 @@ git clone https://gitee.com/Tender-Liu/typescript-starter.git .
 
 ```
 
+#### 准备nignx.conf 配置文件
+```bash
+vim /opt/nginx/vue-web.liujun.com/nginx.conf
+# 以下是文件内容
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+    multi_accept on;
+    use epoll;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # 定义JSON格式的日志
+    log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time", "upstream_addr":"$upstream_addr"}';
+
+    access_log /var/log/nginx/access.log json_combined;
+
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout  65;
+    types_hash_max_size 2048;
+
+    # Gzip 压缩配置 - 为了更好的前端性能，建议开启
+    gzip on;
+    gzip_min_length 1k;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/javascript application/json application/javascript application/x-javascript application/xml application/xml+rss;
+    gzip_vary on;
+    gzip_disable "MSIE [1-6]\.";
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        # Vue 项目构建后的目录
+        root /app;
+        index index.html;
+
+        # 支持 Vue Router 的 history 模式
+        location / {
+            try_files $uri $uri/ /index.html;
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+        }
+
+        # 禁止缓存 index.html
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+            add_header Pragma "no-cache";
+            expires -1;
+        }
+
+        # 禁止访问隐藏文件
+        location ~ /\. {
+            deny all;
+        }
+
+        # 静态资源缓存配置
+        # Vue CLI 构建后的文件会带有 hash，所以可以设置较长的缓存时间
+        location /assets {
+            expires 1y;
+            add_header Cache-Control "public";
+            access_log off;
+        }
+
+        # 针对常见静态文件的缓存配置
+        location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc)$ {
+            expires 30d;
+            access_log off;
+            add_header Cache-Control "public";
+        }
+
+    }
+}
+
+```
+
 #### 编写 Dockerfile
 在 `/opt/nginx/vue-backup.liujun.com` 目录下，创建 `Dockerfile`，内容如下：
 ```bash
@@ -622,9 +623,6 @@ RUN npm install && npm run build && npm cache clean --force
 
 # 第二阶段：运行 Node.js 应用
 FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/node:20-alpine3.20
-
-# 设置维护者信息
-LABEL maintainer="liujun <liujun@example.com>"
 
 # 创建工作目录
 WORKDIR /app
