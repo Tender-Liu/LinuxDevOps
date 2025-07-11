@@ -48,23 +48,16 @@ Docker 网络是 Docker 容器运行时的重要组成部分，它决定了容�
 ### 结构图：网络模型对比（Mermaid 图）
 以下是 Docker 网络模型的对比结构图，帮助你直观理解各种模式的区别：
 ```mermaid
-graph TD
-    A[Docker 网络模式] --> B[Bridge 默认]
-    A --> C[Host 主机模式]
-    A --> D[None 无网络]
-    A --> E[用户自定义桥接网络]
-    B --> B1[内部子网通信]
-    B --> B2[无法通过容器名解析]
-    B --> B3[适合单容器测试]
-    C --> C1[共享主机网络]
-    C --> C2[无隔离,易冲突]
-    C --> C3[适合高性能需求]
-    D --> D1[完全隔离]
-    D --> D2[无网络配置]
-    D --> D3[适合离线任务]
-    E --> E1[内置DNS服务]
-    E --> E2[通过容器名通信]
-    E --> E3[适合微服务架构]
+graph TB
+    A[Docker网络模式] --> B[桥接模式<br>Bridge]
+    A --> C[主机模式<br>Host]
+    A --> D[无网络模式<br>None]
+    A --> E[自定义网络<br>User-defined Bridge]
+    
+    B -->|像公寓楼| B1[每个容器有独立IP<br>需要端口映射]
+    C -->|像平房| C1[直接使用主机网络<br>可能端口冲突]
+    D -->|像太空舱| D1[完全隔离<br>无法联网]
+    E -->|像智能小区| E1[容器间可通过名字通信<br>更安全和便捷]
 
 ```
 
@@ -99,6 +92,17 @@ graph TD
 
 ```bash
 docker network create network-route
+```
+
+```bash
+# 查看所有网络
+docker network ls
+
+# 预期输出:
+NETWORK ID     NAME      DRIVER    SCOPE
+9a339e3ba31b   bridge    bridge    local
+b5fbc94898d4   host      host      local
+c785a15a3bf0   none      null      local
 ```
 
 **2. 启动容器并加入自定义网络，同时映射端口**
@@ -724,4 +728,203 @@ volumes:  # 定义数据卷
     ```
 
 
-## 
+## Harbor 私有仓库
+
+### 理论学习 - 为什么要用 Harbor？它到底是个啥？
+想象一下，Docker Hub 是一个全球公开的、巨大的公共图书馆。任何人都可以从里面借书（拉取镜像），很多人也可以把自己的书放进去（推送镜像）。
+
+这很方便，但对于一个公司或一个团队来说，有几个大问题：
+
+1. 安全问题： 你公司花大价钱开发的核心项目代码，打包成镜像后，你敢随手就放到这个公共图书馆里吗？肯定不敢，这是商业机密。
+2. 网络问题： 这个公共图书馆在美国，你在国内访问，借书（拉取镜像）的速度会很慢，特别是在网络不好的时候，非常影响开发和部署效率。
+3. 管理问题： 公共图书馆没法让你精细地管理“谁能看这本书，谁不能看”。
+
+Harbor 就是来解决这些问题的！
+
+* 安全可控： 这个图书馆建在你家里，只有你和你授权的人（团队成员）才能访问，外面的人根本不知道它的存在。你的核心镜像放在这里，绝对安全。
+* 速度飞快： 图书馆就在局域网内，拉取和推送镜像的速度就像从你电脑的一个盘符复制文件到另一个盘符一样快。
+* 权限管理： 你是这个图书馆的馆长，可以设置哪个项目组只能看自己的书（镜像），哪个项目组可以上传新书，权限分得清清楚楚。
+* 附加功能： Harbor 还提供了很多高级功能，比如自动扫描你上传的镜像有没有已知的安全漏洞，就像给书做安全检查一样。
+
+**总结一句话：** Harbor 是一个企业级的、功能强大的、用来存放和管理 Docker 镜像的私有仓库软件。
+
+
+### 安装部署 - 我们来动手搭建一个！
+我们将在局域网的一台服务器上安装 Harbor，并且为了方便，我们使用 HTTP 协议，这最适合初学者入门。
+
+#### 准备工作：
+* 一台 Linux 服务器（例如 IP 地址是 192.168.110.164）。
+* 这台服务器上已经安装好了 docker 和 docker compose。（如果没装，需要先参考 Day 1 的内容安装好）。
+
+#### 操作步骤：
+##### 1. 下载 Harbor 安装包
+Harbor 官方推荐使用离线安装包进行部署。
+
+```bash
+# 去 Harbor 的 Github Release 页面找一个版本，比如 v2.13.1
+# https://github.com/goharbor/harbor/releases
+wget https://github.com/goharbor/harbor/releases/download/v2.13.1/harbor-online-installer-v2.13.1.tgz
+
+# 解压安装包
+tar -xvf harbor-online-installer-v2.13.1.tgz
+
+# 进入解压后的目录
+cd harbor
+
+```
+
+##### 2. 配置 Harbor
+这是最关键的一步！我们需要修改配置文件 harbor.yml。
+
+```bash
+# 复制一份配置文件模板
+cp harbor.yml.tmpl harbor.yml
+
+# 编辑配置文件
+vim harbor.yml
+
+```
+
+在 harbor.yml 文件里，我们主要修改两个地方：
+
+* 设置访问域名 (hostname):
+    找到 hostname: 这一行，把它改成一个我们自己规划的域名。这个域名不需要在公网注册，是我们局域网内部使用的。
+    ```bash
+    # 比如我们把它命名为 harbor.labworlds.cc
+    hostname: harbor.labworlds.cc
+    ```
+
+* 配置 HTTP 访问 (放弃 HTTPS):
+  找到 https 相关部分，把它整个注释掉（在每一行前面加 #）。然后找到 http: 部分，取消注释并设置端口为 80。
+  ```bash
+  # ... 省略前面的内容 ...
+
+  # http related config
+  http:
+    # port for http, default is 80. If set to -1, http is disabled
+    port: 80
+
+  # https related config
+  #https:
+    # port for https, default is 443
+    #port: 443
+    # The path of cert and key files for nginx
+    #certificate: /your/certificate/path
+    #private_key: /your/private/key/path
+
+  ```
+
+* 设置管理员密码 (可选但建议):
+  ```bash
+  harbor_admin_password: admin123
+  ```
+
+##### 3. 执行安装脚本
+    在 harbor 目录下，运行安装脚本。Harbor 会用 Docker Compose 自动拉取所需镜像并启动所有服务。
+
+    ```bash
+    sudo ./install.sh
+    ```
+  
+#### 第三步：配置客户端 - 让你的电脑认识并信任这个私有仓库
+现在 Harbor 服务已经跑起来了，但你的 Docker 还不知道它，也不信任它。我们需要做两件事：
+
+1. 配置 Hosts 解析 (告诉电脑域名在哪)
+
+  * 目的： 我们的电脑只知道 www.baidu.com 在哪，但不知道我们自己编的 harbor.test.com 是谁。我们需要手动告诉它。
+  * 操作 (sudo vim /etc/hosts): 
+      在你的开发电脑（或者任何想使用这个 Harbor 仓库的电脑）上，编辑 hosts 文件，在文件末尾添加一行：
+
+      ```bash
+      # 格式：[Harbor服务器的IP地址] [你在harbor.yml中设置的域名]
+      192.168.110.164   harbor.labworlds.cc
+      ```
+
+      保存后，你的电脑就知道访问 harbor.labworlds.cc 时应该去找 192.168.110.164 这台服务器了。
+
+2. 配置 Docker 信任 HTTP 仓库 (告诉 Docker 这个地址是安全的)
+    * 目的： 出于安全考虑，Docker 默认只信任 HTTPS 的仓库。我们的 Harbor 是 HTTP 的，所以 Docker 会拒绝连接，认为它“不安全”。我们需要手动把它加入“信任列表”。
+
+    * 操作 (sudo vim /etc/docker/daemon.json):
+        在你的开发电脑上，编辑 Docker 的配置文件 daemon.json (如果文件不存在，就新建一个)。添加以下内容：
+        ```json
+        {
+            "registry-mirrors": [
+                "https://dockerproxy.com",
+                "https://docker.m.daocloud.io",
+                "https://cr.console.aliyun.com",
+                "https://ccr.ccs.tencentyun.com",
+                "https://hub-mirror.c.163.com",
+                "https://mirror.baidubce.com",
+                "https://docker.nju.edu.cn",
+                "https://docker.mirrors.sjtug.sjtu.edu.cn",
+                "https://github.com/ustclug/mirrorrequest",
+                "https://registry.docker-cn.com"
+            ],
+            "insecure-registries": ["harbor.labworlds.cc"]
+        }
+        ```
+
+    
+    * 重启 Docker 服务使配置生效：
+        ```bash
+        sudo systemctl daemon-reload
+        sudo systemctl restart docker
+        ```
+
+        这样，Docker 就会信任 harbor.test.com 这个仓库了。
+
+#### 第四步：使用 Harbor 仓库
+现在你已经完成了 Harbor 的安装和配置，并且配置了 Docker 信任这个仓库。你可以使用以下命令来操作 Harbor 仓库：
+
+##### 登录 Harbor:
+```bash
+docker login harbor.labworlds.cc
+```
+
+然后会提示你输入用户名和密码：
+
+* 用户名：admin
+* 密码：admin123 (你在 harbor.yml 中设置的密码) 看到 Login Succeeded 就表示成功登录！
+
+##### 准备并标记 (Tag) 镜像
+我们不能直接上传一个 nginx:latest 镜像，需要先给它打上符合私有仓库格式的新标签。
+
+* 格式： [仓库域名]/[项目名]/[镜像名]:[版本号]
+* 说明： Harbor 中有“项目”的概念，用于隔离不同团队的镜像。默认有一个 library 项目。
+
+```bash
+# 1. 先拉取一个官方镜像作为例子
+docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:alpine
+
+# 2. 给它打上我们私有仓库的标签
+# 我们要把它上传到 harbor.test.com 的 library 项目中，命名为 my-nginx，版本为 v1
+docker tag swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:alpine harbor.labworlds.cc/library/nginx:alpine
+
+```
+
+现在用 docker images 命令，你会看到一个新的镜像 harbor.labworlds.cc/library/nginx:alpine
+
+
+##### 上传 (Push) 镜像到 Harbor
+```bash
+docker push harbor.labworlds.cc/library/nginx:alpine
+```
+
+等待上传完成。
+
+##### 验证
+* 浏览器验证： 打开浏览器，访问 http://harbor.labworlds.cc，用 admin 账号登录。点击进入 library 项目，你应该能看到刚刚上传的 my-nginx:v1 镜像！
+* 命令行验证： 在另一台也配置好了 Hosts 和 Docker 的电脑上，或者先把本地镜像删掉，再尝试从私有仓库拉取。
+
+```bash
+# 先删除本地的两个相关镜像
+docker rmi harbor.labworlds.cc/library/nginx:alpine
+docker rmi swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:alpine
+
+# 从私有仓库拉取
+docker pull harbor.labworlds.cc/library/nginx:alpine
+
+# 查看本地镜像，确认拉取成功
+docker images
+```
