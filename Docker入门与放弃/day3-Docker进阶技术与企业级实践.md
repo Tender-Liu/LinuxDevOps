@@ -539,7 +539,7 @@ director = 'runtime/log'
 [app]
 HttpPort = 8009
 PageSize = 20
-RunMode = "info"
+RunMode = "debug"
 JwtSecret = "0102$%#&*^*&150405"
 ImgSavePath = "static/upload"
 ImgUrlPath = "runtime/upload/images"
