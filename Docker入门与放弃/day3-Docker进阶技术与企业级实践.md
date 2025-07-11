@@ -384,22 +384,25 @@ Docker Compose 是一个用于定义和运行多容器 Docker 应用的工具。
 
 ### 示例文件
 ```bash
-services:       # 定义应用的服务
-  web:          # 服务名称，可以自定义
-    image: nginx:latest  # 使用哪个镜像
-    ports:               # 端口映射
-      - "80:80"          # 主机端口:容器端口
-    volumes:             # 挂载数据卷
-      - ./html:/usr/share/nginx/html  # 本地路径:容器路径
-  db:           # 另一个服务
-    image: mysql:5.7
-    environment:         # 环境变量
-      MYSQL_ROOT_PASSWORD: rootpassword
+services:
+  mysql-server:  # 定义服务名称，可自定义
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/mysql:8.0.39  # 使用的镜像（建议使用可信的镜像源）
+    container_name: mysql-server  # 容器名称，方便管理
+    restart: always  # 容器异常退出后自动重启（建议生产环境使用）
+    ports:
+      - "3306:3306"  # 映射端口：宿主机3306 -> 容器3306（MySQL 默认端口）
+    environment:
+      MYSQL_ROOT_PASSWORD: root123  # 设置 root 用户的密码
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql  # 将宿主机的 volume 挂载到容器中的数据目录，用于持久化数据库数据
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'     # 限制容器最多使用 1 个 CPU 核心（仅 Swarm 模式生效）
+          memory: 512M    # 限制内存为 512MB（Compose 本地运行不一定严格限制）
 
-volumes:  # 定义数据卷
-  db_data:
+volumes:
+  mysql-data:  # 定义一个名为 mysql-data 的持久化卷，用于保存数据库数据
 
 ```
 
