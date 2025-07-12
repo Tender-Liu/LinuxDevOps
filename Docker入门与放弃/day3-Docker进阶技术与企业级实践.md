@@ -877,6 +877,14 @@ vim harbor.yml
 
         这样，Docker 就会信任 harbor.test.com 这个仓库了。
 
+
+    * 测试没有问题了，就卸载
+    ```bash
+    ps -a | grep harbor | awk '{print $1}' | xargs -r docker rm -f
+    docker images | grep harbor | awk '{print $3}' | xargs -r docker rmi -f
+    rm -rf /data
+    ```
+
 #### 第四步：使用 Harbor 仓库
 现在你已经完成了 Harbor 的安装和配置，并且配置了 Docker 信任这个仓库。你可以使用以下命令来操作 Harbor 仓库：
 
