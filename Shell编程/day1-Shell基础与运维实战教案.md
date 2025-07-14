@@ -562,10 +562,7 @@ echo "===== 报告结束 ====="
 
 **逻辑流程图：**
 
-````artifact
-id: backup-frequency-calculator-flowchart
-name: 备份频率计算器流程图
-type: mermaid
+````mermaid
 content: |-
   flowchart TD
     A[开始] --> B[提示用户输入总数据量大小 (GB)]
