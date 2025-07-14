@@ -335,9 +335,9 @@ echo "报告生成完成！"
 1. **创建脚本文件**：使用 `vim backup_dmesg.sh` 创建脚本文件，并将上述代码粘贴进去。
 2. **赋予执行权限**：运行 `chmod +x backup_dmesg.sh` 以确保脚本可执行。
 3. **运行脚本**：
-   - 不带参数运行：`./backup_dmesg.sh`（使用默认备份路径和日志路径 `/var/log/dmesg`）。
-   - 带参数运行：`./backup_dmesg.sh /custom/backup/path /custom/log/file.log`（自定义备份路径和日志文件路径）。
-   - **注意**：如果备份路径或 `/var/log/dmesg` 文件需要 root 权限访问，请以 `sudo` 运行脚本：`sudo ./backup_dmesg.sh`。
+   - 不带参数运行命令：`./backup_dmesg.sh`（使用默认备份路径和日志路径 `/var/log/dmesg`）。
+   - 带参数运行命令：`./backup_dmesg.sh /backup/default /var/log/dmesg`（自定义备份路径和日志文件路径）。
+   - **注意**：如果备份路径或 `/var/log/dmesg` 文件需要 root 权限访问，请以 `sudo` 运行脚本：`sudo ./backup_dmesg.sh /backup/default /var/log/dmesg`。
 4. **检查输出**：
    - 观察备份目录是否创建成功，备份文件（如 `dmesg_backup_20250714_151530.tar.gz`）是否生成。
    - 检查日志分析报告是否正确生成，特别是 `ERROR` 详情部分。
@@ -347,31 +347,38 @@ echo "报告生成完成！"
 
 ```bash
 #!/bin/bash
-# 脚本目的：备份 /var/log/dmesg 并对指定日志文件进行分析
+# 日志备份：对 Ubuntu 系统的 /var/log/dmesg 进行定期备份，生成带时间戳的 .tar.gz 文件，便于历史记录和问题追溯。
+# 日志监控：自动分析日志内容，统计错误和信息数量，并输出错误详情，适用于日常运维监控和问题排查。
+# 权限注意：在 Ubuntu 系统中，/var/log/dmesg 通常需要 root 权限访问和备份，因此运行脚本时可能需要使用 sudo。
+# $1  你打包的路径  $2 备份文件路径
 
-# 定义备份目录变量，如果未传入第一个参数则使用默认值
+# 打包好的日志压缩包，存放在哪里
 BACKUP_DIR=${1:-"/backup/default"}
+
+# 定义日志文件路径，如果未传入第二个参数则使用默认值 /var/log/dmesg
+LOG_FILE=${2:-"/var/log/dmesg"}
 
 # 输出备份目录路径
 echo "备份目录是：$BACKUP_DIR"
 
-# 创建备份目录，-p 确保如果目录不存在则创建
-mkdir -p "$BACKUP_DIR"
+# 指定创建文件夹的命令
+mkdir -p $BACKUP_DIR
 
-# 输出创建结果
-echo "已创建备份目录：$BACKUP_DIR"
+echo "备份目录已经创建完成"
 
 # 获取当前时间戳，用于备份文件名（格式：YYYYMMDD_HHMMSS）
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # 定义备份文件名，包含时间戳
+# /backup/default/dmesg_backup_2025xxxxx.tar.gz
 BACKUP_FILE="$BACKUP_DIR/dmesg_backup_$TIMESTAMP.tar.gz"
 
-# 备份 /var/log/dmesg 文件为 tar.gz 格式
-tar -czvf "$BACKUP_FILE" /var/log/dmesg 2>/dev/null && echo "备份成功：$BACKUP_FILE" || echo "备份失败，请检查权限或文件是否存在"
+# 备份/var/log/dmesg 到指定目录
+# tar -zcvf /backup/default/dmesg_backup_2025xxxxx.tar.gz /var/log/dmesg
+sudo tar -czvf $BACKUP_FILE $LOG_FILE && echo "备份成功：$BACKUP_FILE" || echo "备份失败，请检查权限或文件是否存在"
 
-# 定义日志文件路径，如果未传入第二个参数则使用默认值 /var/log/dmesg
-LOG_FILE=${2:-"/var/log/dmesg"}
+echo "日志备份完成，备份文件路径：$BACKUP_FILE"
+
 
 # 从日志文件路径中提取文件名（去除路径部分），使用字符串操作
 LOG_NAME=${LOG_FILE##*/}
@@ -408,8 +415,7 @@ echo "========================="
 
 # 输出包含 ERROR 的行号和内容，使用 grep -n
 echo "错误日志详情（行号:内容）："
-grep -n "ERROR" "$LOG_FILE" 2>/dev/null || echo "未找到错误日志"
-echo "错误详情输出完成！"
+grep -n "ERROR" "$LOG_FILE" 2>/dev/null && echo "错误详情输出完成！" || echo "未找到错误日志"
 
 # 输出脚本执行信息
 echo "脚本文件名：$0"
@@ -452,10 +458,6 @@ flowchart TD
     L --> M[输出包含ERROR的行号和内容]
     M --> N[结束]
 ````
-
-好的，我理解你的需求。由于你还没有学习过 `if-else` 语句，我会避免在优化后的教案中使用条件控制结构，并专注于数值运算和用户输入的基础内容，同时增加挑战性和实用性。以下是调整后的教案内容，确保只使用已经介绍过的概念（如 `(( ))` 和 `read`），并通过更复杂的运维场景提升练习难度。
-
----
 
 ## 5. Shell 中的数值运算（优化版）
 
