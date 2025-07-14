@@ -484,11 +484,7 @@ flowchart TD
 
 **逻辑流程图：**
 
-````artifact
-id: disk-space-calculation-flowchart
-name: 磁盘空间计算流程图
-type: mermaid
-content: |-
+````mermaid
   flowchart TD
     A[开始] --> B[获取系统磁盘分区信息]
     B --> C[提取每个分区的容量]
