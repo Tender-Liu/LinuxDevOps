@@ -823,3 +823,188 @@ done
 4. 考虑添加sleep避免CPU占用过高
 5. 重要场景要做好日志记录
 
+
+## Case介绍
+case语句是shell中的一种流程控制语句，主要用于多分支条件判断。相比if-elif-else结构，case语句更适合对某个变量的多个值进行判断，代码更简洁清晰。
+
+case语句是Shell编程中非常实用的流程控制语句，特别适合菜单选择和命令处理场景。通过合理使用不同的终止方式(;;、;;&、;&)，可以实现更灵活的控制流程。在实际工作中，经常用于系统管理脚本、服务控制脚本等场景。
+
+### 1.Case语句特点
+- 结构清晰，易于维护
+- 支持模式匹配
+- 适合菜单类选择功能
+- 比多重if判断更高效
+
+### 2. Case终止方式
+1. `;;` 常规终止：执行完当前分支后退出case
+```bash
+case $var in
+    1) echo "一";;
+    2) echo "二";;
+esac
+```
+
+2. `;;&` 继续匹配：执行完当前分支后继续匹配下一个条件
+```bash
+case $var in
+    1) echo "一";;&
+    2) echo "二";;
+esac
+```
+
+3. `;&` 直接执行：执行完当前分支后直接执行下一个分支
+```bash
+case $var in
+    1) echo "一";&
+    2) echo "二";;
+esac
+```
+
+### Case语法结构
+```mermaid
+graph TD
+    A[Case语句] --> B[语法结构]
+    A --> C[使用场景]
+    A --> D[终止方式]
+    B --> E[基本语法]
+    B --> F[模式匹配]
+    C --> G[菜单选择]
+    C --> H[服务管理]
+    D --> I[break]
+    D --> J[;;&]
+```
+
+#### 1. 基本语法
+```bash
+case 变量 in
+    模式1)
+        命令1
+        ;;
+    模式2)
+        命令2
+        ;;
+    *)
+        默认命令
+        ;;
+esac
+```
+
+#### 2. 模式匹配规则
+- `|` 表示多模式匹配：`pattern1|pattern2)`
+- `*` 表示任意字符
+- `?` 表示单个字符
+- `[...]` 表示字符范围
+
+### 练习案例：系统服务管理器
+#### 需求介绍
+编写一个服务控制脚本，实现对nginx服务的基本管理功能：
+- 启动服务
+- 停止服务
+- 重启服务
+- 查看状态
+
+#### 要求
+1. 使用case语句实现命令判断
+2. 添加参数检查
+3. 提供使用帮助
+4. 有执行状态提示
+
+#### 参考代码
+```bash
+#!/bin/bash
+# 服务管理脚本
+
+# 检查参数
+if [ $# -eq 0 ]; then
+    echo "错误：缺少参数"
+    echo "用法: $0 {start|stop|restart|status}"
+    exit 1
+fi
+
+case $1 in
+    start)
+        systemctl start nginx
+        echo "启动nginx服务..."
+        ;;
+    stop)
+        systemctl stop nginx
+        echo "停止nginx服务..."
+        ;;
+    restart)
+        systemctl restart nginx
+        echo "重启nginx服务..."
+        ;;
+    status)
+        systemctl status nginx
+        ;;
+    *)
+        echo "用法: $0 {start|stop|restart|status}"
+        ;;
+esac
+```
+
+#### 结题思路
+1. 首先检查命令行参数
+2. 使用case匹配用户输入的命令
+3. 执行对应的systemctl命令
+4. 添加合适的提示信息
+
+### 五、课后作业：系统信息查看器
+#### 需求介绍
+开发一个系统信息查看工具，可以查看：
+- CPU信息
+- 内存使用情况
+- 磁盘空间
+- 系统负载
+
+#### 要求
+1. 使用case实现功能选择
+2. 至少实现3种信息查看功能
+3. 添加帮助信息
+4. 处理无效输入
+
+#### 结题思路
+1. 设计命令行参数格式
+2. 实现各类信息获取函数
+3. 使用case处理不同选项
+4. 完善错误处理和帮助信息
+
+#### 参考代码框架
+```bash
+#!/bin/bash
+# 系统信息查看器
+
+show_help() {
+    echo "用法: $0 {cpu|mem|disk|load}"
+    echo "选项:"
+    echo "  cpu  - 显示CPU信息"
+    echo "  mem  - 显示内存使用"
+    echo "  disk - 显示磁盘空间"
+    echo "  load - 显示系统负载"
+}
+
+case $1 in
+    cpu)
+        top -bn1 | grep "Cpu"
+        ;;
+    mem)
+        free -h
+        ;;
+    disk)
+        df -h
+        ;;
+    load)
+        uptime
+        ;;
+    -h|--help)
+        show_help
+        ;;
+    *)
+        echo "错误：无效选项"
+        show_help
+        exit 1
+        ;;
+esac
+```
+
+
