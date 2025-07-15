@@ -929,11 +929,12 @@ graph TD
     B --> B3[字符类]
     
     C --> C1[锚点^$]
-    C --> C2[单词边界\b]
+    C --> C2[单词边界\\b]
     
-    D --> D1[精确数量{n}]
-    D --> D2[范围数量{n,m}]
+    D --> D1["精确数量{n}"]
+    D --> D2["范围数量{n,m}"]
     D --> D3[简写形式*+?]
+
 ```
 
 图解说明：
@@ -951,7 +952,6 @@ graph TD
    - 范围数量：指定最小和最大次数
    - 简写形式：常用的数量词
 
-抱歉，您说得对。让我们专注于正则表达式的教学。我重新编写一个更适合学习正则表达式的版本：
 
 ### Nginx日志正则表达式分析实验
 
@@ -1063,4 +1063,113 @@ grep -oP '\[.*?\K([0-9]{2})(?=:)' "$LOG_FILE" | sort | uniq -c
    ┌─ " 匹配引号
    ├─ [0-9]{3} 匹配三个数字
    └─ 空格匹配
+```
+
+#### 3. 练习题
+
+1. 编写正则表达式匹配以下内容：
+   - 提取所有GET请求的URL
+   - 提取用户浏览器信息
+   - 提取访问时间的小时和分钟
+
+2. 参考答案：
+```bash
+# GET请求URL
+grep -oP 'GET \K[^ ]*(?= HTTP)' access.log
+
+# 浏览器信息
+grep -oP '"Mozilla[^"]*"' access.log
+
+# 时间（小时:分钟）
+grep -oP '\[.*?\K([0-9]{2}:[0-9]{2})(?=:)' access.log
+```
+
+#### 4. 实践作业
+
+编写一个脚本，使用正则表达式完成以下功能：
+1. 分析GET请求的URL
+2. 统计浏览器类型
+3. 分析访问时间分布
+4. 统计IP访问次数
+5. 提取404错误请求
+6. 统计每小时访问量
+7. 分析POST请求
+
+#### 代码实现
+```bash
+#!/bin/bash
+
+#############################################
+# 脚本名称: nginx_log_practice.sh
+# 功能: Nginx日志分析练习题解答
+# 使用方法: ./nginx_log_practice.sh [日志文件路径]
+#############################################
+
+
+# 检查输入参数
+if [ $# -eq 0 ]; then
+    LOG_FILE="/var/log/nginx/access.log"
+else
+    LOG_FILE="$1"
+fi
+
+# 1. 分析GET请求的URL
+echo "===== TOP 10 GET请求URL ====="
+# -F '"': 以双引号为分隔符
+# $2 ~ /^GET/: 匹配以GET开头的第2个字段
+# print $2: 打印完整GET请求行
+# 第二个awk提取URL部分(第2列)
+# sort: 排序
+# uniq -c: 统计每个URL出现次数
+# sort -nr: 按数字(-n)逆序(-r)排序
+# head -10: 显示前10行
+awk -F '"' '$2 ~ /^GET/ {print $2}' "$LOG_FILE" | \
+    awk '{print $2}' | \
+    sort | uniq -c | sort -nr | head -10
+
+# 2. 统计浏览器类型
+echo -e "\n===== 浏览器类型统计 ====="
+# 提取User Agent字段(最后一个双引号内的内容)
+# sed去除首尾的双引号
+# cut -d/ -f1提取浏览器名称
+awk -F '"' '{print $NF}' "$LOG_FILE" | \
+    sed 's/"//g' | cut -d/ -f1 | \
+    sort | uniq -c | sort -nr | head -5
+
+# 3. 分析访问时间分布
+echo -e "\n===== 访问时间分布(小时) ====="
+# 使用:作为分隔符
+# 提取时间字段中的小时部分
+awk -F: '{print $2}' "$LOG_FILE" | \
+    sort | uniq -c | sort -n
+
+# 4. 统计IP访问次数
+echo -e "\n===== TOP 10 访问IP ====="
+# print $1提取每行第一列(IP地址)
+awk '{print $1}' "$LOG_FILE" | \
+    sort | uniq -c | sort -nr | head -10
+
+# 5. 提取404错误请求
+echo -e "\n===== TOP 10 404错误页面 ====="
+# $9 == "404": 匹配状态码为404的行
+# print $7: 打印URL字段
+awk '$9 == "404" {print $7}' "$LOG_FILE" | \
+    sort | uniq -c | sort -nr | head -10
+
+# 6. 统计每小时访问量
+echo -e "\n===== 每小时访问量 ====="
+# 提取时间戳中的小时部分
+awk -F'[: ]' '{print $4}' "$LOG_FILE" | \
+    sort | uniq -c | sort -n
+
+# 7. 分析POST请求
+echo -e "\n===== TOP 10 POST请求 ====="
+# $2 ~ /^POST/: 匹配以POST开头的请求
+# 提取完整请求行并只显示URL部分
+awk -F '"' '$2 ~ /^POST/ {print $2}' "$LOG_FILE" | \
+    awk '{print $2}' | \
+    sort | uniq -c | sort -nr | head -10
+
+
+
 ```
