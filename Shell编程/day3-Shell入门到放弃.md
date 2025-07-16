@@ -337,7 +337,7 @@ show_statistics
 
 # 全局配置
 BACKUP_DIR="/tmp/backup"        # 备份目录
-LOG_FILE=$1    # 日志文件
+BACKUP_FILE=$1    # 备份的文件
 
 # 函数：记录日志
 # 参数：$1-日志级别 $2-日志消息
@@ -354,7 +354,7 @@ function backup_file() {
     local source=$1
     local destination="${BACKUP_DIR}/$(basename $source).$(date +%Y%m%d)"
     
-    # 检查源文件
+    # 检查源文件s
     if [ ! -f "$source" ]; then
         log_message "ERROR" "源文件不存在：$source"
         return 1
@@ -367,10 +367,10 @@ function backup_file() {
     
     # 执行备份
     if cp "$source" "$destination"; then
-        log_message "INFO" "备份成功：$source -> $destination"
+        log_message "INFO" "备份成功：${source} -> ${destination}"
         return 0
     else
-        log_message "ERROR" "备份失败：$source"
+        log_message "ERROR" "备份失败：${source}"
         return 2
     fi
 }
@@ -380,8 +380,7 @@ function backup_file() {
 echo "=== 文件处理系统测试 ==="
 
 # 测试备份功能
-backup_file "test1.txt"
-backup_file "test2.txt"
+backup_file $BACKUP_FILE
 
 ```
 
