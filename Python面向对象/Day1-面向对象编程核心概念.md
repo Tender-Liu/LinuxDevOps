@@ -373,11 +373,11 @@
 4. **Mermaid 结构图**
    ```mermaid
    graph TD
-       Parent[父类: Animal] -->|继承| Child[子类: Cat]
-       Parent -->|提供| Attr1[属性: name]
-       Parent -->|提供| Method1[方法: speak()]
-       Child -->|重用| Attr1
-       Child -->|重写或扩展| Method1
+        Parent["父类: Animal"] -->|"继承"| Child["子类: Cat"]
+        Parent -->|"提供"| Attr1["属性: name"]
+        Parent -->|"提供"| Method1["方法: speak()"]
+        Child -->|"重用"| Attr1
+        Child -->|"重写或扩展"| Method1
    ```
 
 5. **形象对比（日常生活中）**
@@ -530,11 +530,11 @@
 4. **Mermaid 结构图**
    ```mermaid
    graph TD
-       Parent[父类: Animal] -->|继承| Child1[子类: Dog]
-       Parent -->|继承| Child2[子类: Cat]
-       Parent -->|定义接口| Method[speak()]
-       Child1 -->|重写| MethodDog[speak(): 汪汪]
-       Child2 -->|重写| MethodCat[speak(): 喵喵]
+        Parent["父类: Animal"] -->|"继承"| Child1["子类: Dog"]
+        Parent -->|"继承"| Child2["子类: Cat"]
+        Parent -->|"定义接口"| Method["speak()"]
+        Child1 -->|"重写"| MethodDog["speak(): 汪汪"]
+        Child2 -->|"重写"| MethodCat["speak(): 喵喵"]
    ```
 
 5. **形象对比（日常生活中）**
@@ -679,14 +679,14 @@
 3. **Mermaid 结构图**
    ```mermaid
    graph TD
-       Student[Student 类] -->|包含| Attr1[属性: name]
-       Student -->|包含| Attr2[私有属性: __grade]
-       Student -->|提供| Method1[get_grade()]
-       Student -->|提供| Method2[set_grade()]
-       Student -->|提供| Method3[calculate_level()]
-       CollegeStudent[CollegeStudent 类] -->|继承| Student
-       CollegeStudent -->|新增| Attr3[属性: major]
-       CollegeStudent -->|重写| Method3[calculate_level()]
+        Student["Student 类"] -->|"包含"| Attr1["属性: name"]
+        Student -->|"包含"| Attr2["私有属性: __grade"]
+        Student -->|"提供"| Method1["get_grade()"]
+        Student -->|"提供"| Method2["set_grade()"]
+        Student -->|"提供"| Method3["calculate_level()"]
+        CollegeStudent["CollegeStudent 类"] -->|"继承"| Student
+        CollegeStudent -->|"新增"| Attr3["属性: major"]
+        CollegeStudent -->|"重写"| Method3["calculate_level()"]
    ```
 
 4. **形象对比（日常生活中）**
