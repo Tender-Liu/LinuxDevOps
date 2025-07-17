@@ -132,46 +132,64 @@ if __name__ == "__main__":
 
 ```python
 # 简易计算器程序
+# 这个程序实现了基本的四则运算功能：加法、减法、乘法和除法
 
+# 定义加法函数
 def add_numbers(num1, num2):
     """返回两个数字的和"""
-    return num1 + num2
+    return num1 + num2  # 将两个数相加并返回结果
 
+# 定义减法函数
 def subtract_numbers(num1, num2):
     """返回两个数字的差"""
-    return num1 - num2
+    return num1 - num2  # 将第一个数减去第二个数并返回结果
 
+# 定义乘法函数
 def multiply_numbers(num1, num2):
     """返回两个数字的乘积"""
-    return num1 * num2
+    return num1 * num2  # 将两个数相乘并返回结果
 
+# 定义除法函数
 def divide_numbers(num1, num2):
     """返回两个数字的商"""
-    return num1 / num2
+    return num1 / num2  # 将第一个数除以第二个数并返回结果
 
+# 定义主计算器函数，整合所有功能
 def calculator():
-    """简单计算器主函数"""
+    """简单计算器主函数，处理用户输入并调用相应的运算函数"""
+    # 显示欢迎信息
     print("欢迎使用简易计算器")
     print("可用操作: +（加法）, -（减法）, *（乘法）, /（除法）")
     
-    num1 = float(input("请输入第一个数字: "))
-    num2 = float(input("请输入第二个数字: "))
-    operation = input("请选择操作 (+, -, *, /): ")
+    # 获取用户输入的第一个数字
+    num1 = float(input("请输入第一个数字: "))  # 使用float()将输入转换为浮点数
     
-    if operation == '+':
-        print(f"{num1} + {num2} = {add_numbers(num1, num2)}")
-    elif operation == '-':
-        print(f"{num1} - {num2} = {subtract_numbers(num1, num2)}")
-    elif operation == '*':
-        print(f"{num1} * {num2} = {multiply_numbers(num1, num2)}")
-    elif operation == '/':
-        print(f"{num1} / {num2} = {divide_numbers(num1, num2)}")
-    else:
-        print("无效的操作符")
+    # 获取用户输入的第二个数字
+    num2 = float(input("请输入第二个数字: "))  # 使用float()将输入转换为浮点数
+    
+    # 获取用户选择的运算操作
+    operation = input("请选择操作 (+, -, *, /): ")  # 获取操作符
+    
+    # 根据用户选择的操作执行相应的计算
+    if operation == '+':  # 如果用户选择加法
+        result = add_numbers(num1, num2)  # 调用加法函数并保存结果
+        print(f"{num1} + {num2} = {result}")  # 显示计算结果
+    elif operation == '-':  # 如果用户选择减法
+        result = subtract_numbers(num1, num2)  # 调用减法函数并保存结果
+        print(f"{num1} - {num2} = {result}")  # 显示计算结果
+    elif operation == '*':  # 如果用户选择乘法
+        result = multiply_numbers(num1, num2)  # 调用乘法函数并保存结果
+        print(f"{num1} * {num2} = {result}")  # 显示计算结果
+    elif operation == '/':  # 如果用户选择除法
+        result = divide_numbers(num1, num2)  # 调用除法函数并保存结果
+        print(f"{num1} / {num2} = {result}")  # 显示计算结果
+    else:  # 如果用户输入了无效的操作符
+        print("无效的操作符")  # 显示错误信息
 
 # 程序入口
+# 当直接运行此脚本时，以下代码会执行
 if __name__ == "__main__":
-    calculator()
+    calculator()  # 调用计算器主函数
 ```
 
 ### 练习2：问候函数
