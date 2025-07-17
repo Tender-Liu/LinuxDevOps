@@ -129,21 +129,49 @@ if __name__ == "__main__":
 1. 编写一个函数，实现两个数的加法
 2. 编写一个函数，实现两个数的乘法
 
+
 ```python
-# 加法函数
+# 简易计算器程序
+
 def add_numbers(num1, num2):
+    """返回两个数字的和"""
     return num1 + num2
 
-# 乘法函数
+def subtract_numbers(num1, num2):
+    """返回两个数字的差"""
+    return num1 - num2
+
 def multiply_numbers(num1, num2):
+    """返回两个数字的乘积"""
     return num1 * num2
 
+def divide_numbers(num1, num2):
+    """返回两个数字的商"""
+    return num1 / num2
 
-# 控制程序的执行入口    
+def calculator():
+    """简单计算器主函数"""
+    print("欢迎使用简易计算器")
+    print("可用操作: +（加法）, -（减法）, *（乘法）, /（除法）")
+    
+    num1 = float(input("请输入第一个数字: "))
+    num2 = float(input("请输入第二个数字: "))
+    operation = input("请选择操作 (+, -, *, /): ")
+    
+    if operation == '+':
+        print(f"{num1} + {num2} = {add_numbers(num1, num2)}")
+    elif operation == '-':
+        print(f"{num1} - {num2} = {subtract_numbers(num1, num2)}")
+    elif operation == '*':
+        print(f"{num1} * {num2} = {multiply_numbers(num1, num2)}")
+    elif operation == '/':
+        print(f"{num1} / {num2} = {divide_numbers(num1, num2)}")
+    else:
+        print("无效的操作符")
+
+# 程序入口
 if __name__ == "__main__":
-    # 测试代码
-    print(add_numbers(5, 3))      # 输出：8
-    print(multiply_numbers(4, 6))  # 输出：24
+    calculator()
 ```
 
 ### 练习2：问候函数
