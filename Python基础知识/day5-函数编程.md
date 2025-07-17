@@ -196,26 +196,61 @@ if __name__ == "__main__":
 **要求：**
 1. 编写一个函数，根据时间段返回不同的问候语。
 2. 早上（5-11点）：早上好；下午（12-17点）：下午好；晚上（其他时间）：晚上好。
+3. 增加了更细致的时间段描述（上午、中午、傍晚、深夜、凌晨等）
+4. 返回更完整的问候语句，而不仅仅是简单的问候词
+5. 改进了输出格式，使结果更友好
 
 ```python
 def get_greeting(hour):
+    """
+    根据小时返回适当的问候语和时间描述
+    
+    参数:
+        hour: 整数，表示24小时制的小时数(0-23)
+    
+    返回:
+        字符串，包含问候语和时间段描述
+    """
+    # 确定基本问候语
     if 5 <= hour < 12:
-        return "早上好"
+        greeting = "早上好"
+        time_desc = "早晨"
+        if hour >= 9:
+            time_desc = "上午"
     elif 12 <= hour < 18:
-        return "下午好"
+        greeting = "下午好"
+        time_desc = "午后"
+        if hour < 14:
+            time_desc = "中午"
     else:
-        return "晚上好"
+        greeting = "晚上好"
+        if 18 <= hour < 22:
+            time_desc = "傍晚"
+        elif 22 <= hour <= 23 or hour < 2:
+            time_desc = "深夜"
+        else:
+            time_desc = "凌晨"
+    
+    # 组合完整问候语
+    full_greeting = f"{greeting}！现在是{time_desc}时分。"
+    return full_greeting
 
 
 # 控制程序的执行入口    
 if __name__ == "__main__":
-    # 测试代码
-    morning_greeting = get_greeting(9)
-    print(morning_greeting)  # 输出：早上好
-    afternoon_greeting = get_greeting(14)
-    print(afternoon_greeting)  # 输出：下午好
-    evening_greeting = get_greeting(20)
-    print(evening_greeting)  # 输出：晚上好
+    # 测试不同时间的问候语
+    test_hours = [7, 10, 13, 16, 20, 23, 2]
+    
+    # 循环测试不同时间的问候语
+    for hour in test_hours:
+        message = get_greeting(hour)
+        print(f"{hour}点: {message}")
+    
+    # 添加用户输入功能
+    print("\n===自定义时间测试===")
+    user_hour = int(input("请输入当前小时(0-23): "))
+    user_message = get_greeting(user_hour)
+    print(user_message)
 ```
 
 ### 练习3：成绩等级转换
