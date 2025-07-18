@@ -3,7 +3,9 @@
 > 一个从入门到进阶的Linux运维工程师培养方案，融合理论与实践，助你系统掌握运维技能。
 
 [![Linux基础](https://img.shields.io/badge/Linux-基础入门-blue)](#-linux基础知识)
+[![Shell编程](https://img.shields.io/badge/Shell-脚本编程-yellow)](#-shell编程)
 [![Python编程](https://img.shields.io/badge/Python-自动化运维-green)](#-python基础知识)
+[![Docker容器](https://img.shields.io/badge/Docker-容器技术-red)](#-docker容器技术)
 [![最佳实践](https://img.shields.io/badge/运维-最佳实践-orange)](#-学习指南)
 
 ## 📚 课程内容导航
@@ -26,14 +28,29 @@
 <tr>
 <td width="25%" align="center"><strong>Day5 - 系统监控</strong></td>
 <td width="25%" align="center"><strong>Day6 - 高级管理</strong></td>
-<td width="25%" align="center"><strong>Day7 - 服务配置</strong></td>
-<td width="25%" align="center"><strong>综合实战</strong></td>
+<td width="25%" align="center"><strong>Linux基础服务</strong></td>
+<td width="25%" align="center"><strong>Linux存储服务</strong></td>
 </tr>
 <tr>
 <td>• 资源使用监控<br>• 性能分析方法<br>• 日志管理技巧</td>
-<td>• Shell脚本编程<br>• 任务计划管理<br>• 服务管理方法</td>
-<td>• 时间同步配置<br>• 网络服务部署<br>• 系统优化方案</td>
-<td>• 故障排查演练<br>• 性能优化实战<br>• 运维案例分析</td>
+<td>• 任务计划管理<br>• 服务管理方法<br>• 系统优化方案</td>
+<td>• 时间同步服务<br>• Web服务部署<br>• LVS+Keepalived<br>• HAProxy负载均衡</td>
+<td>• LVM逻辑卷管理<br>• NFS网络文件系统<br>• 存储方案设计</td>
+</tr>
+</table>
+
+### 🐚 Shell编程
+
+<table>
+<tr>
+<td width="33%" align="center"><strong>Day1 - 基础与实战</strong></td>
+<td width="33%" align="center"><strong>Day2 - 流程控制</strong></td>
+<td width="34%" align="center"><strong>Day3 - 高级应用</strong></td>
+</tr>
+<tr>
+<td>• Shell基础语法<br>• 变量与参数<br>• 运维实战案例</td>
+<td>• 条件判断语句<br>• 循环控制结构<br>• 脚本流程设计</td>
+<td>• 函数与作用域<br>• 文本处理工具<br>• 正则表达式应用</td>
 </tr>
 </table>
 
@@ -43,14 +60,14 @@
 <tr>
 <td width="25%" align="center"><strong>环境搭建</strong></td>
 <td width="25%" align="center"><strong>Day1 - 基础语法</strong></td>
-<td width="25%" align="center"><strong>Day2 - 流程控制</strong></td>
-<td width="25%" align="center"><strong>Day3 - 数据结构</strong></td>
+<td width="25%" align="center"><strong>Day2-3 - 数据类型</strong></td>
+<td width="25%" align="center"><strong>Day4-5 - 流程与函数</strong></td>
 </tr>
 <tr>
 <td>• Python环境安装<br>• IDE工具配置<br>• 开发环境准备</td>
-<td>• 数据类型详解<br>• 变量与运算符<br>• 基础语法掌握</td>
+<td>• 数据类型概述<br>• 变量与运算符<br>• 基础语法掌握</td>
+<td>• 字符串处理<br>• 列表和元组<br>• 字典和集合</td>
 <td>• 条件判断语句<br>• 循环控制结构<br>• 函数定义使用</td>
-<td>• 列表和元组<br>• 字典和集合<br>• 序列化处理</td>
 </tr>
 </table>
 
@@ -58,14 +75,27 @@
 
 <table>
 <tr>
-<td width="33%" align="center"><strong>基础概念</strong></td>
-<td width="33%" align="center"><strong>进阶特性</strong></td>
-<td width="34%" align="center"><strong>实战应用</strong></td>
+<td width="50%" align="center"><strong>Day1 - 核心概念</strong></td>
+<td width="50%" align="center"><strong>Day2 - 进阶特性</strong></td>
 </tr>
 <tr>
-<td>• 类与对象基础<br>• 属性和方法<br>• 构造与析构</td>
-<td>• 继承与多态<br>• 封装与抽象<br>• 接口与实现</td>
-<td>• 项目实战练习<br>• 设计模式应用<br>• 代码重构优化</td>
+<td>• 类与对象基础<br>• 封装、继承、多态<br>• 属性和方法<br>• 构造与析构</td>
+<td>• 魔法方法应用<br>• 属性装饰器<br>• 抽象类与接口<br>• 设计模式应用</td>
+</tr>
+</table>
+
+### 🐳 Docker容器技术
+
+<table>
+<tr>
+<td width="33%" align="center"><strong>Day1 - 基础学习</strong></td>
+<td width="33%" align="center"><strong>Day2 - 镜像编排</strong></td>
+<td width="34%" align="center"><strong>Day3 - 进阶实践</strong></td>
+</tr>
+<tr>
+<td>• Docker基础概念<br>• 容器生命周期<br>• 基本命令使用</td>
+<td>• Dockerfile编写<br>• 镜像构建管理<br>• 多容器编排</td>
+<td>• 网络配置管理<br>• 数据持久化<br>• 企业级最佳实践</td>
 </tr>
 </table>
 
@@ -90,7 +120,7 @@
 <tr>
 <td width="33%" align="center" bgcolor="#f0f8ff"><h3>第一阶段：行业认知</h3><em>预计用时：1周</em></td>
 <td width="33%" align="center" bgcolor="#f0fff0"><h3>第二阶段：Linux基础</h3><em>预计用时：4-6周</em></td>
-<td width="34%" align="center" bgcolor="#fff0f0"><h3>第三阶段：Python编程</h3><em>预计用时：6-8周</em></td>
+<td width="34%" align="center" bgcolor="#fff0f0"><h3>第三阶段：编程能力</h3><em>预计用时：6-8周</em></td>
 </tr>
 
 <tr>
@@ -132,7 +162,12 @@
 
 <td>
 
-#### 基础编程 (3周)
+#### Shell编程 (2周)
+- Shell基础语法
+- 流程控制结构
+- 文本处理工具
+
+#### Python基础 (3周)
 - 开发环境搭建
 - Python基础语法
 - 数据结构应用
@@ -141,11 +176,53 @@
 - 类与对象设计
 - 继承多态应用
 - 模块包管理
+</td>
+</tr>
+
+<tr>
+<td width="33%" align="center" bgcolor="#fff8f0"><h3>第四阶段：服务部署</h3><em>预计用时：4-6周</em></td>
+<td width="33%" align="center" bgcolor="#f0f0ff"><h3>第五阶段：容器技术</h3><em>预计用时：3-4周</em></td>
+<td width="34%" align="center" bgcolor="#f8f0ff"><h3>第六阶段：综合实战</h3><em>预计用时：4-6周</em></td>
+</tr>
+
+<tr>
+<td>
+
+#### 基础服务 (2周)
+- Web服务部署
+- 数据库服务
+- 时间同步服务
+
+#### 高级服务 (2周)
+- 负载均衡配置
+- 高可用集群
+- 存储服务管理
+</td>
+
+<td>
+
+#### Docker基础 (1周)
+- 容器基本概念
+- Docker环境搭建
+- 镜像与容器管理
+
+#### 容器编排 (2周)
+- Dockerfile编写
+- 多容器应用
+- 容器网络与存储
+</td>
+
+<td>
 
 #### 自动化运维 (2周)
-- 文本处理工具
-- 系统管理脚本
-- 运维平台开发
+- 自动化脚本开发
+- 监控系统搭建
+- CI/CD流水线
+
+#### 项目实战 (3周)
+- 综合运维平台
+- 微服务架构部署
+- 性能优化与调优
 </td>
 </tr>
 </table>
@@ -234,7 +311,7 @@
 <h3>📅 近期更新计划</h3>
 
 #### 容器技术系列
-- 【进行中】Docker基础入门与实战
+- 【已完成】Docker基础入门与实战
 - 【计划中】Kubernetes集群管理
 - 【计划中】容器编排与服务治理
 
@@ -300,6 +377,17 @@
 </td>
 </tr>
 </table>
+
+## 📂 资源目录
+
+- **Linux基础知识** - Linux系统基础入门与进阶命令
+- **Linux基础服务** - Web服务、时间同步、负载均衡等
+- **Linux存储服务** - LVM、NFS等存储解决方案
+- **Shell编程** - Shell脚本编程从入门到进阶
+- **Python基础知识** - Python编程基础与数据结构
+- **Python面向对象** - 面向对象编程核心概念与进阶
+- **Docker入门与放弃** - Docker容器技术学习指南
+- **行业认知** - 云计算与运维行业发展趋势
 
 > 🎉 **寄语**：
 > 技术的道路上没有捷径，需要脚踏实地、持续积累。保持热爱，持续学习，相信你一定能成为优秀的运维工程师！加油！💪
