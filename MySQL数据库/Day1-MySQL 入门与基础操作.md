@@ -523,6 +523,9 @@ graph TD
   ) ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   ```
 - **比喻**：就像设计 Excel 表格，`id` 是“学号”列，自动递增编号；`name` 是“姓名”列，最多 50 个字，不能为空；`age` 是“年龄”列，存数字。
+- **存储引擎与字符集**  `ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci` 一般不写，配置好数据库后，表默认就是这个。
+
+
 
 ##### 10.2.2.2 删除表 - DROP TABLE
 
@@ -583,7 +586,7 @@ graph TD
       class_id INT PRIMARY KEY AUTO_INCREMENT, -- 主键，自增，唯一标识班级
       class_name VARCHAR(50) NOT NULL,        -- 班级名称，不能为空
       grade INT NOT NULL                      -- 年级，不能为空
-  ) ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  )
 
   -- 创建 students 表，存储学生信息，包含外键关联到 classes 表
   CREATE TABLE students (
@@ -593,7 +596,7 @@ graph TD
       gender ENUM('M', 'F'),                    -- 性别，只能是 M 或 F
       class_id INT,                             -- 外键字段，关联到 classes 表的 class_id
       FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE SET NULL ON UPDATE CASCADE -- 外键约束，删除班级时学生 class_id 置空，更新班级ID时级联更新
-  ) ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  )
 
   -- 创建 teachers 表，存储教师信息，包含外键关联到 classes 表
   CREATE TABLE teachers (
@@ -602,7 +605,7 @@ graph TD
       subject VARCHAR(50) NOT NULL,             -- 教授科目，不能为空
       class_id INT,                             -- 外键字段，关联到 classes 表的 class_id
       FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE SET NULL ON UPDATE CASCADE -- 外键约束，删除班级时教师 class_id 置空，更新班级ID时级联更新
-  ) ENGINE=InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  )
   ```
 - 点击“运行”，执行语句。
 - 刷新左侧 `school` 数据库，看到 `classes`、`students` 和 `teachers` 三张表。
@@ -710,7 +713,7 @@ graph TD
       dept_name VARCHAR(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 部门名称，最多40字符
       PRIMARY KEY (dept_no) USING BTREE, -- 主键，确保部门编号唯一
       UNIQUE INDEX dept_name(dept_name ASC) USING BTREE -- 唯一索引，确保部门名称不重复
-  ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+  );
   ```
 
 - **employees 表**：
@@ -724,7 +727,7 @@ graph TD
       gender ENUM('M','F') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 性别，仅限M或F
       hire_date DATE NOT NULL, -- 入职日期
       PRIMARY KEY (emp_no) USING BTREE -- 主键，确保员工编号唯一
-  ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+  );
   ```
 
 - **dept_emp 表**：
@@ -739,7 +742,7 @@ graph TD
       INDEX dept_no(dept_no ASC) USING BTREE, -- 索引，加速查询
       CONSTRAINT dept_emp_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工
       CONSTRAINT dept_emp_ibfk_2 FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门
-  ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+  );
   ```
 
 - **dept_manager 表**：
@@ -756,7 +759,7 @@ graph TD
       INDEX dept_no(dept_no ASC) USING BTREE, -- 索引，加速查询
       CONSTRAINT dept_manager_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工
       CONSTRAINT dept_manager_ibfk_2 FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门
-  ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+  );
   ```
 
 - **salaries 表**：
@@ -769,7 +772,7 @@ graph TD
       to_date DATE NOT NULL, -- 结束日期
       PRIMARY KEY (emp_no, from_date) USING BTREE, -- 复合主键，确保组合唯一
       CONSTRAINT salaries_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联员工
-  ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+  );
   ```
 
 - **titles 表**：
@@ -782,7 +785,7 @@ graph TD
       to_date DATE NULL DEFAULT NULL, -- 结束日期，可空
       PRIMARY KEY (emp_no, title, from_date) USING BTREE, -- 复合主键，确保组合唯一
       CONSTRAINT titles_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联员工
-  ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+  );
   ```
 
 #### 11.2.3 检查结果
