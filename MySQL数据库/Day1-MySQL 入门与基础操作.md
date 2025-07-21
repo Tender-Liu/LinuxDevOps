@@ -702,7 +702,7 @@ graph TD
     | emp_no      | INT               | -    | PRIMARY KEY, NOT NULL, FOREIGN KEY | 员工编号，关联 employees 表 |
     | title       | VARCHAR           | 50   | PRIMARY KEY, NOT NULL | 职位名称，最多 50 字符            |
     | from_date   | DATE              | -    | PRIMARY KEY, NOT NULL | 开始日期，记录职位生效时间        |
-    | to_date     | DATE              | -    | NULLABLE              | 结束日期，可空，记录职位结束时间  |
+    | to_date     | DATE              | -    | DEFAULT NULL              | 结束日期，可空，记录职位结束时间  |
 
 ##### 11.2.2.2 创建语句（按顺序执行以下 SQL，均带有注释）
 
