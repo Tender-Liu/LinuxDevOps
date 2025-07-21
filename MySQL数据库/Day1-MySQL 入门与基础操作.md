@@ -710,10 +710,8 @@ graph TD
   ```sql
   -- 创建 departments 表，存储部门信息
   CREATE TABLE departments (
-      dept_no CHAR(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 部门编号，固定4位
-      dept_name VARCHAR(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 部门名称，最多40字符
-      PRIMARY KEY (dept_no) USING BTREE, -- 主键，确保部门编号唯一
-      UNIQUE INDEX dept_name(dept_name ASC) USING BTREE -- 唯一索引，确保部门名称不重复
+      dept_no CHAR(4) PRIMARY KEY, -- 部门编号，固定4位， 主键，确保部门编号唯一
+      dept_name VARCHAR(40) NOT NULL -- 部门名称，最多40字符
   );
   ```
 
@@ -721,13 +719,12 @@ graph TD
   ```sql
   -- 创建 employees 表，存储员工基本信息
   CREATE TABLE employees (
-      emp_no INT NOT NULL, -- 员工编号，唯一标识
+      emp_no INT PRIMARY KEY, -- 员工编号，唯一标识,主键，确保员工编号唯一
       birth_date DATE NOT NULL, -- 出生日期
-      first_name VARCHAR(14) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 名字，最多14字符
-      last_name VARCHAR(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 姓氏，最多16字符
-      gender ENUM('M','F') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 性别，仅限M或F
-      hire_date DATE NOT NULL, -- 入职日期
-      PRIMARY KEY (emp_no) USING BTREE -- 主键，确保员工编号唯一
+      first_name VARCHAR(14) NOT NULL, -- 名字，最多14字符
+      last_name VARCHAR(16) NOT NULL, -- 姓氏，最多16字符
+      gender ENUM('M','F') NOT NULL, -- 性别，仅限M或F
+      hire_date DATE NOT NULL -- 入职日期
   );
   ```
 
@@ -735,31 +732,29 @@ graph TD
   ```sql
   -- 创建 dept_emp 表，存储员工与部门的关联信息
   CREATE TABLE dept_emp (
-      emp_no INT NOT NULL, -- 员工编号，关联 employees 表
-      dept_no CHAR(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 部门编号，关联 departments 表
+      emp_no INT, -- 员工编号，关联 employees 表
+      dept_no CHAR(4), -- 部门编号，关联 departments 表
       from_date DATE NOT NULL, -- 开始日期
       to_date DATE NOT NULL, -- 结束日期
-      PRIMARY KEY (emp_no, dept_no) USING BTREE, -- 复合主键，确保组合唯一
-      INDEX dept_no(dept_no ASC) USING BTREE, -- 索引，加速查询
-      CONSTRAINT dept_emp_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工
-      CONSTRAINT dept_emp_ibfk_2 FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门
+      PRIMARY KEY (emp_no, dept_no), -- 复合主键，确保员工与部门组合唯一
+      INDEX idx_dept_no (dept_no), -- 索引，加速部门编号查询
+      FOREIGN KEY (emp_no) REFERENCES employees(emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工表
+      FOREIGN KEY (dept_no) REFERENCES departments(dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门表
   );
   ```
 
 - **dept_manager 表**：
   ```sql
-  -- 先删除可能存在的 dept_manager 表，确保无冲突
-  DROP TABLE IF EXISTS dept_manager;
   -- 创建 dept_manager 表，存储部门经理信息
   CREATE TABLE dept_manager (
       emp_no INT NOT NULL, -- 员工编号，关联 employees 表
-      dept_no CHAR(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 部门编号，关联 departments 表
+      dept_no CHAR(4) NOT NULL, -- 部门编号，关联 departments 表
       from_date DATE NOT NULL, -- 开始日期
       to_date DATE NOT NULL, -- 结束日期
-      PRIMARY KEY (emp_no, dept_no) USING BTREE, -- 复合主键，确保组合唯一
-      INDEX dept_no(dept_no ASC) USING BTREE, -- 索引，加速查询
-      CONSTRAINT dept_manager_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工
-      CONSTRAINT dept_manager_ibfk_2 FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门
+      PRIMARY KEY (emp_no, dept_no), -- 复合主键，确保组合唯一
+      INDEX idx_dept_no (dept_no), -- 索引，加速查询
+      FOREIGN KEY (emp_no) REFERENCES employees(emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工
+      FOREIGN KEY (dept_no) REFERENCES departments(dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门
   );
   ```
 
@@ -771,8 +766,8 @@ graph TD
       salary INT NOT NULL, -- 薪资金额
       from_date DATE NOT NULL, -- 开始日期
       to_date DATE NOT NULL, -- 结束日期
-      PRIMARY KEY (emp_no, from_date) USING BTREE, -- 复合主键，确保组合唯一
-      CONSTRAINT salaries_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联员工
+      PRIMARY KEY (emp_no, from_date), -- 复合主键，确保组合唯一
+      FOREIGN KEY (emp_no) REFERENCES employees(emp_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联员工
   );
   ```
 
@@ -781,11 +776,11 @@ graph TD
   -- 创建 titles 表，存储员工职位信息
   CREATE TABLE titles (
       emp_no INT NOT NULL, -- 员工编号，关联 employees 表
-      title VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL, -- 职位名称，最多50字符
+      title VARCHAR(50) NOT NULL, -- 职位名称，最多50字符
       from_date DATE NOT NULL, -- 开始日期
-      to_date DATE NULL DEFAULT NULL, -- 结束日期，可空
-      PRIMARY KEY (emp_no, title, from_date) USING BTREE, -- 复合主键，确保组合唯一
-      CONSTRAINT titles_ibfk_1 FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联员工
+      to_date DATE DEFAULT NULL, -- 结束日期，可空
+      PRIMARY KEY (emp_no, title, from_date), -- 复合主键，确保组合唯一
+      FOREIGN KEY (emp_no) REFERENCES employees(emp_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联员工
   );
   ```
 
