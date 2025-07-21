@@ -587,7 +587,7 @@ graph TD
       class_id INT PRIMARY KEY AUTO_INCREMENT, -- 主键，自增，唯一标识班级
       class_name VARCHAR(50) NOT NULL,        -- 班级名称，不能为空
       grade INT NOT NULL                      -- 年级，不能为空
-  )
+  );
 
   -- 创建 students 表，存储学生信息，包含外键关联到 classes 表
   CREATE TABLE students (
@@ -597,7 +597,7 @@ graph TD
       gender ENUM('M', 'F'),                    -- 性别，只能是 M 或 F
       class_id INT,                             -- 外键字段，关联到 classes 表的 class_id
       FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE SET NULL ON UPDATE CASCADE -- 外键约束，删除班级时学生 class_id 置空，更新班级ID时级联更新
-  )
+  );
 
   -- 创建 teachers 表，存储教师信息，包含外键关联到 classes 表
   CREATE TABLE teachers (
@@ -606,7 +606,7 @@ graph TD
       subject VARCHAR(50) NOT NULL,             -- 教授科目，不能为空
       class_id INT,                             -- 外键字段，关联到 classes 表的 class_id
       FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE SET NULL ON UPDATE CASCADE -- 外键约束，删除班级时教师 class_id 置空，更新班级ID时级联更新
-  )
+  );
   ```
 - 点击“运行”，执行语句。
 - 刷新左侧 `school` 数据库，看到 `classes`、`students` 和 `teachers` 三张表。
