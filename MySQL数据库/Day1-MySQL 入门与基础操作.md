@@ -752,7 +752,6 @@ graph TD
       from_date DATE NOT NULL, -- 开始日期
       to_date DATE NOT NULL, -- 结束日期
       PRIMARY KEY (emp_no, dept_no), -- 复合主键，确保组合唯一
-      INDEX idx_dept_no (dept_no), -- 索引，加速查询
       FOREIGN KEY (emp_no) REFERENCES employees(emp_no) ON DELETE CASCADE ON UPDATE RESTRICT, -- 外键约束，关联员工
       FOREIGN KEY (dept_no) REFERENCES departments(dept_no) ON DELETE CASCADE ON UPDATE RESTRICT -- 外键约束，关联部门
   );
