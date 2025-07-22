@@ -439,23 +439,47 @@ graph TD
     ```
   - 结果：名字和出生日期应更新。
 - **案例 5：结合 SELECT 子查询更新（简单介绍）**：
-  - 场景：更新薪资记录中，员工编号为 500002 的当前有效薪资为 67000。
+  - 场景：更新薪资记录中，员工编号为 10005 的当前有效薪资为 67000。
+  - **问题说明：** 在 MySQL 中，`UPDATE` 语句的 `WHERE` 条件中不能直接子查询同一张表，否则会报错（`You can't specify target table 'salaries' for update in FROM clause`）。因此，我们需要通过嵌套子查询来解决。
   - SQL 语句：
     ```sql
     -- 更新薪资记录，使用子查询确定当前有效的记录
     UPDATE salaries SET salary = 67000 
-    WHERE emp_no = 500002 
-    AND to_date = (SELECT MAX(to_date) FROM salaries WHERE emp_no = 500002);
+    WHERE emp_no = 10005 
+    AND to_date = (
+        SELECT to_date 
+        FROM (
+            SELECT MAX(to_date) AS to_date 
+            FROM salaries 
+            WHERE emp_no = 10005
+        ) AS temp
+    );
     ```
   - 验证语句：
     ```sql
-    -- 查询员工 500002 的薪资记录，确认是否更新成功
-    SELECT * FROM salaries WHERE emp_no = 500002;
+    -- 查询员工 10005 的薪资记录，确认是否更新成功
+    SELECT * FROM salaries WHERE emp_no = 10005;
     ```
-  - 结果：当前有效的薪资记录应更新为 67000。
-  - 说明：子查询 `(SELECT MAX(to_date) ...)` 用于动态查找最新记录，属于高级用法，这里简单展示，后续会深入讲解。
-- **互动**：问学生：“更新操作成功了吗？通过 SELECT 查看到更新后的结果了吗？结合子查询的用法是否理解？有没有不小心更新了多余的记录？”
-- **注意事项**：始终使用 `WHERE` 条件，更新前可用 `SELECT` 测试范围。
+  - **结果：** 当前有效的薪资记录应更新为 67000。
+- **说明：**
+  - 子查询 `(SELECT MAX(to_date) ...)` 用于动态查找最新记录，但由于 MySQL 的限制，我们通过嵌套一个临时表别名 `temp` 来绕过限制。
+  - 这种方法属于高级用法，这里简单展示，后续会深入讲解子查询和 MySQL 限制的处理技巧。
+- **互动：** 问学生：“更新操作成功了吗？通过 SELECT 查看到更新后的结果了吗？是否理解为什么需要嵌套子查询？有没有不小心更新了多余的记录？”
+- **注意事项：**
+  - 始终使用 `WHERE` 条件限制更新范围，防止误更新其他记录。
+  - 更新前可用 `SELECT` 测试范围，比如先运行以下语句确认要更新的记录：
+    ```sql
+    SELECT * FROM salaries 
+    WHERE emp_no = 10005 
+    AND to_date = (
+        SELECT to_date 
+        FROM (
+            SELECT MAX(to_date) AS to_date 
+            FROM salaries 
+            WHERE emp_no = 10005
+        ) AS temp
+    );
+    ```
 
 ### 9. 删除操作（DELETE）理论与语法介绍
 
@@ -533,23 +557,48 @@ graph TD
     ```
   - 结果：相关薪资记录应被删除，查询结果为空。
 - **案例 5：结合 SELECT 子查询删除（简单介绍）**：
-  - 场景：删除员工 500006 的当前有效薪资记录。
-  - SQL 语句：
+  - **场景：** 删除员工 500006 的当前有效薪资记录。
+  - **问题说明：** 在 MySQL 中，`DELETE` 语句的 `WHERE` 条件中不能直接子查询同一张表，否则会报错（`You can't specify target table 'salaries' for update in FROM clause`）。因此，我们需要通过嵌套子查询来解决。
+  - **SQL 语句：**
     ```sql
-    -- 删除员工 500006 的当前有效薪资记录，使用子查询确定范围
+    -- 删除员工 500006 的当前有效薪资记录，使用嵌套子查询确定范围
     DELETE FROM salaries 
     WHERE emp_no = 500006 
-    AND to_date = (SELECT MAX(to_date) FROM salaries WHERE emp_no = 500006);
+    AND to_date = (
+        SELECT to_date 
+        FROM (
+            SELECT MAX(to_date) AS to_date 
+            FROM salaries 
+            WHERE emp_no = 500006
+        ) AS temp
+    );
     ```
-  - 验证语句：
+  - **验证语句：**
     ```sql
     -- 查询员工 500006 的薪资记录，确认是否删除成功
     SELECT * FROM salaries WHERE emp_no = 500006;
     ```
-  - 结果：当前有效的薪资记录应被删除。
-  - 说明：子查询 `(SELECT MAX(to_date) ...)` 用于动态查找最新记录，属于高级用法，这里简单展示，后续会深入讲解。
-- **注意事项**：由于 `employees` 数据库有外键约束，直接删除 `employees` 表中的员工记录可能报错（因 `salaries` 等表有依赖），因此案例仅删除相关表记录。
-- **互动**：问学生：“删除操作成功了吗？通过 SELECT 确认记录是否删除？结合子查询的用法是否理解？有没有遇到权限或外键约束的错误？”
+  - **结果：** 当前有效的薪资记录应被删除。
+  - **说明：**
+    - 子查询 `(SELECT MAX(to_date) ...)` 用于动态查找最新记录，但由于 MySQL 的限制，我们通过嵌套一个临时表别名 `temp` 来绕过限制。
+    - 这种方法属于高级用法，这里简单展示，后续会深入讲解子查询和 MySQL 限制的处理技巧。
+  - **注意事项：**
+    - 由于 `employees` 数据库可能存在外键约束，直接删除 `employees` 表中的员工记录可能会报错（因 `salaries` 等表有依赖），因此本案例仅删除 `salaries` 表中的相关记录。
+    - 删除操作不可逆，务必谨慎操作，删除前建议先备份数据。
+    - 删除前可用 `SELECT` 测试范围，确保不会误删其他记录，例如：
+      ```sql
+      SELECT * FROM salaries 
+      WHERE emp_no = 500006 
+      AND to_date = (
+          SELECT to_date 
+          FROM (
+              SELECT MAX(to_date) AS to_date 
+              FROM salaries 
+              WHERE emp_no = 500006
+          ) AS temp
+      );
+      ```
+  - **互动：** 问学生：“删除操作成功了吗？通过 SELECT 确认记录是否已删除？是否理解为什么需要嵌套子查询？有没有遇到权限或外键约束的错误？”
 
 ### 11. 练习题
 
