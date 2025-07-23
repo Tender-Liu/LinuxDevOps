@@ -82,7 +82,7 @@ FROM 'app_user'@'%';
 ```
 **解释：** 撤销用户 `app_user` 对 `employees` 数据库所有表的删除权限。
 
-#### **4. SHOW GRANTS 语法（查看权限）**
+#### ** 4. SHOW GRANTS 语法（查看权限）**
 **语法结构：**
 ```sql
 SHOW GRANTS FOR '用户名'@'主机名';
@@ -446,6 +446,83 @@ SHOW BINLOG EVENTS IN 'mysql-bin.000001' LIMIT 10;
 
 **特别提醒：** Binlog 是 MySQL 数据库的重要机制，理解其理论和配置将为后续学习打下坚实基础。期待您的反馈！
 
+## **MySQL配置优化总结**
+修改 `vim /etc/mysql/mysql.conf.d/mysqld.cnf`, 企业配置优化，希望大家喜欢
+```bash
+[mysqld]
+# 基本设置
+# 指定运行 MySQL 的用户，保持默认
+user = mysql
+# MySQL 监听端口
+port = 3306
+# 监听所有地址，允许远程连接（覆盖默认的 127.0.0.1）
+bind-address = 0.0.0.0
+# MySQL X 协议绑定地址，保持默认本地监听
+mysqlx-bind-address = 127.0.0.1
+# 服务器默认字符集，支持 emoji 等复杂字符
+character-set-server = utf8mb4
+# 字符集排序规则
+collation-server = utf8mb4_unicode_ci
+# 默认存储引擎，推荐使用 InnoDB
+default-storage-engine = InnoDB
+
+# InnoDB 缓冲池设置 (内存的60%-75%)
+# InnoDB 缓冲池大小，占内存的60%-75%，用于缓存数据和索引
+innodb_buffer_pool_size = 2560M
+
+# 连接数设置
+# 最大连接数，适配中小型应用
+max_connections = 150
+# 线程缓存大小，减少线程创建开销
+thread_cache_size = 100
+
+# NVMe 固态硬盘优化
+# 关闭邻近页刷新，适合 NVMe SSD
+innodb_flush_neighbors = 0
+# I/O 容量，NVMe 硬盘可设置较高值
+innodb_io_capacity = 1000
+# 每个表独立文件，提升管理效率
+innodb_file_per_table = 1
+# 性能优化，非严格事务一致性场景，日志刷新频率降低
+innodb_flush_log_at_trx_commit = 2
+
+# 其他性能参数
+# MyISAM 引擎缓冲区大小，保持默认，适用于少量 MyISAM 表
+key_buffer_size = 16M
+# 临时表大小，适配中等规模查询
+tmp_table_size = 64M
+# InnoDB 读 I/O 线程数，与 CPU 核心数匹配
+innodb_read_io_threads = 2
+# InnoDB 写 I/O 线程数，与 CPU 核心数匹配
+innodb_write_io_threads = 2
+# MyISAM 表恢复选项，保持默认
+myisam-recover-options = BACKUP
+
+# 日志设置
+# 启用慢查询日志，记录执行时间过长的查询
+slow_query_log = 1
+# 慢查询日志文件路径
+slow_query_log_file = /var/log/mysql/mysql-slow.log
+# 慢查询阈值设为 2 秒
+long_query_time = 2
+# 错误日志文件路径，记录启动和运行错误
+log_error = /var/log/mysql/error.log
+# 二进制日志文件最大大小，控制日志文件增长
+max_binlog_size = 100M
+
+# 安全设置
+# 跳过主机名解析，提升连接速度
+skip-name-resolve
+
+log_bin = /var/log/mysql/mysql-bin  # 开启 Binlog
+binlog_format = ROW                # 记录方式，ROW 更准确
+server_id = 1                      # 主库编号，唯一
+```
+
+**总结**
+  * 配置完成记得 `systemctl restart mysql`
+  * 沙雕，`server_id` 记得集群别重复啊
+
 ## **第三部分：MySQL 主从同步理论与实践**
 
 ### **3.1 主从同步的理论与基本原理**
@@ -535,28 +612,28 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
   ```
 - **记录导出时的 Binlog 位置：** 导出时自动记录数据点，减少手动操作和锁表时间。
   ```bash
-  mysqldump -u root -p --single-transaction --master-data=2 --all-databases > backup.sql
+  mysqldump -u root -p --single-transaction --source-data=2 --all-databases > backup.sql
   ```
-  - `--master-data=2` 会将导出时的 Binlog 文件和 Position 写入备份文件顶部（作为注释），如：
+  - `--source-data=2` 会将导出时的 Binlog 文件和 Position 写入备份文件顶部（作为注释），如：
     ```
     -- CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=1200;
     ```
   - 这样无需额外查询 `SHOW MASTER STATUS`，直接从备份文件提取位置，减少对业务的影响。
 
-**小白类比：** 就像老师在不停课的情况下，把讲义复印给新学生（备份数据），用特殊标记（`--master-data=2`）告诉学生从哪里开始抄新笔记（记录数据点），不耽误其他学生学习。
+**小白类比：** 就像老师在不停课的情况下，把讲义复印给新学生（备份数据），用特殊标记（`--source-data=2`）告诉学生从哪里开始抄新笔记（记录数据点），不耽误其他学生学习。
 
 **小白举例：** 网站数据库每天处理订单，不能停，用 `mysqldump --single-transaction` 导出数据就像在后台悄悄复印讲义，用户下单不受影响。
 
 #### **3.2.2 如何记录导出数据点，确保从库同步正常？**
 全量备份后，Binlog 同步只负责“备份之后的新操作”，必须准确记录备份完成时的 Binlog 文件和 Position（数据点），否则从库同步会错乱。
-- **方法 1：用 `--master-data` 参数（推荐）：** 如上，导出时自动记录数据点，备份文件顶部有 `CHANGE MASTER TO` 语句，直接读取注释即可。
+- **方法 1：用 `--source-data` 参数（推荐）：** 如上，导出时自动记录数据点，备份文件顶部有 `CHANGE MASTER TO` 语句，直接读取注释即可。
 - **方法 2：手动记录（不推荐）：** 导出前执行 `FLUSH TABLES WITH READ LOCK;` 锁定数据库，再执行 `SHOW MASTER STATUS;` 获取 Binlog 文件和 Position，记录后立即解锁 `UNLOCK TABLES;`，但这会短暂影响业务。
 - **为什么重要？** 如果找不到对应数据点，从库可能从错误位置开始同步，导致数据重复或缺失。比如备份时主库在 Position 1200，但从库从 1000 开始同步，就会重复执行旧操作，数据错乱。
 - **小白类比：** 就像学生借旧笔记（备份数据），必须知道老师讲到哪里（数据点），才能从正确位置开始抄新笔记（同步新操作）。如果不知道位置，抄错了地方，笔记就乱了。
 - **小白举例：** 主库备份时已经写到 Position 1200，但从库从 Position 500 开始同步，就会重复处理 500 到 1200 的旧订单，数据库里可能出现重复记录，订单统计就错了。
 
 #### **3.2.3 企业实践建议：**
-- 优先用 `mysqldump --single-transaction --master-data=2` 导出，既不停机，又自动记录数据点。
+- 优先用 `mysqldump --single-transaction --source-data=2` 导出，既不停机，又自动记录数据点。
 - 导出后检查备份文件顶部注释，确认 Binlog 文件和 Position，用于从库配置。
 - 如果数据量大，可用更高效工具（如 Percona XtraBackup），支持热备份且记录 Binlog 位置。
 
@@ -578,26 +655,8 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
 #### **3.3.2 配置步骤（1 主 1 从，全库同步）**
 以下步骤面向所有用户，详细解释每步操作，包含小白类比和举例。
 
-**步骤 0：准备工作（确保主从数据一致）**
-- 如果主库已有数据，需先备份到从库，Binlog 同步只管之后的新操作。
-- **备份主库数据（不停机）：** 在主库执行：
-  ```bash
-  mysqldump -u root -p --single-transaction --master-data=2 --all-databases > backup.sql
-  ```
-  **小白类比：** 就像老师把之前的讲义复印给新学生（备份数据），不影响课堂继续。
-  **小白举例：** 网站主库有 1000 条订单记录，用这个命令备份，就像把 1000 条订单抄到 U 盘，不影响用户继续下单。
-- **提取数据点：** 查看备份文件顶部注释，找到类似以下内容：
-  ```
-  -- CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=1200;
-  ```
-  记录 `MASTER_LOG_FILE` 和 `MASTER_LOG_POS`，用于从库配置。
-- **导入从库：** 将备份文件传到从库（用 `scp` 或其他工具），在从库执行：
-  ```bash
-  mysql -u root -p < backup.sql
-  ```
-  **小白举例：** 就像把 U 盘里的 1000 条订单记录导入从库电脑，从库也有了这 1000 条数据。
 
-**步骤 1：主库设置（192.168.1.100）**
+**步骤 0：主库设置（192.168.1.100）**
 1. **编辑主库配置文件：** 开启 Binlog。
    - 打开配置文件（Ubuntu 上通常是 `/etc/mysql/mysql.conf.d/mysqld.cnf`）：
      ```bash
@@ -622,11 +681,32 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
      ```
    - 创建用户并授权：
      ```sql
-     CREATE USER 'repl'@'192.168.1.101' IDENTIFIED BY 'ReplPass123';
-     GRANT REPLICATION SLAVE ON *.* TO 'repl'@'192.168.1.101';
+     CREATE USER 'repl'@'%' IDENTIFIED BY 'admin123';
+     GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
      FLUSH PRIVILEGES;
      ```
    **小白举例：** 就像老师给学生一个通行证（账号和密码），允许学生来看日记本（Binlog）。
+
+**步骤 1：准备工作（确保主从数据一致）**
+- 如果主库已有数据，需先备份到从库，Binlog 同步只管之后的新操作。
+- 留一手: `-p` 说明你本地登录是要密码的哦，我这里没有密码哈
+- **备份主库数据（不停机）：** 在主库执行：
+  ```bash
+  mysqldump -u root -p --single-transaction --source-data=2 --all-databases > backup.sql
+  ```
+  **小白类比：** 就像老师把之前的讲义复印给新学生（备份数据），不影响课堂继续。
+  **小白举例：** 网站主库有 1000 条订单记录，用这个命令备份，就像把 1000 条订单抄到 U 盘，不影响用户继续下单。
+- **提取数据点：** 查看备份文件顶部注释，找到类似以下内容：
+  ```
+  -- CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=1200;
+  ```
+  记录 `MASTER_LOG_FILE` 和 `MASTER_LOG_POS`，用于从库配置。
+- **导入从库：** 将备份文件传到从库（用 `scp` 或其他工具），在从库执行：
+  ```bash
+  # 注意注意，喂喂喂你是个从库啊，你得干净一点呀，请把你自己之前哪些创建的数据库，给我删除掉，你不干净，会报错的
+  mysql -u root -p < backup.sql
+  ```
+  **小白举例：** 就像把 U 盘里的 1000 条订单记录导入从库电脑，从库也有了这 1000 条数据。
 
 **步骤 2：从库设置（192.168.1.101）**
 1. **编辑从库配置文件：** 设置唯一编号。
@@ -652,9 +732,9 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
    - 设置同步：
      ```sql
      CHANGE MASTER TO
-         MASTER_HOST = '192.168.1.100',    # 主库 IP
+         MASTER_HOST = '192.168.110.8',    # 主库 IP
          MASTER_USER = 'repl',             # 同步账号
-         MASTER_PASSWORD = 'ReplPass123',  # 同步密码
+         MASTER_PASSWORD = 'admin123',  # 同步密码
          MASTER_LOG_FILE = 'mysql-bin.000001',  # 备份时的 Binlog 文件
          MASTER_LOG_POS = 1200;            # 备份时的 Position
      ```
@@ -691,12 +771,37 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
    - 看到“小明”记录，说明同步成功。
    **小白举例：** 学生在从库看到“小明”，说明抄笔记成功，数据和老师一样。
 
+
 #### **3.3.3 注意事项（常见问题）**
 - **版本一致：** 主从 MySQL 版本最好都是 8.0，避免兼容问题。
 - **编号唯一：** `server_id` 必须不同（如主库 1，从库 2）。
-- **初始数据：** 同步前备份主库数据到从库，用 `--master-data=2` 记录数据点。
+- **初始数据：** 同步前备份主库数据到从库，用 `--source-data=2` 记录数据点。
 - **同步延迟：** 从库可能慢几秒，`SHOW SLAVE STATUS` 的 `Seconds_Behind_Master` 显示延迟时间。
 - **小白举例：** 如果从库延迟 5 秒，用户刚下单，可能 5 秒后才能在从库看到订单信息。
+- **重置复制配置** 
+  ```bash
+  # 万一搞错了，重置咯，还能怎么办
+  -- 停止所有复制线程
+  STOP REPLICA;
+
+  -- 重置所有复制配置
+  RESET REPLICA ALL;
+
+  -- 现在重新配置复制（使用新语法）
+  CHANGE MASTER TO
+    MASTER_HOST = '192.168.110.8',    # 主库 IP
+    MASTER_USER = 'repl',             # 同步账号
+    MASTER_PASSWORD = 'admin123',  # 同步密码
+    MASTER_LOG_FILE = 'mysql-bin.000001',  # 备份时的 Binlog 文件
+    MASTER_LOG_POS = 1200;            # 备份时的 Position
+
+  -- 启动复制
+  START REPLICA;
+
+  -- 检查状态
+  SHOW REPLICA STATUS\G
+
+  ```
 
 #### **3.3.4 部分库同步配置提示**
 如果需要部分库同步（本案例不展开），只需在主库配置中加 `binlog_do_db=数据库名`（指定记录的数据库），从库配置中加 `replicate_do_db=数据库名`（指定同步的数据库），重启后生效。具体操作可参考 MySQL 文档。
@@ -707,7 +812,7 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
 ### **总结与下一步计划**
 1. **总结：**
    - **主从同步原理：** 主库用 Binlog Dump Thread 发送 Binlog，从库用 IO Thread 接收到 Relay Log（存储在数据目录如 `/var/lib/mysql/`），SQL Thread 执行，保持数据一致。
-   - **企业问题：** 不停机导出用 `mysqldump --single-transaction --master-data=2`，记录数据点确保从库同步准确。
+   - **企业问题：** 不停机导出用 `mysqldump --single-transaction --source-data=2`，记录数据点确保从库同步准确。
    - **实验配置：** 1 主 1 从步骤详细，备份和同步数据点结合，避免实验失败。
    - **小白类比：** 主从同步就像老师和学生抄笔记，备份和同步结合，确保学生笔记完整。
 
@@ -720,3 +825,306 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
    - 如有疑问（备份、数据点、同步错误），随时告诉我，我会进一步解释。
 
 **特别提醒：** 主从同步中备份和数据点的准确性是成功关键，企业场景下尤其重要。希望这次内容既全面又易懂，能满足你的需求，期待反馈！
+
+
+
+## **第四部分 从主从同步到 ProxySQL：实现读写分离**
+
+#### **3.4.1 为什么要读写分离？（带着问题思考）**
+在搭建好 MySQL 主从同步后，我们已经实现了数据的备份和初步的负载分担：主库负责写操作，从库负责读操作。但随着业务增长，我们会遇到以下问题：
+- **问题 1：如何让应用程序自动区分读和写操作？** 目前主从同步后，应用程序需要手动修改代码，写操作连接主库，读操作连接从库。如果有多个从库，代码逻辑会更复杂，维护成本高。
+- **问题 2：如何动态分配读请求到多个从库？** 如果有多个从库，手动指定某个从库处理读请求，会导致负载不均衡，某些从库过载，某些闲置。
+- **问题 3：如何应对主库故障？** 主库宕机时，需要手动切换从库为主库，应用程序也要修改连接配置，切换时间长，影响业务连续性。
+- **问题 4：如何处理大规模数据和高并发？** 单台主库写入能力有限，数据量大时性能瓶颈明显，主从同步无法解决写入压力问题。
+
+**小白类比：** 就像一个老师（主库）负责写讲义，多个学生（从库）负责回答问题，但现在问题太多，学生不知道谁该回答（读分配问题），老师累得写不动（写压力问题），如果老师生病（主库故障），课堂就乱了（业务中断）。我们需要一个“班主任”（中间层）来协调学生分工，减轻老师负担，甚至在老师不在时安排学生接替。
+
+**小白举例：** 电商网站用户量激增，每天有百万订单写入（主库压力大），千万查询商品（从库读压力大），程序员手动写代码指定主库下单、从库查商品，代码改来改去很麻烦。如果主库宕机，程序员还得连夜改配置，用户无法下单，损失巨大。
+
+**解决思路：** 引入一个中间层工具，自动实现读写分离，动态分配读请求，处理故障切换，甚至支持更复杂的优化策略。这就是 ProxySQL 的作用。
+
+#### **3.4.2 什么是 ProxySQL？**
+ProxySQL 是一个高性能的 MySQL 代理工具，作用是作为应用程序和数据库之间的“代理层”，实现读写分离、负载均衡、查询重写、故障切换和性能监控等功能。搭建好主从同步后，引入 ProxySQL 可以解决上述问题，让数据库架构更高效且易于管理。
+
+**主要功能：**
+- **读写分离：** 自动将写操作（如 INSERT、UPDATE）发往主库，读操作（如 SELECT）发往从库，无需修改应用程序代码。
+- **负载均衡：** 在多个从库之间动态分配读请求，确保各从库负载均衡，支持多种策略（如轮询、权重）。
+- **高可用性：** 支持主从切换，当主库故障时，ProxySQL 可以自动检测并切换到从库，减少业务中断。
+- **查询优化：** 支持查询重写、缓存和监控，优化数据库性能。
+- **轻量高效：** 相比其他中间件，ProxySQL 更轻量，性能开销低，配置灵活。
+
+**小白类比：** ProxySQL 就像一个“班主任”，站在老师（主库）和学生（从库）之间，帮老师分担管理工作：告诉学生谁回答哪个问题（读分配），帮老师收作业（写操作），如果老师生病，安排一个学生临时当老师（主从切换）。
+
+**小白举例：** 电商网站用 ProxySQL 后，程序员不用管主库还是从库，ProxySQL 自动把下单请求发到主库，把查商品请求平均分到几个从库，主库宕机时 ProxySQL 还能快速切换到从库，用户几乎察觉不到问题。
+
+#### **3.4.3 读写分离的原理（详细讲解，面试常考）**
+读写分离是 ProxySQL 的核心功能之一，目的是将数据库操作按类型分开，写操作（INSERT、UPDATE、DELETE）发送到主库，读操作（SELECT）发送到从库，从而减轻主库压力，提高系统性能。以下是 ProxySQL 实现读写分离的详细原理：
+
+- **1. 代理机制：**
+  ProxySQL 基于 MySQL 协议，应用程序连接 ProxySQL 就像连接普通 MySQL 数据库，ProxySQL 接收所有 SQL 请求后进行解析和转发。应用程序无需知道后端是主库还是从库，连接配置只指向 ProxySQL。
+  - **原理：** ProxySQL 监听一个端口（如默认 6033），应用程序通过这个端口发送 SQL 请求，ProxySQL 解析 SQL 语句，判断是读还是写操作，再决定转发到主库还是从库。
+  - **小白类比：** 就像学生有问题不直接问老师，而是先问班主任（ProxySQL），班主任看问题是“提交作业”（写）就转给老师，看问题是“查资料”（读）就转给某个学生。
+  - **小白举例：** 电商网站程序连接 ProxySQL 端口 6033，发一个“SELECT 商品信息”请求，ProxySQL 看是读操作，就转给从库 1 或从库 2 处理。
+
+- **2. SQL 解析与路由：**
+  ProxySQL 内置强大的查询解析引擎，能识别 SQL 语句类型：
+  - 写操作（INSERT、UPDATE、DELETE 等）：默认路由到主库，因为主库是数据更新的源头，确保数据一致性。
+  - 读操作（SELECT 等）：默认路由到从库，根据配置策略（如轮询、权重）选择具体从库，实现负载均衡。
+  - **特殊情况：** 如果读操作涉及事务或需要强一致性（比如刚写入就读取），ProxySQL 可配置将读请求也发往主库。
+  - **小白类比：** 班主任收到问题后，看是“改作业”就给老师（写操作到主库），是“查笔记”就给学生（读操作到从库），如果问题特别急（强一致性），也直接找老师。
+  - **小白举例：** 用户下单后立刻查订单状态，ProxySQL 发现是刚写入的数据，为确保看到最新订单，可能临时把读请求发到主库。
+
+- **3. 负载均衡策略：**
+  ProxySQL 支持多种读操作分配策略，确保多个从库负载均衡：
+  - **轮询（Round-Robin）：** 按顺序分配读请求到每个从库，依次循环。
+  - **权重（Weight）：** 根据从库性能配置权重，性能好的从库分配更多请求。
+  - **延迟感知：** ProxySQL 可监控从库延迟，动态调整分配策略。
+  - **小白举例：** 网站有 3 个从库，ProxySQL 用轮询策略，第一个用户查商品发到从库 1，第二个发到从库 2，第三个发到从库 3，第四个又回到从库 1，这样每个从库负担差不多。
+
+- **4. 主从同步延迟的处理：**
+  由于 MySQL 主从同步可能有延迟，从库数据可能不是最新的，ProxySQL 提供配置选项处理延迟问题：
+  - **强制主库读：** 配置某些关键读操作强制走主库，确保数据一致性。
+  - **延迟监控：** ProxySQL 可实时检测从库延迟，延迟大的从库会减少分配请求，甚至临时下线。
+  - **小白类比：** 学生抄笔记慢（从库延迟），班主任发现某个学生抄得太慢，就少安排他回答问题（减少分配），或者直接问老师（强制主库读）。
+  - **小白举例：** 用户刚下单查订单，如果从库延迟 5 秒看不到新订单，ProxySQL 可以强制把查询发到主库，确保用户看到最新订单。
+
+- **5. 高可用性支持：**
+  ProxySQL 配合主从同步，可实现主库故障时的快速切换：
+  - 配置多个数据库节点，标记主库和从库，故障时 ProxySQL 自动检测并切换写操作到新的主库（需配合脚本或外部工具）。
+  - **小白举例：** 主库宕机就像老师生病，ProxySQL 马上安排一个学生（从库）当临时老师，接管写作业任务，用户下单不受影响。
+
+**读写分离结构图：**
+```mermaid
+graph TD
+    A[应用程序] -->|连接 ProxySQL| B[ProxySQL 代理]
+    B -->|写操作: INSERT, UPDATE| C[主库 Master]
+    B -->|读操作: SELECT| D[从库 Slave 1]
+    B -->|读操作: SELECT| E[从库 Slave 2]
+    C -->|同步 Binlog| D
+    C -->|同步 Binlog| E
+```
+**图解说明：**
+- 应用程序连接 ProxySQL，ProxySQL 解析 SQL，写操作发主库，读操作分发到从库。
+- 主库通过 Binlog 同步数据到从库，确保从库数据最终一致。
+
+#### **3.4.4 为什么要用 ProxySQL 实现读写分离？（核心价值）**
+- **简化开发：** 应用程序无需区分主从库，连接 ProxySQL 即可，代码逻辑简单，维护成本低。
+- **提升性能：** 读写分离减轻主库压力，负载均衡优化从库资源利用率，整体吞吐量提升，ProxySQL 本身性能开销极低。
+- **增强可靠性：** 主库故障时，ProxySQL 快速切换，业务中断时间短。
+- **灵活优化：** ProxySQL 支持查询重写、缓存和监控，适合复杂场景下的性能调优。
+- **小白类比：** 没有班主任（ProxySQL），学生直接找老师，老师累垮，学生分工乱；有了班主任，老师轻松，学生有序，课堂效率高，就算老师不在，班主任也能维持秩序。
+- **小白举例：** 电商网站不用 ProxySQL 时，程序员手动指定主从连接，改代码忙不过来；用了 ProxySQL，程序员只连一个地址，ProxySQL 自动分配请求，网站响应更快，主库宕机也能快速恢复。
+
+---
+
+你好！非常感谢你的反馈和提出的问题。确实，之前的教案中没有明确说明 ProxySQL 连接 MySQL 主库和从库时使用的账号和密码的配置细节，也没有详细解释为什么应用程序通过 ProxySQL 连接时使用的是 ProxySQL 配置的用户，以及如何与 MySQL 用户关联。这些都是非常重要的内容，我会在以下更新中补充这些细节，并对相关步骤进行优化，确保内容更清晰易懂。
+
+我将更新 **3.4.5 ProxySQL 安装与基本配置** 部分，补充 ProxySQL 连接 MySQL 的账号配置说明，并解释用户连接的逻辑和原理。其他部分保持不变。
+
+---
+
+### **3.4 从主从同步到 ProxySQL：实现读写分离**
+
+#### **3.4.5 ProxySQL 安装与基本配置（基于 Docker 的实验步骤）**
+在主从同步基础上部署 ProxySQL，使用 Docker 镜像实现读写分离。以下是具体步骤，假设 ProxySQL 部署在单独的服务器上（IP 地址 192.168.1.102），并且使用镜像 `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/proxysql/proxysql:3.0.1`。
+
+**实验环境：**
+- **主库（Master）：** IP 192.168.1.100，端口 3306
+- **从库 1（Slave 1）：** IP 192.168.1.101，端口 3306
+- **ProxySQL 服务器：** IP 192.168.1.102，Ubuntu 18.04（已安装 Docker）
+- **目标：** 配置 ProxySQL 实现读写分离，写操作走主库，读操作分发到从库。
+
+**步骤 1：准备账号和数据库权限（优化前置步骤）**
+在部署 ProxySQL 之前，先在主库和从库上准备好必要的用户账号和权限，确保后续配置顺利进行。
+1. **创建应用程序用户：** 在主库和从库上创建相同的用户（如 `proxy_user`），并赋予权限。建议主从权限一致，以避免主从切换时的权限问题。
+   ```sql
+   -- 在主库和从库分别执行
+   CREATE USER 'proxy_user'@'%' IDENTIFIED BY 'admin123';
+   GRANT ALL PRIVILEGES ON *.* TO 'proxy_user'@'%';
+   FLUSH PRIVILEGES;
+   ```
+   **注意：** 如果对安全性要求高，可以为从库用户仅赋予读权限（`GRANT SELECT ON *.*`），但建议统一权限以简化管理。
+2. **创建监控用户（可选）：** 为 ProxySQL 监控后端数据库状态创建单独的低权限用户（如 `monitor_user`）。
+   ```sql
+   -- 在主库和从库分别执行
+   CREATE USER 'monitor_user'@'%' IDENTIFIED BY 'monitor_password';
+   GRANT USAGE ON *.* TO 'monitor_user'@'%';
+   FLUSH PRIVILEGES;
+   ```
+3. **验证用户：** 确保用户创建成功，可以通过 MySQL 客户端测试连接。
+   ```bash
+   mysql -u proxy_user -padmin123 -h 192.168.1.100 -P 3306
+   mysql -u proxy_user -padmin123 -h 192.168.1.101 -P 3306
+   ```
+
+**小白类比：** 就像开学前先给老师和学生发好通行证（账号和权限），确保每个人都能进入教室（数据库），避免上课时被拦在门外（权限错误）。
+
+**小白举例：** 电商网站在主库和从库都创建了 `proxy_user`，无论请求发到哪个库都不会因权限问题失败，省去后续排查麻烦。
+
+**步骤 2：安装 Docker（如果未安装）**
+1. 在 ProxySQL 服务器上安装 Docker：
+   ```bash
+   sudo apt update
+   sudo apt install -y docker.io
+   sudo systemctl start docker
+   sudo systemctl enable docker
+   ```
+2. 验证 Docker 是否正常运行：
+   ```bash
+   docker --version
+   ```
+
+**步骤 3：拉取并运行 ProxySQL Docker 镜像**
+1. 拉取提供的 ProxySQL 镜像：
+   ```bash
+   docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/proxysql/proxysql:3.0.1
+   ```
+2. 运行 ProxySQL 容器，映射必要的端口，并配置持久化存储：
+   - ProxySQL 默认监听 6033 端口（用于应用程序连接）
+   - ProxySQL 管理接口默认监听 6032 端口（用于配置）
+   - 使用挂载卷避免重启后配置丢失：
+   ```bash
+   docker run -d \
+     --name proxysql \
+     --network host \
+     --restart unless-stopped \
+     -v /proxysql/data:/var/lib/proxysql \
+     swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/proxysql/proxysql:3.0.1
+   ```
+3. 验证容器是否运行：
+   ```bash
+   docker ps
+   ```
+   应看到 `proxysql` 容器处于运行状态。
+
+**步骤 4：连接 ProxySQL 管理接口**
+**细节留一手：** 只能从容器终端操作命令时，可使用 `docker exec -it proxysql /bin/bash` 进入容器内部进行操作。
+ProxySQL 提供一个管理接口（默认端口 6032）用于配置，初始用户和密码为 `admin/admin`。
+1. 使用 MySQL 客户端连接管理接口：
+   ```bash
+   mysql -u admin -padmin -h 192.168.1.102 -P 6032
+   ```
+   **注意：** 如果在本地连接，可用 `127.0.0.1`，如果是远程连接，确保防火墙开放 6032 端口。
+2. 进入后可查看当前配置：
+   ```sql
+   SELECT * FROM mysql_servers;
+   ```
+
+**步骤 5：配置后端数据库（主库和从库）**
+1. 定义主机组（hostgroup），例如：
+   - 主机组 0：主库（写操作）
+   - 主机组 1：从库（读操作）
+2. 添加主库到主机组 0：
+   ```sql
+   INSERT INTO mysql_servers (hostgroup_id, hostname, port, weight) VALUES (0, '192.168.1.100', 3306, 1);
+   ```
+3. 添加从库到主机组 1：
+   ```sql
+   INSERT INTO mysql_servers (hostgroup_id, hostname, port, weight) VALUES (1, '192.168.1.101', 3306, 1);
+   ```
+   如果有多个从库，继续添加，权重可根据性能调整。
+4. 加载配置到运行时：
+   ```sql
+   LOAD MYSQL SERVERS TO RUNTIME;
+   SAVE MYSQL SERVERS TO DISK;
+   ```
+
+**步骤 6：配置读写分离规则（新增 DDL 语句路由）**
+1. 定义查询规则，将写操作（包括 DDL 语句）路由到主机组 0（主库），读操作路由到主机组 1（从库）：
+   - DDL 语句（如 CREATE、ALTER、DROP、TRUNCATE 等）是数据库结构变更操作，必须路由到主库，因为从库通常是只读模式，且结构变更需要通过主库同步到从库。
+   ```sql
+   -- 写操作规则（数据变更）
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (1, 1, '^INSERT', 0, 1);
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (2, 1, '^UPDATE', 0, 1);
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (3, 1, '^DELETE', 0, 1);
+   -- DDL 操作规则（结构变更）
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (4, 1, '^CREATE', 0, 1);
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (5, 1, '^ALTER', 0, 1);
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (6, 1, '^DROP', 0, 1);
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (7, 1, '^TRUNCATE', 0, 1);
+   -- 读操作规则
+   INSERT INTO mysql_query_rules (rule_id, active, match_pattern, destination_hostgroup, apply) VALUES (8, 1, '^SELECT', 1, 1);
+   -- 查询权限
+   SELECT rule_id, active, match_pattern, destination_hostgroup, apply FROM mysql_query_rules ORDER BY rule_id;
+   ```
+   **注意：** 规则优先级按 `rule_id` 顺序执行，建议将 DDL 和写操作规则放在前面，确保这些操作优先路由到主库。如果有更复杂的业务需求（如特定 SELECT 走主库），可以添加更多规则。
+2. 加载规则到运行时：
+   ```sql
+   LOAD MYSQL QUERY RULES TO RUNTIME;
+   SAVE MYSQL QUERY RULES TO DISK;
+   ```
+
+**小白类比：** 就像班主任（ProxySQL）不仅要分配作业（写操作）和查资料（读操作），还要确保教室布置（DDL 结构变更）由老师（主库）亲自决定，不能让学生（从库）乱改规则。
+
+**小白举例：** 电商网站要建新表存储商品数据，`CREATE TABLE` 语句通过 ProxySQL 自动发到主库，主库创建后同步到从库，确保结构一致，不会因发到从库而报错。
+
+**步骤 7：配置用户权限（补充 ProxySQL 连接 MySQL 的账号说明）**
+1. **添加应用程序连接 ProxySQL 使用的用户：**
+   在 ProxySQL 中配置的用户是应用程序连接 ProxySQL 时使用的凭据，ProxySQL 会将这些凭据转发给后端的 MySQL 数据库（主库或从库）。因此，此处的用户和密码必须与步骤 1 中在主库和从库上创建的用户一致。
+   ```sql
+   INSERT INTO mysql_users (username, password, default_hostgroup) VALUES ('proxy_user', 'admin123', 0);
+   ```
+   **解释：**
+   - `username` 和 `password` 是应用程序连接 ProxySQL 时提供的用户和密码，ProxySQL 会用这些凭据去连接后端的 MySQL 服务器。
+   - `default_hostgroup` 定义了默认路由的主机组（这里是 0，即主库），当查询不匹配任何规则时，会路由到默认主机组。
+   - **为什么应用程序只能用 ProxySQL 配置的用户？** ProxySQL 作为一个代理层，拦截了应用程序的连接请求，它会根据 `mysql_users` 表中配置的用户信息来验证连接。如果应用程序提供的用户和密码不在 `mysql_users` 表中，ProxySQL 会拒绝连接。因此，应用程序必须使用在 ProxySQL 中配置的用户（如 `proxy_user`）来连接，而不能直接使用未在 ProxySQL 中定义的用户。
+   - **ProxySQL 如何连接 MySQL？** 当应用程序连接到 ProxySQL（端口 6033）并提供用户凭据（如 `proxy_user` 和 `admin123`）后，ProxySQL 会用相同的用户和密码去连接后端的 MySQL 服务器（主库或从库）。因此，后端 MySQL 服务器上必须存在相同的用户和密码，且具备相应权限，否则连接会失败。
+
+   **小白类比：** 就像班主任（ProxySQL）是学校的门卫，学生（应用程序）要进教室（MySQL 数据库）必须先通过门卫检查身份证（用户和密码）。只有门卫登记簿（`mysql_users` 表）上有的名字和密码才能通过，门卫再用同样的身份证去帮你开门（连接 MySQL）。
+
+   **小白举例：** 电商网站程序连接 ProxySQL 时，必须用 `proxy_user` 和 `admin123`，因为这是 ProxySQL 认识的用户。ProxySQL 拿到这个用户和密码后，转头用同样的凭据去连接主库或从库。如果主库和从库没有这个用户或密码不对，连接就会失败。
+
+2. **配置监控用户（可选）：**
+   ProxySQL 使用监控用户定期检查后端 MySQL 服务器的状态（如延迟、可用性）。监控用户必须在后端 MySQL 服务器上存在，且具备最低权限（如 `USAGE`）。
+   ```sql
+   UPDATE global_variables SET variable_value='monitor_user' WHERE variable_name='mysql-monitor_username';
+   UPDATE global_variables SET variable_value='monitor_password' WHERE variable_name='mysql-monitor_password';
+   LOAD MYSQL VARIABLES TO RUNTIME;
+   SAVE MYSQL VARIABLES TO DISK;
+   ```
+   **解释：** 监控用户独立于应用程序用户，专门用于 ProxySQL 检测后端服务器健康状态，不会影响应用程序的连接。
+
+3. **加载用户配置：**
+   ```sql
+   LOAD MYSQL USERS TO RUNTIME;
+   SAVE MYSQL USERS TO DISK;
+   ```
+
+**步骤 8：测试读写分离效果**
+1. **应用程序连接 ProxySQL（默认端口 6033）：**
+   应用程序必须使用在 ProxySQL 中配置的用户和密码（如 `proxy_user` 和 `admin123`）连接到 ProxySQL，而不是直接连接到 MySQL 服务器。
+   - 连接字符串示例：
+     ```bash
+     mysql -u proxy_user -padmin123 -h 192.168.1.102 -P 6033
+     ```
+   **解释：** 应用程序连接到 ProxySQL 的 6033 端口，ProxySQL 验证用户凭据后，根据查询规则将请求转发到主库（192.168.1.100）或从库（192.168.1.101）。应用程序无需知道后端 MySQL 的具体地址和端口，也无需关心读写分离的实现细节。
+
+2. 执行写操作（如 INSERT），确认数据写入主库（192.168.1.100）。
+3. 执行读操作（如 SELECT），确认请求分发到从库（192.168.1.101）。
+4. 执行 DDL 操作（如 CREATE TABLE），确认请求路由到主库：
+   ```sql
+   CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50));
+   ```
+   在主库查看表是否创建成功，并在从库确认是否同步。
+
+**ProxySQL 配置命令总结表格:**
+| 命令 | 作用对象 | 功能描述 | 应用场景 |
+|------|---------|---------|---------|
+| `LOAD MYSQL USERS TO RUNTIME;` | 用户配置 | 将内存表中的用户配置应用到运行环境 | 修改用户账号、权限、密码后 |
+| `SAVE MYSQL USERS TO DISK;` | 用户配置 | 将内存表中的用户配置持久化到磁盘 | 确保用户配置在重启后不丢失 |
+| `LOAD MYSQL VARIABLES TO RUNTIME;` | 系统变量 | 将内存表中的系统变量应用到运行环境 | 修改连接池大小、超时设置等参数后 |
+| `SAVE MYSQL VARIABLES TO DISK;` | 系统变量 | 将内存表中的系统变量持久化到磁盘 | 确保系统变量配置在重启后不丢失 |
+| `LOAD MYSQL QUERY RULES TO RUNTIME;` | 查询规则 | 将内存表中的查询规则应用到运行环境 | 修改查询路由、缓存、重写规则后 |
+| `SAVE MYSQL QUERY RULES TO DISK;` | 查询规则 | 将内存表中的查询规则持久化到磁盘 | 确保查询规则在重启后不丢失 |
+| `LOAD MYSQL SERVERS TO RUNTIME;` | 服务器配置 | 将内存表中的服务器配置应用到运行环境 | 添加/删除服务器、修改主机组后 |
+| `SAVE MYSQL SERVERS TO DISK;` | 服务器配置 | 将内存表中的服务器配置持久化到磁盘 | 确保服务器配置在重启后不丢失 |
+
+
+**小白类比：** 就像给班主任（ProxySQL）一份名单，写明老师（主库）负责写和改教室布置，学生（从库）负责读，问题来了按名单分配，班主任启动工作后，课堂（系统）就井井有条。Docker 就像一个便携式教室，快速搭建好环境。
+
+**小白举例：** 电商网站程序连接 ProxySQL 端口 6033，用 `proxy_user` 登录，下单请求（INSERT）和建表请求（CREATE）自动发到主库，查商品请求（SELECT）自动分到从库，程序员无需改代码，系统运行顺畅。
+
+**注意：**
+- ProxySQL 配置灵活，可根据需求调整规则（如事务内读写都走主库）。
+- 建议监控 ProxySQL 日志和性能，确保负载均衡和延迟处理符合预期。
+- 更多高级功能（如查询缓存、故障切换脚本）可参考 ProxySQL 官方文档（https://proxysql.com/）。
