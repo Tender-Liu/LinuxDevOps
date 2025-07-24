@@ -20,3 +20,9 @@
 3. **持久化到磁盘**：执行 `SAVE ... TO DISK;` 命令确保配置在重启后保留
 
 这种设计允许安全地测试配置更改，并在需要时轻松回滚。
+
+
+
+
+
+-- CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000003', MASTER_LOG_POS=3007;

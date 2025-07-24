@@ -558,11 +558,30 @@ MySQL 主从同步的核心机制基于二进制日志（Binary Log，简称 Bin
 
 **直观结构图（主从同步流程）：**
 ```mermaid
-graph TD
-    A[主库 Master] -->|写数据，记录操作| B[Binlog 日记本]
-    A -->|Binlog Dump Thread 发送| C[从库 Slave]
-    C -->|IO Thread 接收并保存| D[Relay Log]
-    C -->|SQL Thread 执行操作| E[从库数据]
+flowchart LR
+  subgraph Master["主服务器 (Master)"]
+      DC["数据变更\nData changes"] --> BL["二进制日志\nBinary log"]
+  end
+  
+  subgraph Slave["从服务器 (Slave)"]
+      IO["I/O线程\nI/O thread"] --> RL["中继日志\nRelay log"]
+      SQL["SQL线程\nSQL thread"] --> DB["数据库"]
+  end
+  
+  BL -- "读取 (Read)" --> IO
+  IO -- "写入 (Write)" --> RL
+  RL -- "读取 (Read)" --> SQL
+  SQL -- "重放 (Replay)" --> DB
+  
+  classDef master fill:#f5f5f5,stroke-dasharray: 5 5,stroke:#999
+  classDef slave fill:#f5f5f5,stroke-dasharray: 5 5,stroke:#999
+  classDef component fill:white,stroke:#d33,stroke-width:2px
+  classDef thread fill:white,stroke:none,color:black
+  
+  class Master master
+  class Slave slave
+  class BL,RL component
+  class IO,SQL thread
 ```
 **图解说明：**
 - 主库（A）记录操作到 Binlog（B），通过 Binlog Dump Thread 发送给从库。
@@ -732,11 +751,12 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
    - 设置同步：
      ```sql
      CHANGE MASTER TO
-         MASTER_HOST = '192.168.110.8',    # 主库 IP
+         MASTER_HOST = '192.168.110.167',    # 主库 IP
          MASTER_USER = 'repl',             # 同步账号
          MASTER_PASSWORD = 'admin123',  # 同步密码
          MASTER_LOG_FILE = 'mysql-bin.000001',  # 备份时的 Binlog 文件
-         MASTER_LOG_POS = 1200;            # 备份时的 Position
+         MASTER_LOG_POS = 1200,            # 备份时的 Position
+         MASTER_SSL = 1;                   # 启用SSL连接
      ```
    **小白类比：** 学生告诉自己，从老师的日记本第 1 本第 1200 行开始抄（同步新操作）。
    **小白举例：** 从库知道主库备份时写到 1200，就从 1201 开始同步新订单，避免重复抄前 1200 条。
@@ -793,7 +813,8 @@ MySQL 主从同步默认是异步复制（Asynchronous Replication），即主�
     MASTER_USER = 'repl',             # 同步账号
     MASTER_PASSWORD = 'admin123',  # 同步密码
     MASTER_LOG_FILE = 'mysql-bin.000001',  # 备份时的 Binlog 文件
-    MASTER_LOG_POS = 1200;            # 备份时的 Position
+    MASTER_LOG_POS = 1200,            # 备份时的 Position
+    MASTER_SSL = 1;                   # 启用SSL连接
 
   -- 启动复制
   START REPLICA;
