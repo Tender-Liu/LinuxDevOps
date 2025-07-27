@@ -386,7 +386,7 @@ requirepass admin123    # 设置密码，生产环境必须配置，防止未经
 - **通俗解释**：命令行就像用键盘打字输入指令，图形化工具就像用鼠标点菜单，简单直观，适合新手。
 
 ### 6.1 安装步骤
-1. **下载工具**：访问GitHub页面（https://github.com/qishibo/AnotherRedisDesktopManager），下载最新版本的Windows/Linux安装包（如Windows的`.exe`文件或Linux的`.AppImage`文件）。
+1. **下载工具**：访问GitHub页面(https://github.com/qishibo/AnotherRedisDesktopManager) ,下载最新版本的Windows/Linux安装包（如Windows的`.exe`文件或Linux的`.AppImage`文件）。
 2. **安装工具**：  
    - **Windows**：双击下载的`.exe`安装包，按提示完成安装。  
    - **Linux**：如果是`.AppImage`文件，下载后赋予执行权限（`chmod +x 文件名`），然后直接运行即可，无需安装。
