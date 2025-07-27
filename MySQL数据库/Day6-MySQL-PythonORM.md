@@ -1,83 +1,88 @@
-# Python 数据库操作入门教案：原生 SQL 与 ORM 实现 CRUD（小白专用版）
-
+# Python 数据库操作入门教案：原生 SQL 与 ORM 实现 CRUD（超详细小白专用版）
 温馨提示: 不在教学的范围，希望有开发基础的同学们，自学哦，只有学习过框架的同学才能看的懂哈
-
-## 教学目标
-- 理解 Python 连接 MySQL 数据库的基本概念和步骤。
-- 掌握 `mysql-connector-python` 模块的基础用法，学习原生 SQL 实现增删改查（CRUD）。
-- 初步认识 ORM（对象关系映射）的概念，使用 SQLAlchemy 实现 CRUD 操作。
-- 学习代码分层规范，理解项目结构和文件组织的重要性。
-- 通过详细注释和逻辑图，逐步掌握数据库操作的每个细节。
-
-## 前置条件
-- 已学习 Python 基础和面向对象编程（类、对象、方法等），但不熟练。
-- 已安装 Python 环境（建议 3.8+）。
-- 已安装 MySQL 数据库，并导入官方示例数据库 `employees`（可从 MySQL 官网下载）。
-- 对 SQL 语句（如 SELECT、INSERT、UPDATE、DELETE）有基本了解，但不要求熟练。
-
-## 教学步骤概述
-1. 重新设计项目结构，符合代码分层规范。
-2. 详细讲解 `mysql-connector-python` 模块的基础语法和用法。
-3. 使用原生 SQL 实现 CRUD 操作，逐步拆解代码。
-4. 详细讲解 ORM（SQLAlchemy）的基础概念和用法。
-5. 使用 ORM 实现 CRUD 操作，逐步拆解代码。
-6. 提供学习表格和逻辑图，帮助理解。
 
 ---
 
-## 第一部分：项目创建与代码分层规范
+## 教学目标
+- 理解数据库的基本概念以及 Python 操作数据库的意义。
+- 掌握 Python 连接 MySQL 数据库的基本步骤，完成增删改查（CRUD）操作。
+- 学会两种操作数据库的方式：原生 SQL（直接编写 SQL 语句）和 ORM（对象关系映射，像操作对象一样操作数据库）。
+- 理解代码分层规范的重要性，掌握每一层的职责和作用。
+- 通过超详细的注释、比喻、逻辑图和学习表格，逐步理解每个代码片段的含义和操作流程。
 
-### 步骤1：什么是代码分层规范？
-**代码分层** 是软件开发中的一种组织方式，将代码按照功能分成不同的层（如配置层、数据访问层、业务逻辑层等），让代码结构更清晰，易于维护和扩展。常见的企业级分层结构如下：
-- **config**：存储配置信息，如数据库连接参数。
-- **dao**（Data Access Object）：数据访问层，负责与数据库直接交互，执行 SQL 或 ORM 操作。
-- **model**：模型层，定义数据结构（如 ORM 中的表映射）。
-- **service**：业务逻辑层，处理具体业务需求，调用 DAO 层。
-- **main**：入口层，程序启动入口，调用 service 层。
+---
 
-**学习点**：分层就像把一个大任务拆成小任务，分给不同的人负责，互不干扰，方便团队协作。
+## 前置条件
+- 熟悉 Python 基础语法（如变量、函数、类），但不要求熟练。
+- 已安装 Python 环境（建议 3.8+）和 MySQL 数据库。
+- MySQL 中已导入官方示例数据库 `employees`（如果没有，可用一个简单表替代，教案会提供替代方案）。
+- 对 SQL 语句（如 SELECT、INSERT）完全不了解也没关系，本教案会用通俗语言解释。
+
+---
+
+## 什么是数据库？为什么要用 Python 操作它？
+**数据库** 就像一个巨大的电子表格或数据仓库，用来存储和管理大量信息，比如员工信息、订单记录等。MySQL 是一种常见的数据库软件，相当于一个“数据仓库”，可以帮助我们高效地存储、查询和修改数据。
+
+**Python 操作数据库的意义** 在于：通过 Python 程序，我们可以自动化地与数据库交互，比如读取数据、添加记录或修改信息，而无需手动操作 MySQL 软件。例如，用 Python 写一个程序批量添加员工信息，比手动在 MySQL 中输入要快得多。
+
+**学习点**：想象数据库是一个大仓库，Python 是一个智能机器人，机器人可以帮你从仓库里拿东西、放东西或整理东西，省时省力。
+
+---
+
+## 第一部分：项目创建与代码分层规范详解
+
+### 步骤1：什么是代码分层？为什么要分层？
+**代码分层** 是软件开发中的一种组织方式，将代码按照功能分成不同的层（如配置层、数据访问层、业务逻辑层等），让代码结构更清晰，易于维护和扩展。分层就像做菜时的分工：有人洗菜、有人切菜、有人炒菜。如果所有人都做所有事，就会乱套。分层让每层只负责自己的任务，方便团队协作和后期修改。
+
+我们将代码分为以下几层，并用做菜的比喻来解释每一层的职责：
+- **config（配置层）**：就像菜单，记录了做菜需要的材料信息（如数据库的地址、用户名、密码等）。
+- **dao（Data Access Object，数据访问层）**：就像洗菜工，专门与数据库打交道，负责数据的存取操作。
+- **model（模型层）**：就像菜的“形状”或“蓝图”，定义数据结构（主要在 ORM 中使用）。
+- **service（业务逻辑层）**：就像切菜工，处理具体的业务规则，比如检查数据是否合理。
+- **main（入口层）**：就像大厨，负责整体流程，指挥其他层完成任务。
+
+**学习点**：分层就像团队分工，每一层有自己的职责，互不干扰，整体效率更高。分层还能让代码更易读，方便后期维护或扩展。
 
 ### 步骤2：创建项目目录
 我们将创建一个名为 `employee_manager` 的项目，用于管理 `employees` 数据库中的员工信息。
 
 ```bash
-mkdir employee_manager  # 创建项目文件夹
-cd employee_manager     # 进入项目文件夹
+mkdir employee_manager  # 创建项目文件夹，就像建一个厨房
+cd employee_manager     # 进入项目文件夹，开始工作
 ```
 
 ### 步骤3：安装依赖包
-使用 `pip` 安装所需的 Python 包：
-- `mysql-connector-python`：用于原生 SQL 操作。
-- `sqlalchemy` 和 `pymysql`：用于 ORM 操作。
+使用 `pip` 安装所需的 Python 包，就像做菜前准备刀具和锅具：
+- `mysql-connector-python`：用于原生 SQL 操作数据库。
+- `sqlalchemy` 和 `pymysql`：用于 ORM 操作数据库（SQLAlchemy 是 ORM 框架，pymysql 是连接 MySQL 的驱动）。
 
 ```bash
 pip install mysql-connector-python sqlalchemy pymysql
-# pymysql 是 SQLAlchemy 连接 MySQL 的驱动
 ```
 
 ### 步骤4：创建项目文件结构（符合分层规范）
-在 `employee_manager` 文件夹中创建以下文件和目录结构：
+在 `employee_manager` 文件夹中创建以下文件和目录结构，就像把厨房分成不同的工作区：
 
 ```
 employee_manager/
 │
-├── config/             # 配置层
+├── config/             # 配置层：存储菜单和材料信息（如数据库连接参数）
 │   └── db_config.py    # 数据库配置信息
 │
-├── dao/                # 数据访问层
-│   ├── raw_sql_dao.py  # 原生 SQL 操作数据库
-│   └── orm_dao.py      # ORM 操作数据库
+├── dao/                # 数据访问层：洗菜工，专门操作数据库
+│   ├── raw_sql_dao.py  # 使用原生 SQL 操作数据库
+│   └── orm_dao.py      # 使用 ORM 操作数据库
 │
-├── model/              # 模型层
-│   └── employee.py     # ORM 模型定义
+├── model/              # 模型层：定义菜的“形状”（只在 ORM 中使用）
+│   └── employee.py     # 员工数据的结构定义
 │
-├── service/            # 业务逻辑层
-│   ├── raw_sql_service.py  # 原生 SQL 业务逻辑
-│   └── orm_service.py      # ORM 业务逻辑
+├── service/            # 业务逻辑层：切菜工，处理业务规则和逻辑
+│   ├── raw_sql_service.py  # 原生 SQL 的业务逻辑
+│   └── orm_service.py      # ORM 的业务逻辑
 │
-└── main/               # 入口层
-    ├── raw_sql_main.py  # 原生 SQL 主程序入口
-    └── orm_main.py      # ORM 主程序入口
+└── main/               # 入口层：大厨，指挥所有人完成任务
+    ├── raw_sql_main.py  # 原生 SQL 的主程序入口
+    └── orm_main.py      # ORM 的主程序入口
 ```
 
 使用命令创建文件和目录：
@@ -87,100 +92,96 @@ touch config/db_config.py dao/raw_sql_dao.py dao/orm_dao.py model/employee.py se
 ```
 
 ### 项目结构逻辑图
-以下是项目结构的 Mermaid 图，帮助理解文件组织：
+以下是项目结构的 Mermaid 图，帮助直观理解文件组织和分层关系：
 
 ```mermaid
 graph TD
-    A[employee_manager] --> B[config]
-    A --> C[dao]
-    A --> D[model]
-    A --> E[service]
-    A --> F[main]
-    B --> G[db_config.py]
-    C --> H[raw_sql_dao.py]
-    C --> I[orm_dao.py]
-    D --> J[employee.py]
-    E --> K[raw_sql_service.py]
-    E --> L[orm_service.py]
-    F --> M[raw_sql_main.py]
-    F --> N[orm_main.py]
+    A[employee_manager] --> B[config: 菜单]
+    A --> C[dao: 洗菜工]
+    A --> D[model: 菜的形状]
+    A --> E[service: 切菜工]
+    A --> F[main: 大厨]
+    F --> E
+    E --> C
+    C --> B
+    D --> C
 ```
 
-**学习点**：每一层有自己的职责，`main` 调用 `service`，`service` 调用 `dao`，`dao` 负责数据库操作，`config` 提供配置信息，`model` 定义数据结构。
+**学习点**：大厨（main）指挥切菜工（service），切菜工指挥洗菜工（dao），洗菜工根据菜单（config）去拿材料，菜的形状（model）帮助洗菜工理解数据结构。
 
 ---
 
-## 第二部分：使用原生 SQL 实现 CRUD 操作
+## 第二部分：使用原生 SQL 实现 CRUD 操作（像写信一样直接告诉数据库做什么）
 
-### 步骤1：什么是 `mysql-connector-python`？
-`mysql-connector-python` 是一个 Python 模块，用于连接和操作 MySQL 数据库。它允许我们直接写 SQL 语句与数据库交互。以下是初学者需要了解的核心概念和方法：
+### 步骤1：什么是原生 SQL 和 `mysql-connector-python`？
+**原生 SQL** 是一种直接操作数据库的方式，就像给数据库写信，明确告诉它“我要做什么”（比如查询数据或添加记录）。我们使用的工具是 `mysql-connector-python`，它就像一个邮递员，负责把我们的“信”（SQL 语句）送到数据库，并带回回复。
 
-#### 核心概念和方法（小白详解）
-| **方法/概念**              | **作用**                                      | **简单解释**                                                                 |
+#### 核心概念和方法（用邮递员比喻，超小白详解）
+| **方法/概念**              | **作用**                                      | **比喻解释**                                                                 |
 |----------------------------|----------------------------------------------|-----------------------------------------------------------------------------|
-| `mysql.connector.connect()` | 连接到 MySQL 数据库                          | 就像拨打电话给数据库，告诉它你的用户名、密码和想连接的数据库名称。          |
-| `cursor()`                 | 创建游标对象，用于执行 SQL 语句              | 游标就像一支笔，用来在数据库上“写”或“读”数据。                             |
-| `execute(sql, values)`     | 执行 SQL 语句                                | 告诉数据库你要做什么，比如查询或插入数据，`values` 是 SQL 中的参数值。      |
-| `fetchone()`               | 获取查询结果中的一条记录                     | 就像从一堆数据中拿出一条来看。                                              |
-| `fetchall()`               | 获取查询结果中的所有记录                     | 就像从一堆数据中拿出所有数据来看。                                          |
-| `commit()`                 | 提交事务，确保数据写入数据库                 | 就像保存文件，不提交的话，插入或更新操作不会真正生效。                      |
-| `close()`                  | 关闭游标或连接                               | 就像挂断电话，释放资源，防止内存泄漏。                                      |
+| `mysql.connector.connect()` | 连接到 MySQL 数据库                          | 就像拨通邮递员的电话，告诉他你要寄信，连接信息包括地址、用户名、密码等。    |
+| `cursor()`                 | 创建游标对象，用于执行 SQL 语句              | 就像一支笔，用来写信的内容。                                               |
+| `execute(sql, values)`     | 执行 SQL 语句                                | 就像把信的内容写好并交给邮递员，`values` 是信中填入的具体数据。             |
+| `fetchone()`               | 获取查询结果中的一条记录                     | 就像邮递员回信，带回一条数据给你看。                                       |
+| `fetchall()`               | 获取查询结果中的所有记录                     | 就像邮递员回信，带回所有相关数据给你看。                                   |
+| `commit()`                 | 提交事务，确保数据写入数据库                 | 就像确认信已送到，确保数据库收到并处理了你的请求。                         |
+| `close()`                  | 关闭游标或连接                               | 就像挂断电话，和邮递员说再见，释放资源。                                   |
 
-**学习点**：这些方法是原生 SQL 操作的基础，理解它们就像理解“打开-操作-保存-关闭”这样的流程。
+**学习点**：原生 SQL 操作就像寄信，连接是拨号，执行是写信，提交是确认送达，获取结果是读回信。
 
 ### 步骤2：编写数据库配置文件 `config/db_config.py`
-我们将数据库连接信息单独放在一个文件中，方便管理和修改。
+我们将数据库连接信息单独放在一个文件中，就像一个“地址簿”，方便管理和修改。
 
 ```python
 # config/db_config.py
-# 数据库配置信息，存储连接参数
+# 这是一个“地址簿”或“菜单”，记录了怎么找到数据库仓库
 DB_CONFIG = {
-    'host': 'localhost',      # 数据库主机地址，通常是 localhost，表示本机
-    'user': 'root',           # 数据库用户名，替换为你的实际用户名
-    'password': 'yourpassword',  # 数据库密码，替换为你的实际密码
-    'database': 'employees'   # 数据库名称，这里使用 MySQL 官方的 employees 示例数据库
+    'host': 'localhost',      # 数据库主机地址，localhost 表示本机，就像“隔壁仓库”
+    'user': 'root',           # 数据库用户名，就像仓库管理员的名字，替换为你的实际用户名
+    'password': 'yourpassword',  # 数据库密码，就像仓库的钥匙，替换为你的实际密码
+    'database': 'employees'   # 数据库名称，就像仓库的名字，这里使用 employees 示例数据库
 }
 ```
 
-**学习点**：配置信息单独存储，就像把家里的钥匙放在固定位置，方便查找和修改。
+**学习点**：配置信息单独存储，就像把家里的钥匙放在固定位置，方便查找和修改。如果连接信息变了，只需改这个文件，不用动其他代码。
 
 ### 步骤3：编写数据访问层 `dao/raw_sql_dao.py`
-在数据访问层中，定义一个类专门负责与数据库交互，直接执行 SQL 语句。
+在数据访问层中，定义一个类专门负责与数据库交互，就像“洗菜工”直接和仓库打交道，执行 SQL 语句。
 
 ```python
 # dao/raw_sql_dao.py
-import mysql.connector
-from config.db_config import DB_CONFIG
+import mysql.connector  # 导入邮递员工具
+from config.db_config import DB_CONFIG  # 导入地址簿
 
 class RawSqlDao:
     def __init__(self):
-        # 初始化方法，建立数据库连接
-        # mysql.connector.connect() 是连接数据库的方法，参数来自 DB_CONFIG
+        # 初始化方法，就像一开始拨通邮递员电话，建立数据库连接
+        # mysql.connector.connect() 是拨号方法，使用地址簿的信息连接数据库
         self.conn = mysql.connector.connect(**DB_CONFIG)
-        # 创建游标对象，游标用来执行 SQL 语句
+        # 创建一支笔（游标），用来写信或执行 SQL 语句
         self.cursor = self.conn.cursor()
-        print("数据库连接成功！")
+        print("邮递员联系上了，数据库连接成功！")
 
     def add_employee(self, emp_no, first_name, last_name, gender, birth_date, hire_date):
-        # 添加员工记录，使用 INSERT 语句插入数据
-        # %s 是占位符，防止 SQL 注入，实际值通过 values 传入
+        # 添加员工记录，就像写信告诉数据库“加一条数据”
+        # 下面是信的内容，%s 是空白格，待会填上具体值，防止 SQL 注入
         sql = """
         INSERT INTO employees (emp_no, first_name, last_name, gender, birth_date, hire_date)
         VALUES (%s, %s, %s, %s, %s, %s)
         """
-        values = (emp_no, first_name, last_name, gender, birth_date, hire_date)
-        # execute() 方法执行 SQL 语句，values 是传入的参数
+        values = (emp_no, first_name, last_name, gender, birth_date, hire_date)  # 填上具体值
+        # 用笔写信，把内容交给邮递员去执行
         self.cursor.execute(sql, values)
-        # commit() 方法提交事务，确保数据真的写入数据库
+        # 确认信送到了，确保数据库收到并保存数据
         self.conn.commit()
         print(f"员工 {first_name} {last_name} 添加成功！")
 
     def get_employee(self, emp_no):
-        # 查询员工记录，使用 SELECT 语句
+        # 查询员工记录，就像写信问数据库“某人信息是什么”
         sql = "SELECT * FROM employees WHERE emp_no = %s"
-        # 执行查询语句，传入 emp_no 作为参数
+        # 写信，告诉邮递员去查
         self.cursor.execute(sql, (emp_no,))
-        # fetchone() 获取查询结果的第一条记录
+        # 邮递员回信，拿回一条数据
         result = self.cursor.fetchone()
         if result:
             print(f"查询结果：{result}")
@@ -190,43 +191,45 @@ class RawSqlDao:
             return None
 
     def update_employee(self, emp_no, first_name, last_name):
-        # 更新员工记录，使用 UPDATE 语句
+        # 更新员工记录，就像写信告诉数据库“改一下某人信息”
         sql = "UPDATE employees SET first_name = %s, last_name = %s WHERE emp_no = %s"
         values = (first_name, last_name, emp_no)
-        # 执行更新语句
+        # 写信，交给邮递员去执行
         self.cursor.execute(sql, values)
-        # 提交事务，确保更新生效
+        # 确认送达，确保更新生效
         self.conn.commit()
         print(f"员工编号 {emp_no} 的信息已更新！")
 
     def delete_employee(self, emp_no):
-        # 删除员工记录，使用 DELETE 语句
+        # 删除员工记录，就像写信告诉数据库“删掉某人信息”
         sql = "DELETE FROM employees WHERE emp_no = %s"
-        # 执行删除语句
+        # 写信，交给邮递员去执行
         self.cursor.execute(sql, (emp_no,))
-        # 提交事务，确保删除生效
+        # 确认送达，确保删除生效
         self.conn.commit()
-        # rowcount 属性表示受影响的行数，用来判断是否真的删除了记录
+        # 检查是否真的删除了（rowcount 是受影响的行数）
         if self.cursor.rowcount > 0:
             print(f"员工编号 {emp_no} 已删除！")
         else:
             print(f"未找到员工编号 {emp_no} 的记录！")
 
     def close(self):
-        # 关闭游标和连接，释放资源
+        # 关闭笔和电话，和邮递员说再见，释放资源
         self.cursor.close()
         self.conn.close()
-        print("数据库连接已关闭！")
+        print("邮递员下班了，数据库连接已关闭！")
 ```
 
 **学习点**：
-- 每个方法对应一个数据库操作（增删改查），使用 `execute()` 执行 SQL 语句。
-- `commit()` 就像“保存”按钮，不调用的话，数据不会真正写入数据库。
-- `fetchone()` 和 `rowcount` 帮助我们获取结果或确认操作是否成功。
-- `close()` 方法确保资源释放，就像用完工具后收拾好。
+- 每个方法对应一个数据库操作（增删改查），使用 `execute()` 执行 SQL 语句，就像写信。
+- `commit()` 就像“确认送达”，不调用的话，数据不会真正写入数据库。
+- `fetchone()` 和 `rowcount` 帮助我们获取查询结果或确认操作是否成功。
+- `close()` 方法确保资源释放，就像挂断电话，防止资源浪费。
 
 ### 步骤4：编写业务逻辑层 `service/raw_sql_service.py`
-在业务逻辑层中，调用 DAO 层的方法，处理具体业务需求。
+在业务逻辑层中，调用 DAO 层的方法，处理具体业务需求，就像“切菜工”检查材料是否合格，再交给洗菜工。
+
+**重要说明**：数据校验通常在这一层进行，因为业务逻辑层负责处理业务规则，比如“名字不能为空”或“编号不能重复”。
 
 ```python
 # service/raw_sql_service.py
@@ -234,74 +237,96 @@ from dao.raw_sql_dao import RawSqlDao
 
 class RawSqlService:
     def __init__(self):
-        # 初始化时创建 DAO 对象，DAO 负责数据库操作
+        # 初始化时，找一个洗菜工（DAO 对象），负责数据库操作
         self.dao = RawSqlDao()
 
     def add_employee(self, emp_no, first_name, last_name, gender, birth_date, hire_date):
-        # 调用 DAO 层方法，添加员工
+        # 在添加员工前，检查数据是否合理（数据校验）
+        if not first_name or not last_name:
+            print("错误：名字和姓氏不能为空！")
+            return False
+        if emp_no <= 0:
+            print("错误：员工编号必须是正数！")
+            return False
+        if gender not in ['M', 'F']:
+            print("错误：性别只能是 'M' 或 'F'！")
+            return False
+        # 如果数据没问题，交给洗菜工去添加
         self.dao.add_employee(emp_no, first_name, last_name, gender, birth_date, hire_date)
+        return True
 
     def get_employee(self, emp_no):
-        # 调用 DAO 层方法，查询员工
+        # 查询员工，直接交给洗菜工
         return self.dao.get_employee(emp_no)
 
     def update_employee(self, emp_no, first_name, last_name):
-        # 调用 DAO 层方法，更新员工
+        # 更新员工前，检查数据是否合理
+        if not first_name or not last_name:
+            print("错误：名字和姓氏不能为空！")
+            return False
+        # 如果数据没问题，交给洗菜工去更新
         self.dao.update_employee(emp_no, first_name, last_name)
+        return True
 
     def delete_employee(self, emp_no):
-        # 调用 DAO 层方法，删除员工
+        # 删除员工，直接交给洗菜工
         self.dao.delete_employee(emp_no)
 
     def close(self):
-        # 调用 DAO 层方法，关闭连接
+        # 告诉洗菜工下班
         self.dao.close()
 ```
 
-**学习点**：业务逻辑层就像“中间人”，负责接收请求并调用 DAO 层，不直接操作数据库，保持代码分层清晰。
+**学习点**：业务逻辑层是“中间人”，负责数据校验和调用 DAO 层，不直接操作数据库。校验就像检查菜是否新鲜，如果不合格就不交给洗菜工，保持代码分层清晰。
 
 ### 步骤5：编写主程序入口 `main/raw_sql_main.py`
-在主程序中调用 Service 层，测试 CRUD 操作。
+在主程序中调用 Service 层，测试 CRUD 操作，就像“大厨”指挥所有人完成任务。
 
 ```python
 # main/raw_sql_main.py
 from service.raw_sql_service import RawSqlService
 
 def main():
-    # 创建 Service 对象，Service 会间接连接数据库
+    # 找一个切菜工（Service 对象），Service 会间接连接数据库
     service = RawSqlService()
 
-    # 测试添加员工
+    # 指挥切菜工添加员工
+    print("尝试添加一个员工...")
     service.add_employee(999999, "Xiao", "Ming", "M", "1990-01-01", "2025-07-24")
     
-    # 测试查询员工
+    # 指挥切菜工查询员工
+    print("\n尝试查询这个员工...")
     service.get_employee(999999)
     
-    # 测试更新员工
+    # 指挥切菜工更新员工
+    print("\n尝试更新这个员工的名字...")
     service.update_employee(999999, "Xiao", "Hong")
     
-    # 测试查询更新后的员工
+    # 指挥切菜工再次查询员工
+    print("\n再次查询这个员工，看看是否更新成功...")
     service.get_employee(999999)
     
-    # 测试删除员工
+    # 指挥切菜工删除员工
+    print("\n尝试删除这个员工...")
     service.delete_employee(999999)
     
-    # 关闭数据库连接
+    # 所有人下班
+    print("\n任务完成，关闭所有连接...")
     service.close()
 
 if __name__ == "__main__":
     main()
 ```
 
-**学习点**：主程序是程序的“入口”，就像一个总指挥，调用 Service 层完成任务。
+**学习点**：主程序是程序的“入口”，就像一个总指挥，只负责调用 Service 层完成任务，不直接操作数据库或处理业务规则。
 
 ### 原生 SQL 操作逻辑图
 以下是原生 SQL 操作的 Mermaid 流程图，帮助理解程序执行顺序和分层调用：
 
 ```mermaid
 graph TD
-    A[启动 raw_sql_main.py] --> B[创建 Service 对象]
-    B --> C[创建 DAO 对象]
+    A[大厨: 启动 raw_sql_main.py] --> B[切菜工: 创建 Service 对象]
+    B --> C[洗菜工: 创建 DAO 对象]
     C --> D[连接数据库]
     D --> E[执行 CRUD 操作]
     E --> F[Service 调用 DAO 添加员工]
@@ -315,31 +340,36 @@ graph TD
     J --> L[操作完成]
     K --> L
     L --> M[关闭连接]
+    B --> N[检查数据是否合理]
+    N -->|合理| F
+    N -->|不合理| O[停止操作]
 ```
+
+**学习点**：逻辑图展示了调用顺序：大厨（main）指挥切菜工（service），切菜工检查数据后指挥洗菜工（dao），洗菜工与数据库交互。
 
 ---
 
-## 第三部分：使用 ORM（SQLAlchemy）实现 CRUD 操作
+## 第三部分：使用 ORM（SQLAlchemy）实现 CRUD 操作（像玩积木一样操作数据库）
 
 ### 步骤1：什么是 ORM 和 SQLAlchemy？
-**ORM（对象关系映射）** 是一种技术，它将数据库表映射为 Python 类，表的字段映射为类的属性。使用 ORM，我们可以像操作 Python 对象一样操作数据库，而不需要写 SQL 语句。
+**ORM（对象关系映射）** 是一种技术，它将数据库表映射为 Python 类，表的字段映射为类的属性。使用 ORM，我们可以像操作 Python 对象一样操作数据库，而不需要写 SQL 语句，就像玩积木，直接拼装数据。
 
-**SQLAlchemy** 是 Python 中最常用的 ORM 框架。以下是初学者需要了解的核心概念和方法：
+**SQLAlchemy** 是 Python 中最常用的 ORM 框架，相当于一个“积木盒子”，帮助我们定义和管理数据结构。
 
-#### 核心概念和方法（小白详解）
-| **方法/概念**              | **作用**                                      | **简单解释**                                                                 |
+#### 核心概念和方法（用积木比喻，超小白详解）
+| **方法/概念**              | **作用**                                      | **比喻解释**                                                                 |
 |----------------------------|----------------------------------------------|-----------------------------------------------------------------------------|
-| `create_engine()`          | 创建数据库引擎，连接数据库                   | 就像打开数据库的“大门”，告诉程序去哪里找数据库。                          |
-| `declarative_base()`       | 创建基类，所有模型类继承它                   | 就像一个“模板”，让你的类能变成数据库表。                                  |
-| `Column()`                 | 定义表字段                                   | 就像告诉数据库这个表有哪些列，比如名字、年龄等。                           |
-| `sessionmaker()`           | 创建会话工厂，用于管理数据库操作             | 就像一个“工作区”，在里面可以添加、查询、删除数据。                        |
-| `session.add()`            | 添加对象到会话                               | 就像把数据放到“购物车”，还没真正保存到数据库。                            |
-| `session.query()`          | 查询数据                                     | 就像在数据库里“搜索”，找到你想要的数据。                                  |
-| `session.commit()`         | 提交事务，写入数据库                         | 就像点击“保存”，把购物车里的数据真正写入数据库。                          |
-| `session.delete()`         | 删除对象                                     | 就像把数据从“购物车”移除，并从数据库删除。                                |
-| `session.close()`          | 关闭会话                                     | 就像关掉“工作区”，释放资源。                                              |
+| `create_engine()`          | 创建数据库引擎，连接数据库                   | 就像打开积木盒子，连接到数据库仓库。                                       |
+| `declarative_base()`       | 创建基类，所有模型类继承它                   | 就像一个积木模板，让你的类能变成数据库表。                                 |
+| `Column()`                 | 定义表字段                                   | 就像定义积木的每个部分，比如编号、名字等。                                 |
+| `sessionmaker()`           | 创建会话工厂，用于管理数据库操作             | 就像准备一双“手”，用来拿积木、拼积木。                                    |
+| `session.add()`            | 添加对象到会话                               | 就像把积木放进盒子，准备保存到数据库。                                     |
+| `session.query()`          | 查询数据                                     | 就像在盒子里找某个积木，找到你想要的数据。                                 |
+| `session.commit()`         | 提交事务，写入数据库                         | 就像确认积木拼好了，固定到数据库中。                                       |
+| `session.delete()`         | 删除对象                                     | 就像把积木从盒子里拿走，从数据库删除数据。                                 |
+| `session.close()`          | 关闭会话                                     | 就像收起手，关掉盒子，释放资源。                                           |
 
-**学习点**：ORM 的核心思想是“对象即表，属性即字段”，让数据库操作像操作 Python 对象一样简单。
+**学习点**：ORM 的核心思想是“对象即表，属性即字段”，操作数据库就像玩积木，直接拼装，不用写信。
 
 ### ORM 学习表格
 以下表格帮助初学者进一步理解 ORM 的核心概念：
@@ -353,23 +383,22 @@ graph TD
 | 提交（Commit）    | 将操作写入数据库                     | `session.commit()`                        |
 
 ### 步骤2：编写模型层 `model/employee.py`
-定义数据库表对应的模型类，使用 SQLAlchemy。
+定义数据库表对应的模型类，就像定义积木的形状。
 
 ```python
 # model/employee.py
-from sqlalchemy import Column, Integer, String, Date, Enum
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Date, Enum  # 这些是积木的零件
+from sqlalchemy.ext.declarative import declarative_base  # 这是积木的模板
 
-# 创建基类，所有模型类都继承自它
+# 创建基类（模板），所有模型类都继承自它
 # 基类就像一个“模板”，让我们的类能映射到数据库表
 Base = declarative_base()
 
-# 定义 Employee 模型类，对应 employees 表
+# 定义 Employee 模型类，对应 employees 表，就像定义积木的形状
 class Employee(Base):
     __tablename__ = 'employees'  # 指定表名，告诉 SQLAlchemy 这个类对应哪个表
 
-    # 定义字段，映射到数据库表的列
-    # Column 就像定义表的每一列，Integer、String 等是字段类型
+    # 定义字段，映射到数据库表的列，就像定义积木的每个部分
     emp_no = Column(Integer, primary_key=True)  # 员工编号，主键（唯一标识）
     first_name = Column(String(14))             # 名，字符串类型，长度14
     last_name = Column(String(16))              # 姓，字符串类型，长度16
@@ -386,28 +415,28 @@ class Employee(Base):
 **学习点**：模型类就像数据库表的“蓝图”，定义了表结构，字段类型对应数据库中的列类型。
 
 ### 步骤3：编写数据访问层 `dao/orm_dao.py`
-在数据访问层中，使用 SQLAlchemy 会话操作数据库。
+在数据访问层中，使用 SQLAlchemy 会话操作数据库，就像“洗菜工”用积木的方式与仓库打交道。
 
 ```python
 # dao/orm_dao.py
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from config.db_config import DB_CONFIG
-from model.employee import Employee
+from sqlalchemy import create_engine  # 积木盒子
+from sqlalchemy.orm import sessionmaker  # 你的手
+from config.db_config import DB_CONFIG  # 地址簿
+from model.employee import Employee  # 积木形状
 
 class OrmDao:
     def __init__(self):
-        # 创建数据库引擎，连接数据库
+        # 创建数据库引擎，打开积木盒子，连接数据库
         # create_engine 就像打开数据库的“大门”，参数是连接字符串
         self.engine = create_engine(f"mysql+pymysql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}/{DB_CONFIG['database']}")
         # 创建会话工厂，Session 是会话工厂，负责管理数据库操作
         Session = sessionmaker(bind=self.engine)
-        # 创建会话对象，就像打开一个“工作区”
+        # 创建会话对象，就像打开一个“工作区”或准备一双“手”
         self.session = Session()
-        print("数据库会话创建成功！")
+        print("积木盒子打开了，数据库会话创建成功！")
 
     def add_employee(self, emp_no, first_name, last_name, gender, birth_date, hire_date):
-        # 创建 Employee 对象，相当于准备一条记录
+        # 创建 Employee 对象，相当于做一个新积木或准备一条记录
         new_emp = Employee(
             emp_no=emp_no,
             first_name=first_name,
@@ -416,16 +445,16 @@ class OrmDao:
             birth_date=birth_date,
             hire_date=hire_date
         )
-        # add() 方法把对象添加到会话，就像放入“购物车”
+        # add() 方法把对象添加到会话，就像把积木放进盒子
         self.session.add(new_emp)
-        # commit() 方法提交事务，真正写入数据库
+        # commit() 方法提交事务，真正写入数据库，就像确认积木固定好
         self.session.commit()
         print(f"添加员工：{new_emp}")
         return new_emp
 
     def get_employee(self, emp_no):
         # query() 方法查询数据，filter_by() 相当于 WHERE 条件
-        # first() 获取查询结果的第一条记录
+        # first() 获取查询结果的第一条记录，就像在盒子里找到第一个匹配的积木
         emp = self.session.query(Employee).filter_by(emp_no=emp_no).first()
         if emp:
             print(f"查询结果：{emp}")
@@ -438,7 +467,7 @@ class OrmDao:
         # 先查询员工
         emp = self.session.query(Employee).filter_by(emp_no=emp_no).first()
         if emp:
-            # 直接修改对象属性，相当于更新数据
+            # 直接修改对象属性，相当于更新积木的形状
             emp.first_name = first_name
             emp.last_name = last_name
             # commit() 提交事务，写入数据库
@@ -453,7 +482,7 @@ class OrmDao:
         # 先查询员工
         emp = self.session.query(Employee).filter_by(emp_no=emp_no).first()
         if emp:
-            # delete() 方法删除对象
+            # delete() 方法删除对象，就像把积木从盒子里拿走
             self.session.delete(emp)
             # commit() 提交事务，写入数据库
             self.session.commit()
@@ -464,18 +493,18 @@ class OrmDao:
             return False
 
     def close(self):
-        # 关闭会话，释放资源
+        # 关闭会话，释放资源，就像收起手，关掉盒子
         self.session.close()
-        print("数据库会话已关闭！")
+        print("积木盒子关上了，数据库会话已关闭！")
 ```
 
 **学习点**：
-- ORM 不需要写 SQL 语句，直接操作对象（如 `new_emp = Employee(...)`）。
+- ORM 不需要写 SQL 语句，直接操作对象（如 `new_emp = Employee(...)`），就像拼积木。
 - `session.add()`、`session.delete()` 等方法管理增删，`session.commit()` 写入数据库。
 - 查询使用 `session.query()`，就像在 Python 中“过滤”数据。
 
 ### 步骤4：编写业务逻辑层 `service/orm_service.py`
-在业务逻辑层中，调用 ORM DAO 层的方法。
+在业务逻辑层中，调用 ORM DAO 层的方法，处理业务逻辑和数据校验。
 
 ```python
 # service/orm_service.py
@@ -483,31 +512,45 @@ from dao.orm_dao import OrmDao
 
 class OrmService:
     def __init__(self):
-        # 初始化时创建 DAO 对象，DAO 负责数据库操作
+        # 初始化时，找一个洗菜工（DAO 对象），负责数据库操作
         self.dao = OrmDao()
 
     def add_employee(self, emp_no, first_name, last_name, gender, birth_date, hire_date):
-        # 调用 DAO 层方法，添加员工
+        # 检查数据是否合理（数据校验）
+        if not first_name or not last_name:
+            print("错误：名字和姓氏不能为空！")
+            return False
+        if emp_no <= 0:
+            print("错误：员工编号必须是正数！")
+            return False
+        if gender not in ['M', 'F']:
+            print("错误：性别只能是 'M' 或 'F'！")
+            return False
+        # 如果没问题，交给洗菜工
         return self.dao.add_employee(emp_no, first_name, last_name, gender, birth_date, hire_date)
 
     def get_employee(self, emp_no):
-        # 调用 DAO 层方法，查询员工
+        # 直接交给洗菜工
         return self.dao.get_employee(emp_no)
 
     def update_employee(self, emp_no, first_name, last_name):
-        # 调用 DAO 层方法，更新员工
+        # 检查数据是否合理
+        if not first_name or not last_name:
+            print("错误：名字和姓氏不能为空！")
+            return False
+        # 如果没问题，交给洗菜工
         return self.dao.update_employee(emp_no, first_name, last_name)
 
     def delete_employee(self, emp_no):
-        # 调用 DAO 层方法，删除员工
+        # 直接交给洗菜工
         return self.dao.delete_employee(emp_no)
 
     def close(self):
-        # 调用 DAO 层方法，关闭连接
+        # 告诉洗菜工下班
         self.dao.close()
 ```
 
-**学习点**：业务逻辑层依然是“中间人”，负责调用 DAO 层，保持代码分层清晰。
+**学习点**：业务逻辑层依然是“中间人”，负责数据校验和调用 DAO 层，保持代码分层清晰。
 
 ### 步骤5：编写主程序入口 `main/orm_main.py`
 在主程序中调用 ORM Service 层，测试 CRUD 操作。
@@ -515,28 +558,34 @@ class OrmService:
 ```python
 # main/orm_main.py
 from service.orm_service import OrmService
-from datetime import date
+from datetime import date  # 日期工具，用于创建日期对象
 
 def main():
-    # 创建 Service 对象，Service 会间接连接数据库
+    # 找一个切菜工（Service 对象），Service 会间接连接数据库
     service = OrmService()
 
-    # 测试添加员工
+    # 指挥切菜工添加员工
+    print("尝试添加一个员工...")
     service.add_employee(999999, "Xiao", "Ming", "M", date(1990, 1, 1), date(2025, 7, 24))
     
-    # 测试查询员工
+    # 指挥切菜工查询员工
+    print("\n尝试查询这个员工...")
     service.get_employee(999999)
     
-    # 测试更新员工
+    # 指挥切菜工更新员工
+    print("\n尝试更新这个员工的名字...")
     service.update_employee(999999, "Xiao", "Hong")
     
-    # 测试查询更新后的员工
+    # 指挥切菜工再次查询员工
+    print("\n再次查询这个员工，看看是否更新成功...")
     service.get_employee(999999)
     
-    # 测试删除员工
+    # 指挥切菜工删除员工
+    print("\n尝试删除这个员工...")
     service.delete_employee(999999)
     
-    # 关闭数据库连接
+    # 所有人下班
+    print("\n任务完成，关闭所有连接...")
     service.close()
 
 if __name__ == "__main__":
@@ -550,8 +599,8 @@ if __name__ == "__main__":
 
 ```mermaid
 graph TD
-    A[启动 orm_main.py] --> B[创建 Service 对象]
-    B --> C[创建 DAO 对象]
+    A[大厨: 启动 orm_main.py] --> B[切菜工: 创建 Service 对象]
+    B --> C[洗菜工: 创建 DAO 对象]
     C --> D[创建 Session 对象]
     D --> E[连接数据库]
     E --> F[执行 CRUD 操作]
@@ -566,22 +615,45 @@ graph TD
     K --> M[操作完成]
     L --> M
     M --> N[关闭会话]
+    B --> O[检查数据是否合理]
+    O -->|合理| G
+    O -->|不合理| P[停止操作]
 ```
+
+**学习点**：ORM 的调用流程与原生 SQL 类似，但操作方式更像拼积木，直接处理对象而非写信。
 
 ---
 
-## 第四部分：总结与对比
+## 第四部分：数据校验的位置与原生 SQL 和 ORM 的对比
+
+### 数据校验在哪一层？为什么？
+**数据校验通常在业务逻辑层（service）进行**，原因如下：
+- **service 层是业务规则的中心**：这一层负责处理具体的业务逻辑，比如“名字不能为空”“编号必须是正数”“性别只能是 M 或 F”等规则。如果校验放在 DAO 层，DAO 层会变得复杂，违背分层职责分离的原则。
+- **main 层不适合做校验**：main 层是入口，只负责整体流程，不应该处理具体业务规则。
+- **dao 层只负责数据操作**：DAO 层就像洗菜工，只管与数据库打交道，不关心数据是否合理。
+
+**学习点**：校验就像检查菜是否新鲜，切菜工（service）负责检查，而不是洗菜工（dao）或大厨（main）。这样保持了每一层的职责清晰，代码易于维护。
 
 ### 原生 SQL 与 ORM 的对比表格
-| **方式**      | **优点**                              | **缺点**                              | **适用场景**                  |
-|---------------|--------------------------------------|--------------------------------------|------------------------------|
-| 原生 SQL      | 灵活性高，直接控制 SQL 语句          | 代码复杂，易出错，维护困难           | 小型项目，复杂查询           |
-| ORM (SQLAlchemy) | 代码简洁，像操作对象，易于维护       | 性能稍低，复杂查询需额外学习         | 中大型项目，标准 CRUD 操作   |
+| **方式**           | **优点**                              | **缺点**                              | **适用场景**                  |
+|--------------------|--------------------------------------|--------------------------------------|------------------------------|
+| 原生 SQL          | 灵活性高，直接控制 SQL 语句，性能较好 | 代码复杂，易出错，维护困难           | 小型项目，复杂查询           |
+| ORM (SQLAlchemy)  | 代码简洁，像操作对象，易于维护       | 性能稍低，复杂查询需额外学习         | 中大型项目，标准 CRUD 操作   |
 
-**学习点**：初学者可以先掌握原生 SQL 理解数据库原理，再学习 ORM 提高开发效率。
+**学习点**：初学者可以先掌握原生 SQL 理解数据库原理，再学习 ORM 提高开发效率。原生 SQL 像写信，灵活但繁琐；ORM 像玩积木，简单但有时不够灵活。
 
 ### 运行与测试
-1. 确保 MySQL 服务已启动，`employees` 数据库已导入。
+1. 确保 MySQL 服务已启动，`employees` 数据库已导入。如果没有 `employees` 数据库，可以创建一个简单表替代：
+   ```sql
+   CREATE TABLE employees (
+       emp_no INT PRIMARY KEY,
+       first_name VARCHAR(14),
+       last_name VARCHAR(16),
+       gender ENUM('M', 'F'),
+       birth_date DATE,
+       hire_date DATE
+   );
+   ```
 2. 运行原生 SQL 程序：
    ```bash
    python main/raw_sql_main.py
@@ -594,12 +666,22 @@ graph TD
 ### 作业与练习
 1. 修改 `dao/raw_sql_dao.py`，添加一个查询所有员工的功能（提示：使用 `cursor.fetchall()`）。
 2. 修改 `dao/orm_dao.py`，查询所有姓名为 "Xiao" 的员工（提示：使用 `filter_by` 或 `filter`）。
-3. 尝试为 `Employee` 模型添加一个新字段（如 `email`），并思考如何更新数据库表结构。
+3. 在 `service/raw_sql_service.py` 和 `service/orm_service.py` 中，为 `add_employee` 方法添加一个校验：入职日期不能是未来的日期（提示：比较 `hire_date` 和当前日期）。
+4. 尝试为 `Employee` 模型添加一个新字段（如 `email`），并思考如何更新数据库表结构（提示：使用 `ALTER TABLE` 语句）。
+5. 运行程序，观察打印信息，试着理解每一步的操作和输出结果。
 
 ---
 
-## 教学说明
-- 本教案从最基础的概念开始，详细讲解 `mysql-connector-python` 和 SQLAlchemy 的每个方法和作用，适合完全小白。
-- 代码分层规范调整为更符合企业标准的结构（config、dao、model、service、main），并通过注释和逻辑图帮助学生理解分层思想。
-- 每个代码段都有详细注释，确保学生能理解每行代码的作用。
-- 通过 Mermaid 逻辑图和学习表格，帮助学生直观理解项目结构和操作流程。
+## 第五部分：教学说明与总结
+
+### 教学特色
+- **从小白角度出发**：本教案从最基础的概念开始，详细讲解 `mysql-connector-python` 和 SQLAlchemy 的每个方法和作用，适合完全没有数据库经验的学习者。
+- **比喻辅助理解**：使用“邮递员”和“积木”的比喻，将抽象概念转化为直观形象的场景，帮助学生快速理解。
+- **代码分层规范**：项目结构调整为符合企业标准的结构（config、dao、model、service、main），并通过注释和逻辑图帮助学生理解分层思想。
+- **详细注释**：每个代码段都有超详细注释，确保学生能理解每行代码的作用。
+- **逻辑图和表格**：通过 Mermaid 逻辑图和学习表格，帮助学生直观理解项目结构、操作流程和核心概念。
+
+### 总结
+通过本教案，学生将掌握 Python 操作数据库的两种方式：原生 SQL 和 ORM。原生 SQL 提供了对数据库的直接控制，适合理解底层原理；ORM 提供了更简洁的对象操作方式，适合快速开发。代码分层让程序结构清晰，数据校验在业务逻辑层（service）进行，确保了职责分离。希望学生通过运行代码、完成作业，逐步从“超小白”成长为“数据库操作小能手”！
+
+**学习点**：数据库操作就像管理一个仓库，Python 是你的助手，无论是写信（原生 SQL）还是玩积木（ORM），都能帮你高效完成任务。分层和校验让工作更有条理，未来的学习和开发会更加顺畅。
