@@ -199,100 +199,107 @@
 - **目标**：
   确保每位学员都能准备好 Docker 环境和硬件资源，为单机部署做好准备。
 
+好的，我会根据你的需求进一步优化教案，详细解释每个参数的作用，并将 `localhost` 替换为主机本地 IP（假设为主机实际 IP，用户需根据实际情况替换）。以下是更新后的教案，参数解释更加详细，确保学员理解每个配置的意义。
+
+---
+
 ### 2.3 Docker 部署 Kafka 单机
-现在我们开始用 Docker 部署一个单机的 Kafka Broker。步骤非常简单，就像“搭一个小型积木房子”，我会详细讲解每个命令的含义。
+我们将通过 Docker 快速部署一个单机 Kafka Broker。步骤简单，类似“搭建一个小型积木房子”，以下是详细步骤和命令解释。
 
-- **步骤 1：拉取 Kafka 镜像**
-  镜像就像一个“预装好的软件包”，我们先从指定仓库下载 Kafka 的镜像。
-  - 在终端输入以下命令：
-    ```bash
-    docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
-    ```
-  - 下载完成后，用 `docker images` 查看是否下载成功。
-- **步骤 2：启动 Kafka 单机容器**
-  我们将启动一个 Kafka 容器，作为单机 Broker。Bitnami 的镜像默认支持 KRaft 模式（不需要 ZooKeeper），配置非常简单。
-  - 输入以下命令启动 Kafka：
-    ```bash
-    docker run -d \
-      --name kafka-single \
-      -p 9092:9092 \
-      -p 9093:9093 \
-      -e KAFKA_CFG_NODE_ID=1 \
-      -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
-      -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.110.8:9093 \
-      -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-      -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.110.8:9092,CONTROLLER://192.168.110.8:9093 \
-      -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
-      -e ALLOW_PLAINTEXT_LISTENER=yes \
-      -v kafka-data:/bitnami/kafka/data \
-      --network bridge \
-      swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
-    ```
-    **解释**：
-    - `--name kafka-single`：给容器起个名字，就像给你的小型快递点取名“单机站”，方便后续管理。
-    - `-p 9092:9092`：端口映射，让你可以通过本机的 9092 端口访问 Kafka 的 Broker 服务（用于消息收发）。
-    - `-p 9093:9093`：端口映射，让你可以通过本机的 9093 端口访问 Kafka 的 Controller 服务（用于集群管理）。
-    - `-e KAFKA_CFG_NODE_ID=1`：设置节点 ID，就像给快递点编号，确保每个节点有唯一标识。
-    - `-e KAFKA_CFG_PROCESS_ROLES=broker,controller`：设置这个节点既是“快递员”（Broker，负责处理消息存储和转发），又是“管理者”（Controller，负责管理集群元数据）。
-    - `-e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.110.8:9093`：定义 Controller 的投票成员，这里只有这一个节点，指定为 ID 为 1 的节点，地址是 `192.168.110.8:9093`（本机 IP 和 Controller 端口）。
-    - `-e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093`：设置 Kafka 监听的地址和端口，`0.0.0.0` 表示监听所有网络接口，9092 端口用于 Broker 服务，9093 端口用于 Controller 服务。
-    - `-e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.110.8:9092,CONTROLLER://192.168.110.8:9093`：设置 Kafka 对外公布的地址和端口，告诉客户端和其它 Broker 通过 `192.168.110.8` 这个 IP 地址的 9092 和 9093 端口来连接（请根据你的实际机器 IP 调整）。
-    - `-e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER`：指定 Controller 的监听器名称，用于内部管理。
-    - `-e ALLOW_PLAINTEXT_LISTENER=yes`：允许明文通信（不加密），简化测试环境配置（生产环境不建议这样设置，应启用加密和认证）。
-    - `-v kafka-data:/bitnami/kafka/data`：数据卷挂载，就像给快递点分配一个“仓库”，将 Kafka 的数据存储在本地名为 `kafka-data` 的卷中，防止容器删除后数据丢失。
-    - `--network bridge`：使用 Docker 的桥接网络模式，这是 Docker 的默认网络模式，容器通过桥接网络与主机通信，端口映射（如 `-p`）会生效。
-    - `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0`：指定使用的 Docker 镜像及其版本，这里是 Bitnami 提供的 Kafka 4.0.0 版本镜像。
-
-- **步骤 3：检查 Kafka 是否正常运行**
-  启动后，我们检查一下容器状态，确保 Kafka 运行正常。
-  - 输入以下命令查看容器状态：
-    ```bash
-    docker ps
-    ```
-    如果看到 `kafka-single` 容器状态为 `Up`，说明启动成功。
-  - 也可以查看日志，确认是否有错误：
-    ```bash
-    docker logs kafka-single
-    ```
-    如果日志中没有明显错误信息（如 `ERROR`），说明 Kafka 基本运行正常。
-- **目标**：
-  通过简单命令，快速启动一个单机 Kafka 容器，掌握 Docker 部署的基本操作。
-
-### 2.4 部署 Kafka UI（可视化管理工具）
-为了更直观地管理 Kafka，我们部署一个 Web UI 工具——Kafka UI。它就像“物流中心的监控屏幕”，可以让你通过浏览器查看和管理 Topic、消息等信息。
-
-- **步骤 1：拉取 Kafka UI 镜像**
-  输入以下命令下载 Kafka UI 镜像：
+#### 步骤 1：拉取 Kafka 镜像
+镜像是一个“预装好的软件包”，我们先从仓库下载 Kafka 镜像。
+- 在终端输入以下命令：
   ```bash
-  docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0
+  docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
   ```
-- **步骤 2：启动 Kafka UI 容器**
-  输入以下命令启动 Kafka UI，并连接到我们的 Kafka 单机实例：
+- 下载完成后，用以下命令确认是否成功：
+  ```bash
+  docker images
+  ```
+
+#### 步骤 2：启动 Kafka 单机容器
+我们将启动一个 Kafka 容器作为单机 Broker。Bitnami 镜像默认支持 KRaft 模式（无需 ZooKeeper），配置简便。
+- 输入以下命令启动 Kafka（请将 `192.168.1.100` 替换为你的主机实际 IP）：
   ```bash
   docker run -d \
-    --name kafka-ui \
-    -p 8080:8080 \
-    -e KAFKA_CLUSTERS_0_NAME=local \
-    -e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=192.168.110.8:9092 \
-    --network bridge \
-    swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0
+    --network host \
+    --name kafka-single \
+    -p 9092:9092 \
+    -p 9093:9093 \
+    -e KAFKA_CFG_NODE_ID=1 \
+    -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+    -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.1.100:9093 \
+    -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+    -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.100:9092 \
+    -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+    -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+    -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+    -e ALLOW_PLAINTEXT_LISTENER=yes \
+    -v kafka-data:/bitnami/kafka/data \
+    swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
   ```
-  **解释**：
-  - `--name kafka-ui`：给容器起个名字，方便管理。
-  - `-p 8080:8080`：端口映射，让你可以通过本机的 8080 端口访问 Kafka UI 的 Web 界面。
-  - `-e KAFKA_CLUSTERS_0_NAME=local`：设置 Kafka 集群的名称，这里随便起名为 `local`，用于 UI 显示。
-  - `-e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=192.168.110.8:9092`：设置 Kafka 的连接地址，指向我们单机 Kafka 的地址和端口（`192.168.110.8:9092`），需要与 Kafka 的 `ADVERTISED_LISTENERS` 配置一致。
-  - `--network bridge`：使用桥接网络模式，与 Kafka 容器保持一致，确保两者可以通过 IP 地址通信。
-  - `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0`：指定 Kafka UI 的 Docker 镜像及其版本。
+  **参数详细解释**：
+  - `--name kafka-single`：为容器设置一个名称，方便后续管理，就像给你的 Kafka 服务起一个容易识别的名字。
+  - `-p 9092:9092`：端口映射，将容器内部的 9092 端口映射到主机的 9092 端口。9092 是 Kafka Broker 的默认端口，用于客户端发送和接收消息。
+  - `-p 9093:9093`：端口映射，将容器内部的 9093 端口映射到主机的 9093 端口。9093 是 Kafka Controller 的端口，用于集群管理（在 KRaft 模式下）。
+  - `-e KAFKA_CFG_NODE_ID=1`：设置 Kafka 节点的唯一标识符，类似于给节点分配一个编号，在集群中用于区分不同节点。这里设置为 1，因为是单机模式。
+  - `-e KAFKA_CFG_PROCESS_ROLES=broker,controller`：定义节点的角色。`broker` 角色负责存储和转发消息，`controller` 角色负责管理集群元数据（比如谁是 leader）。单机模式下，一个节点同时承担这两个角色。
+  - `-e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.1.100:9093`：指定 Controller 的投票成员列表，用于选举 Controller 领导者。格式是 `节点ID@主机IP:端口`，这里只有 1 个节点，ID 为 1，地址为主机 IP 和 9093 端口。
+  - `-e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093`：定义 Kafka 监听的地址和端口。`0.0.0.0` 表示监听所有网络接口，`PLAINTEXT://0.0.0.0:9092` 表示 Broker 在 9092 端口监听消息通信，`CONTROLLER://0.0.0.0:9093` 表示 Controller 在 9093 端口监听管理通信。
+  - `-e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.100:9092`：定义 Kafka 对外公布的地址和端口，告诉客户端和其它 Broker 通过这个地址连接到 Broker。设置为主机 IP 和 9092 端口（Controller 的地址不需要对外公布）。
+  - `-e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT`：定义监听器的安全协议映射。`PLAINTEXT:PLAINTEXT` 表示 Broker 监听器使用明文通信，`CONTROLLER:PLAINTEXT` 表示 Controller 监听器也使用明文通信。
+  - `-e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER`：指定 Controller 监听器的名称，用于内部识别和管理。
+  - `-e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT`：指定 Broker 之间通信使用的监听器名称，这里是 `PLAINTEXT`，确保 Broker 间通信正常。
+  - `-e ALLOW_PLAINTEXT_LISTENER=yes`：允许使用明文（不加密）监听器，简化测试环境配置。生产环境中应设置为 `no`，并启用加密和认证。
+  - `-v kafka-data:/bitnami/kafka/data`：数据卷挂载，将 Kafka 数据存储在主机的一个名为 `kafka-data` 的数据卷中，映射到容器内的 `/bitnami/kafka/data` 路径。这样即使容器被删除，数据也不会丢失。
+  - `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0`：指定使用的 Docker 镜像及其版本，这里是 Bitnami 提供的 Kafka 4.0.0 版本镜像。
 
-- **步骤 3：访问 Kafka UI**
-  启动后，打开浏览器，访问 `http://192.168.110.8:8080`，你会看到 Kafka UI 的界面。如果连接成功，界面上会显示你的 Kafka 集群信息（名为 `local`）。
-  - 你可以点击左侧菜单查看 Topic、Broker 等信息。
-  - 目前还没有 Topic，界面可能是空的，接下来我们会创建 Topic 并查看。
-- **生活化类比**：
-  Kafka UI 就像快递点的“监控屏幕”，你不用亲自去货架上看包裹（手动命令行操作），通过屏幕就能知道有哪些货架（Topic）、包裹数量等信息。
-- **目标**：
-  通过 Kafka UI，提供一个直观的管理界面，让学员更容易理解和操作 Kafka。
+#### 步骤 3：检查 Kafka 是否正常运行
+启动后，检查容器状态，确保 Kafka 运行正常。
+- 查看容器状态：
+  ```bash
+  docker ps
+  ```
+  如果 `kafka-single` 状态为 `Up`，说明启动成功。
+- 查看日志确认是否有错误：
+  ```bash
+  docker logs kafka-single
+  ```
+  如无 `ERROR` 等明显错误信息，Kafka 运行正常。
+
+### 2.4 部署 Kafka UI（可视化管理工具）
+为了直观管理 Kafka，我们部署 Kafka UI 工具。它就像“物流中心的监控屏幕”，通过浏览器即可查看和管理 Topic、消息等信息。
+
+#### 步骤 1：拉取 Kafka UI 镜像
+输入以下命令下载 Kafka UI 镜像：
+```bash
+docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0
+```
+
+#### 步骤 2：启动 Kafka UI 容器
+输入以下命令启动 Kafka UI，并连接到单机 Kafka 实例（请将 `192.168.1.100` 替换为你的主机实际 IP）：
+```bash
+docker run -d \
+  --name kafka-ui \
+  -p 8080:8080 \
+  -e KAFKA_CLUSTERS_0_NAME=local \
+  -e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=192.168.1.100:9092 \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0
+```
+**参数详细解释**：
+- `--name kafka-ui`：为容器设置一个名称，方便后续管理。
+- `-p 8080:8080`：端口映射，将容器内部的 8080 端口映射到主机的 8080 端口。Kafka UI 的 Web 界面通过这个端口访问。
+- `-e KAFKA_CLUSTERS_0_NAME=local`：设置 Kafka 集群的显示名称，在 UI 界面中会显示为 `local`，便于识别。
+- `-e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=192.168.1.100:9092`：指定 Kafka 集群的连接地址，即 Kafka Broker 的地址和端口。设置为主机 IP 和 9092 端口，必须与 Kafka 的 `ADVERTISED_LISTENERS` 配置一致，否则 UI 无法连接到 Kafka。
+- `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0`：指定使用的 Kafka UI Docker 镜像及其版本。
+
+#### 步骤 3：访问 Kafka UI
+启动后，打开浏览器访问 `http://192.168.1.100:8080`（请将 IP 替换为你的主机实际 IP），即可看到 Kafka UI 界面。如果连接成功，界面会显示名为 `local` 的 Kafka 集群信息。
+- 点击左侧菜单可查看 Topic、Broker 等信息。
+- 如无 Topic，界面可能为空，后续可创建 Topic 并查看。
+
+#### 生活化类比
+Kafka UI 就像快递点的“监控屏幕”，无需手动命令行操作，通过界面即可了解 Topic 和消息状态。
 
 ### 2.5 Kafka 单机基础操作实战
 现在 Kafka 单机已经运行，我们通过命令行进行一些基础操作，熟悉 Kafka 的核心功能。就像在小型快递点学习如何接收和分发包裹。
@@ -380,106 +387,172 @@
 因此，在本次实验中，我们选择在 3 台主机上部署 3 个节点，既符合共识协议的要求，也便于 3 名学员分组协作，每人负责一台主机上的节点管理，模拟企业团队运维场景。
 
 
+好的，我会根据你的需求对 Kafka 集群部署教案进行全面优化，修正 Docker 命令中的错误，添加详细的参数解释，加入内存和 JVM 性能优化参数，确保每台主机（2核4G）能够正常运行 Kafka，并添加主机名配置和 hosts 解析的步骤。同时，我会将之前提供的正确启动 Docker Kafka 的命令整合到教案中。以下是优化后的教案：
+
+---
+
 ### Kafka 集群部署（重点：Docker 部署 + KRaft 模式，跨 3 台主机）
 
 #### 1. 环境准备
 - **分组安排**：将 3 名学员组成一组，每人负责一台主机上的 Kafka Broker 节点管理，模拟企业团队协作。
-- **Docker 安装**：确保每台主机已安装 Docker。以下是简单安装步骤（以 Ubuntu 系统为例）：
-  1. 更新软件包索引：`sudo apt update`
-  2. 安装 Docker：`sudo apt install docker.io -y`
-  3. 启动 Docker 服务：`sudo systemctl start docker`
-  4. 验证安装是否成功：`docker --version`（如果输出 Docker 版本信息，说明安装成功）
-  - 如果需要更多安装指南，可参考官方文档：[Docker 安装指南](https://docs.docker.com/engine/install/)
-- **硬件要求**：建议每台主机的实验环境至少有 4GB 内存和 2 核 CPU，以支持 Kafka Broker 节点的运行。
-- **Kafka 版本**：使用最新版本（如 Kafka 3.5.0 或以上），确保支持 KRaft 模式（Kafka Raft 模式，用于替代 ZooKeeper）。
-- **网络要求**：确保 3 台主机在同一网络中，可以互相通信（通过内网 IP 或公网 IP），并记录每台主机的 IP 地址（例如：主机 1：`192.168.1.101`，主机 2：`192.168.1.102`，主机 3：`192.168.1.103`）。
+- **硬件要求**：每台主机的实验环境为 2 核 CPU 和 4GB 内存，适合运行 Kafka Broker 节点（已针对此配置优化 JVM 参数）。
+- **Kafka 版本**：使用 Kafka 4.0.0（Bitnami 镜像），支持 KRaft 模式（Kafka Raft 模式，替代 ZooKeeper）。
+- **网络要求**：确保 3 台主机在同一网络中，可以互相通信（通过内网 IP），并记录每台主机的 IP 地址（例如：主机 1：`192.168.1.101`，主机 2：`192.168.1.102`，主机 3：`192.168.1.103`）。
+
+##### 1.1 主机名配置和 hosts 解析（重要步骤）
+Kafka 集群部署要求明确配置主机名，否则可能导致初始化失败或通信错误。因此，第一步是设置主机名并配置 hosts 文件以确保节点间正常通信。
+- 在每台主机上执行以下操作：
+  1. **设置主机名**：
+     - 主机 1（假设 IP 为 `192.168.1.101`）：
+       ```bash
+       sudo hostnamectl set-hostname kafka-broker1
+       ```
+     - 主机 2（假设 IP 为 `192.168.1.102`）：
+       ```bash
+       sudo hostnamectl set-hostname kafka-broker2
+       ```
+     - 主机 3（假设 IP 为 `192.168.1.103`）：
+       ```bash
+       sudo hostnamectl set-hostname kafka-broker3
+       ```
+     **说明**：主机名应与 Kafka 节点名称对应，便于识别和管理。
+  2. **配置 hosts 文件**：
+     - 在每台主机上编辑 `/etc/hosts` 文件，添加所有节点的 IP 和主机名映射：
+       ```bash
+       sudo nano /etc/hosts
+       ```
+       添加以下内容（根据实际 IP 调整）：
+       ```
+       192.168.1.101 kafka-broker1
+       192.168.1.102 kafka-broker2
+       192.168.1.103 kafka-broker3
+       ```
+     **说明**：确保每台主机都能通过主机名解析到其他节点的 IP，避免 Kafka 集群通信时因域名解析失败而报错。
+  3. **验证主机名和解析**：
+     - 检查主机名是否设置正确：
+       ```bash
+       hostname
+       ```
+     - 测试解析是否生效：
+       ```bash
+       ping kafka-broker1
+       ping kafka-broker2
+       ping kafka-broker3
+       ```
+     如果能 ping 通，说明配置正确。
+
+##### 1.2 Docker 安装
+确保每台主机已安装 Docker。以下是简单安装步骤（以 Ubuntu 系统为例）：
+1. 更新软件包索引：`sudo apt update`
+2. 安装 Docker：`sudo apt install docker.io -y`
+3. 启动 Docker 服务：`sudo systemctl start docker`
+4. 验证安装是否成功：`docker --version`（如果输出 Docker 版本信息，说明安装成功）
+- 如果需要更多安装指南，可参考官方文档：[Docker 安装指南](https://docs.docker.com/engine/install/)
 
 #### 2. Docker 部署方式（核心内容：跨 3 台主机）
 我们将通过 Docker 命令在 3 台主机上各部署一个 Kafka Broker 节点，组成一个基于 KRaft 模式的 Kafka 集群。以下是详细步骤，并对每个命令和参数进行解释。
 
 ##### 2.1 拉取 Kafka 镜像
-在每台主机上执行以下命令，拉取 Confluent 提供的 Kafka 镜像（支持 KRaft 模式）：
+在每台主机上执行以下命令，拉取 Bitnami 提供的 Kafka 镜像（支持 KRaft 模式）：
 ```bash
 docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
 ```
 **命令解释**：
-- `docker pull`：Docker 的命令，用于从 Docker Hub 下载镜像。
-- `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0`：指定要下载的镜像名称和标签，`4.0.0` 表示版本。
+- `docker pull`：Docker 命令，用于从指定仓库下载镜像。
+- `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0`：指定下载的镜像名称和版本，`4.0.0` 是支持 KRaft 模式的 Kafka 版本。
 
 ##### 2.2 启动 Kafka Broker 节点（KRaft 模式）
-KRaft 模式是 Kafka 3.0+ 引入的新特性，使用内置的 Raft 协议管理元数据，无需依赖 ZooKeeper。以下是每台主机上启动 Broker 的命令，包含环境变量、端口映射和数据卷挂载。注意需要根据主机的实际 IP 地址调整参数。
+KRaft 模式是 Kafka 3.0+ 引入的新特性，使用内置的 Raft 协议管理元数据，无需依赖 ZooKeeper。以下是每台主机上启动 Broker 的命令，包含环境变量、端口映射、数据卷挂载和 JVM 优化参数。
 
 - **主机 1（Broker 1，node.id=1）**：
   假设主机 1 的 IP 为 `192.168.1.101`，在主机 1 上执行：
   ```bash
-  docker run -d --name kafka-broker1 \
+  docker run -d \
+    --name kafka-broker1 \
     --network host \
-    -e KAFKA_BROKER_ID=1 \
-    -e KAFKA_NODE_ID=1 \
-    -e KAFKA_PROCESS_ROLES=broker,controller \
-    -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@192.168.1.101:9093,2@192.168.1.102:9093,3@192.168.1.103:9093 \
-    -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-    -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
-    -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-    -v kafka-broker1-data:/var/lib/kafka/data \
+    -e KAFKA_CFG_NODE_ID=1 \
+    -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+    -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+    -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
+    -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+    -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+    -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+    -e ALLOW_PLAINTEXT_LISTENER=yes \
+    -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+    -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+    -v kafka-broker1-data:/bitnami/kafka/data \
     swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
   ```
 
 - **主机 2（Broker 2，node.id=2）**：
   假设主机 2 的 IP 为 `192.168.1.102`，在主机 2 上执行：
   ```bash
-  docker run -d --name kafka-broker2 \
+  docker run -d \
+    --name kafka-broker2 \
     --network host \
-    -e KAFKA_BROKER_ID=2 \
-    -e KAFKA_NODE_ID=2 \
-    -e KAFKA_PROCESS_ROLES=broker,controller \
-    -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@192.168.1.101:9093,2@192.168.1.102:9093,3@192.168.1.103:9093 \
-    -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-    -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.102:9092 \
-    -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-    -v kafka-broker2-data:/var/lib/kafka/data \
+    -e KAFKA_CFG_NODE_ID=2 \
+    -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+    -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+    -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.102:9092 \
+    -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+    -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+    -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+    -e ALLOW_PLAINTEXT_LISTENER=yes \
+    -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+    -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+    -v kafka-broker2-data:/bitnami/kafka/data \
     swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
   ```
 
 - **主机 3（Broker 3，node.id=3）**：
   假设主机 3 的 IP 为 `192.168.1.103`，在主机 3 上执行：
   ```bash
-  docker run -d --name kafka-broker3 \
+  docker run -d \
+    --name kafka-broker3 \
     --network host \
-    -e KAFKA_BROKER_ID=3 \
-    -e KAFKA_NODE_ID=3 \
-    -e KAFKA_PROCESS_ROLES=broker,controller \
-    -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@192.168.1.101:9093,2@192.168.1.102:9093,3@192.168.1.103:9093 \
-    -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-    -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.103:9092 \
-    -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-    -v kafka-broker3-data:/var/lib/kafka/data \
+    -e KAFKA_CFG_NODE_ID=3 \
+    -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+    -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+    -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.103:9092 \
+    -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+    -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+    -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+    -e ALLOW_PLAINTEXT_LISTENER=yes \
+    -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+    -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+    -v kafka-broker3-data:/bitnami/kafka/data \
     swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
   ```
 
-**命令和参数解释**：
+**命令和参数详细解释**：
 - `docker run`：Docker 命令，用于启动一个容器。
 - `-d`：后台运行容器，不占用当前终端。
 - `--name kafka-broker1`：为容器命名，便于后续管理（每个主机上的容器名称不同）。
-- `-p 9092:9092`：端口映射，将容器内的 9092 端口映射到主机的 9092 端口，用于 Kafka 客户端连接。
-- `-p 9093:9093`: Kafka 控制器之间的专用端口，用于 Broker 节点间进行元数据同步和 Leader 选举等操作`
+- `--network host`：使用主机网络模式，容器直接使用主机的网络栈，避免端口映射问题，确保 Kafka 节点间通信顺畅。
 - `-e`：设置环境变量，用于配置 Kafka 的运行参数：
-  - `KAFKA_BROKER_ID`：Broker 的唯一标识符，每个节点不同。
-  - `KAFKA_NODE_ID`：节点 ID，与 Broker ID 一致，用于 KRaft 模式。
-  - `KAFKA_PROCESS_ROLES`：定义节点角色，`broker` 表示处理消息，`controller` 表示管理元数据，KRaft 模式下可以组合。
-  - `KAFKA_CONTROLLER_QUORUM_VOTERS`：定义控制器节点的投票列表，用于 Raft 协议共识，格式为 `node_id@host:port`，包含所有节点的 IP 和端口。
-  - `KAFKA_LISTENERS`：配置 Kafka 监听的地址和端口，`PLAINTEXT://0.0.0.0:9092` 用于消息通信，`CONTROLLER://0.0.0.0:9093` 用于元数据管理。
-  - `KAFKA_ADVERTISED_LISTENERS`：配置对外暴露的地址，客户端和其它 Broker 通过此地址连接，必须使用主机的实际 IP。
-  - `KAFKA_INTER_BROKER_LISTENER_NAME`：Broker 间通信使用的监听器名称，这里是 `PLAINTEXT`。
-- `-v kafka-broker1-data:/var/lib/kafka/data`：数据卷挂载，将容器内 Kafka 数据存储到主机上，避免容器删除后数据丢失。
-- `confluentinc/cp-kafka:latest`：指定使用的 Docker 镜像。
+  - `KAFKA_CFG_NODE_ID`：Kafka 节点的唯一标识符，每个节点不同，用于 KRaft 模式下区分节点。
+  - `KAFKA_CFG_PROCESS_ROLES`：定义节点角色，`broker` 表示处理消息存储和转发，`controller` 表示管理集群元数据，KRaft 模式下可以组合。
+  - `KAFKA_CFG_CONTROLLER_QUORUM_VOTERS`：定义控制器节点的投票列表，用于 Raft 协议共识，格式为 `node_id@hostname:port`，包含所有节点的 hostname 和端口（使用主机名而非 IP，确保通过 hosts 解析）。
+  - `KAFKA_CFG_LISTENERS`：配置 Kafka 监听的地址和端口，`PLAINTEXT://0.0.0.0:9092` 用于消息通信，监听所有接口的 9092 端口；`CONTROLLER://0.0.0.0:9093` 用于元数据管理，监听所有接口的 9093 端口。
+  - `KAFKA_CFG_ADVERTISED_LISTENERS`：配置对外暴露的地址，客户端和其它 Broker 通过此地址连接，必须使用主机的实际 IP 和 9092 端口。
+  - `KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP`：定义监听器的安全协议映射，`PLAINTEXT:PLAINTEXT` 表示 Broker 监听器使用明文通信，`CONTROLLER:PLAINTEXT` 表示 Controller 监听器也使用明文通信。
+  - `KAFKA_CFG_CONTROLLER_LISTENER_NAMES`：指定 Controller 监听器的名称，用于内部识别和管理。
+  - `KAFKA_CFG_INTER_BROKER_LISTENER_NAME`：指定 Broker 间通信使用的监听器名称，这里是 `PLAINTEXT`，确保 Broker 间通信正常。
+  - `ALLOW_PLAINTEXT_LISTENER`：允许使用明文（不加密）监听器，简化测试环境配置。生产环境中应设置为 `no`，并启用加密和认证。
+  - `KAFKA_HEAP_OPTS="-Xmx2G -Xms2G"`：设置 Kafka 的 JVM 堆内存大小，最大和初始值均为 2GB，适合 4GB 内存的主机，避免内存不足或过大导致性能问题。
+  - `KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35"`：优化 JVM 垃圾回收性能，`UseG1GC` 使用 G1 垃圾回收器，适合延迟敏感应用；`MaxGCPauseMillis=20` 限制最大垃圾回收暂停时间为 20ms；`InitiatingHeapOccupancyPercent=35` 设置堆占用比例达到 35% 时触发垃圾回收。
+- `-v kafka-broker1-data:/bitnami/kafka/data`：数据卷挂载，将容器内 Kafka 数据存储到主机上一个名为 `kafka-broker1-data` 的数据卷中，避免容器删除后数据丢失。
+- `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0`：指定使用的 Docker 镜像及其版本。
 
 **注意**：
 - 请根据实际环境替换 IP 地址（`192.168.1.101`、`192.168.1.102`、`192.168.1.103`）。
-- 每台主机上的端口映射均为 `9092:9092`，但由于它们在不同主机上，不会产生冲突。
+- 每台主机使用 `--network host` 模式，确保端口直接映射到主机，避免冲突。
 
 ##### 2.3 一键部署 Shell 脚本（每台主机单独执行）
-为了方便每位学员在各自主机上快速部署，以下是一个简单的 shell 脚本模板，需根据主机 IP 和 Broker ID 进行调整后执行-进公司用的-现在不许偷懒
+为了方便每位学员在各自主机上快速部署，以下是一个简单的 shell 脚本模板，需根据主机 IP 和 Broker ID 进行调整后执行。
 
 ```bash
 #!/bin/bash
@@ -488,18 +561,23 @@ KRaft 模式是 Kafka 3.0+ 引入的新特性，使用内置的 Raft 协议管�
 BROKER_ID=1
 NODE_ID=1
 HOST_IP="192.168.1.101"
-QUORUM_VOTERS="1@192.168.1.101:9093,2@192.168.1.102:9093,3@192.168.1.103:9093"
+QUORUM_VOTERS="1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093"
 
-docker run -d --name kafka-broker${BROKER_ID} \
+docker run -d \
+  --name kafka-broker${BROKER_ID} \
   --network host \
-  -e KAFKA_BROKER_ID=${BROKER_ID} \
-  -e KAFKA_NODE_ID=${NODE_ID} \
-  -e KAFKA_PROCESS_ROLES=broker,controller \
-  -e KAFKA_CONTROLLER_QUORUM_VOTERS=${QUORUM_VOTERS} \
-  -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${HOST_IP}:9092 \
-  -e KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-  -v kafka-broker${BROKER_ID}-data:/var/lib/kafka/data \
+  -e KAFKA_CFG_NODE_ID=${NODE_ID} \
+  -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+  -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=${QUORUM_VOTERS} \
+  -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+  -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://${HOST_IP}:9092 \
+  -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+  -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+  -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+  -e ALLOW_PLAINTEXT_LISTENER=yes \
+  -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+  -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+  -v kafka-broker${BROKER_ID}-data:/bitnami/kafka/data \
   swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
 
 echo "Kafka Broker ${BROKER_ID} 已启动！"
@@ -510,6 +588,27 @@ echo "Kafka Broker ${BROKER_ID} 已启动！"
 2. 根据自己的主机 IP 和 Broker ID 修改脚本中的参数（`BROKER_ID`、`NODE_ID`、`HOST_IP`）。
 3. 赋予执行权限：`chmod +x deploy-kafka-broker.sh`。
 4. 运行脚本：`./deploy-kafka-broker.sh`。
+
+##### 2.4 检查 Kafka 集群是否正常运行
+启动后，在每台主机上检查容器状态，确保 Kafka 运行正常。
+- 查看容器状态：
+  ```bash
+  docker ps
+  ```
+  如果 `kafka-brokerX` 状态为 `Up`，说明启动成功。
+- 查看日志确认是否有错误：
+  ```bash
+  docker logs kafka-broker1
+  ```
+  如无 `ERROR` 等明显错误信息，Kafka 运行正常。
+- 验证集群状态（在任意一台主机上执行）：
+  进入容器并使用 Kafka 工具查看集群状态：
+  ```bash
+  docker exec -it kafka-broker1 bash
+  kafka-cluster cluster-id --bootstrap-server 192.168.1.101:9092
+  ```
+  如果输出集群 ID，说明集群初始化成功。
+
 
 ##### 2.4 快速验证集群是否正常运行
 部署完成后，学员可以协作验证集群功能。以下命令可以在任意一台主机上执行：
@@ -559,10 +658,11 @@ docker rm -f kafka-ui
 # 运行 Kafka UI 容器
 docker run -d \
   --name kafka-ui \
+  --restart always \
   -p 8080:8080 \
-  -e KAFKA_CLUSTERS_0_NAME=local \
+  -e KAFKA_CLUSTERS_0_NAME=kafka-cluster \
   -e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=192.168.1.101:9092,192.168.1.102:9092,192.168.1.103:9092 \
-  --network bridge \
+  --network host \
   swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0
 ```
 
@@ -573,8 +673,282 @@ docker run -d \
 - `-p 8080:8080`：端口映射，将容器内的 8080 端口映射到主机的 8080 端口，方便通过浏览器访问。
 - `-e KAFKA_CLUSTERS_0_NAME=local`：设置 Kafka 集群的名称，显示在 UI 界面中，这里命名为 `local`。
 - `-e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=192.168.1.101:9092,192.168.1.102:9092,192.168.1.103:9092`：指定 Kafka 集群的 Broker 地址列表，UI 将通过这些地址连接到集群。请根据实际 IP 替换。
-- `--network bridge`：使用 Docker 的桥接网络模式，确保容器可以与主机网络通信。
+- `--network host`: 直接使用主机网络，无需端口映射，提高性能。
 - `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/kafbat/kafka-ui:v1.2.0`：指定 Kafka UI 的镜像名称和版本。
 
 ##### 3.2 访问 Kafka UI
 部署完成后，在浏览器中访问 `http://你的主机IP:8080`（例如 `http://192.168.1.101:8080`），即可看到 Kafka UI 界面。你可以在界面中查看集群状态、主题列表、消息内容等。
+
+
+### 4. 企业级问题解决：消息处理与优化 （高薪必学）
+在企业级应用中，Kafka 常用于处理高并发、大规模的消息流。然而，消息过载、积压或资源限制等问题可能影响系统稳定性和性能。本节将针对常见问题提供解决方法，并结合 Docker 环境给出具体实践操作，确保学员能够在实际场景中快速应对。
+
+#### 1. 整体 Kafka 系统类比：快递分拣中心
+在开始具体问题之前，先用一个统一的类比帮助大家建立 Kafka 的整体认知：
+- **Kafka 集群**：就像一个大型“快递分拣中心”，负责接收、存储和分发快递包裹（消息）。
+- **Broker 节点**：分拣中心里的每个“分拣站”，负责处理一部分包裹（存储和转发消息）。
+- **Topic**：就像分拣中心里的“分类货架”，每个货架存放特定类型的包裹（特定主题的消息）。
+- **Partition（分区）**：每个货架上的“格子”，一个 Topic 分成多个格子，方便多人同时处理。
+- **生产者（Producer）**：就像“寄快递的人”，不断把包裹送到分拣中心。
+- **消费者（Consumer）**：就像“收快递的人”，从分拣中心取走包裹。
+- **消费者组**：就像一个“收件团队”，团队里多人分工取包裹，每个格子只被一个人负责，避免重复。
+
+这个类比将贯穿下面的问题解释，帮助大家把抽象概念映射到熟悉的场景。
+
+#### 4.1 消息来得太快
+**问题描述**：当生产者发送消息的速度远超消费者处理能力或 Broker 存储能力时，可能导致消息积压、系统延迟甚至崩溃。
+
+**问题场景**：想象快递分拣中心每天收到 10 万个包裹，但分拣站的工人（消费者）和仓库空间（Broker 存储）只能处理 5 万个，包裹堆积如山，中心快要“爆仓”。
+
+**Mermaid 图：增加分区数的效果**
+```mermaid
+graph TD
+    subgraph 增加分区前
+        T1[Topic: high-traffic-topic<br>货架分区数=3]
+        P1[格子 1<br>Partition 1] --> T1
+        P2[格子 2<br>Partition 2] --> T1
+        P3[格子 3<br>Partition 3] --> T1
+        C1[工人 1<br>Consumer 1] --> P1
+        C2[工人 2<br>Consumer 2] --> P2
+        C3[工人 3<br>Consumer 3] --> P3
+    end
+
+    subgraph 增加分区后
+        T2[Topic: high-traffic-topic<br>货架分区数=6]
+        P4[格子 1<br>Partition 1] --> T2
+        P5[格子 2<br>Partition 2] --> T2
+        P6[格子 3<br>Partition 3] --> T2
+        P7[格子 4<br>Partition 4] --> T2
+        P8[格子 5<br>Partition 5] --> T2
+        P9[格子 6<br>Partition 6] --> T2
+        C4[工人 1<br>Consumer 1] --> P4
+        C5[工人 2<br>Consumer 2] --> P5
+        C6[工人 3<br>Consumer 3] --> P6
+        C7[工人 4<br>Consumer 4] --> P7
+        C8[工人 5<br>Consumer 5] --> P8
+        C9[工人 6<br>Consumer 6] --> P9
+    end
+```
+
+**图解释**：
+- 增加分区数就像把货架分成更多小格子，每个格子可以被一个工人（消费者）负责，处理速度变快，包裹不再堆积。
+- 注意：如果工人数量没增加（消费者数量不足），多出来的格子也没人处理，效果就不明显。
+
+**解决方法**：
+1. **增加分区数**：
+   - 分区（Partition）是 Kafka 提高并行处理能力的关键。增加 Topic 的分区数可以让更多消费者并行处理消息，从而提升吞吐量。
+   - 注意：分区数增加后需确保消费者组中有足够消费者，否则效果有限。
+   - 类比：就像把一个大货架拆分成更多小格子，每个格子可以分配给不同工人同时处理，加快分拣速度。
+2. **扩展 Broker 节点**：
+   - 通过增加 Kafka Broker 节点分担负载，提升集群存储和处理能力。
+   - 新增 Broker 后，需重新平衡分区分配，确保负载均匀。
+   - 类比：就像在城市里新增一个分拣站，把一部分包裹分流过去，减轻原有站点的压力。
+3. **调整生产者配置**：
+   - 设置 `linger.ms`：增加生产者发送消息的延迟时间，批量发送消息，减少请求次数。
+   - 设置 `compression.type`：启用压缩（如 `gzip` 或 `snappy`），减少消息体积，降低网络和存储压力。
+   - 类比：就像告诉寄快递的人“别一次送太多，攒一攒再送
+4. **生产者限流**：
+   - 在生产者端实现限流逻辑，控制发送速率，避免压垮 Broker。
+   - 类比：就像在分拣站门口设个限流闸，每天只收一定数量的包裹，确保不超载。
+
+**实践操作（基于 Docker 环境）**：
+- **增加分区数**：
+  假设已有 Topic 名为 `high-traffic-topic`，当前分区数为 3，想增加到 6：
+  1. 进入任意 Kafka 容器（例如 `kafka-broker1`）：
+     ```bash
+     docker exec -it kafka-broker1 bash
+     ```
+  2. 使用 Kafka 工具增加分区：
+     ```bash
+     kafka-topics --alter --topic high-traffic-topic --partitions 6 --bootstrap-server 192.168.1.101:9092
+     ```
+     **说明**：分区数只能增加，不能减少。增加后需检查消费者组是否能充分利用新分区。
+- **Broker 扩容步骤**：
+  假设要在第 4 台主机（IP 为 `192.168.1.104`）上新增一个 Broker 节点：
+  1. 配置主机名和 hosts 解析（参考前文步骤），设置主机名为 `kafka-broker4`，并在所有主机 `/etc/hosts` 中添加解析：
+     ```
+     192.168.1.104 kafka-broker4
+     ```
+  2. 在新主机上启动 Kafka Broker 容器（`node.id=4`）：
+     ```bash
+     docker run -d \
+       --name kafka-broker4 \
+       --network host \
+       -e KAFKA_CFG_NODE_ID=4 \
+       -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+       -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093,4@kafka-broker4:9093 \
+       -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+       -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.104:9092 \
+       -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+       -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+       -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+       -e ALLOW_PLAINTEXT_LISTENER=yes \
+       -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+       -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+       -v kafka-broker4-data:/bitnami/kafka/data \
+       swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
+     ```
+  3. 重新平衡分区（可选，确保负载均衡）：
+     ```bash
+     kafka-reassign-partitions --bootstrap-server 192.168.1.101:9092 --topics-to-move-json-file topics.json --broker-list 1,2,3,4 --generate
+     ```
+     **说明**：需根据实际情况调整分区重新分配计划，执行后应用计划以完成平衡。
+- **调整生产者配置**：
+  生产者配置通常在应用代码中设置，以下是示例（Java 生产者）：
+  ```java
+  properties.put("linger.ms", 50); // 延迟 50ms 批量发送
+  properties.put("compression.type", "gzip"); // 使用 gzip 压缩
+  ```
+
+#### 4.2 限制最大消息数
+**问题描述**：Kafka 集群存储空间有限，过多的消息可能导致磁盘爆满，影响服务可用性。此外，超大消息可能导致处理延迟。
+
+**问题场景**：分拣中心的仓库空间有限，如果包裹太大或数量太多，仓库会装不下，影响正常运营。
+
+**Mermaid 图：消息保留与清理策略**
+```mermaid
+graph TD
+    subgraph Topic 货架存储限制
+        T[Topic: high-traffic-topic<br>货架/仓库]
+        M1[包裹1<br>第1天] --> T
+        M2[包裹2<br>第2天] --> T
+        M3[包裹3<br>第3天] --> T
+        M4[包裹4<br>第8天<br>已过期] -.->|被清理| T
+        M5[包裹5<br>超大包裹<br>超过1MB] -.->|被拒收| T
+    end
+    T -->|保留策略<br>7天或10GB上限| R[清理旧包裹]
+```
+
+**图解释**：
+- Topic 就像一个仓库，包裹（消息）有存储时间和大小限制。超过 7 天的旧包裹会被清理，超大包裹直接不收，确保仓库空间够用。
+
+**解决方法**：
+1. **限制单条消息大小**：
+   - 配置 `message.max.bytes` 参数，限制单条消息的最大字节数，避免超大消息影响性能。
+   - 类比: 就像规定每个包裹不能超过 5 公斤，超重的包裹直接拒收，确保分拣和存储不超载。
+2. **控制存储总量**：
+   - 配置 `log.retention.bytes`：限制每个 Topic 或分区的总存储大小，超出后删除旧消息。
+   - 配置 `log.retention.hours`：限制消息保留时间，过期后自动删除。
+   - 类比: 就像设定仓库最多存 1000 个包裹，或者只存 7 天的包裹，超限就清理掉旧包裹，给新包裹腾地方。
+
+**配置建议**：
+- 合理设置消息保留策略，避免存储压力过大。例如，设置 7 天保留时间或 10GB 存储上限。
+- 可通过 Docker 环境变量在启动时设置，或通过配置文件动态修改。
+
+**实践操作（基于 Docker 环境）**：
+- **通过环境变量设置（启动时）**：
+  在启动 Kafka Broker 容器时添加以下环境变量（以 `kafka-broker1` 为例）：
+  ```bash
+  docker run -d \
+    --name kafka-broker1 \
+    --network host \
+    -e KAFKA_CFG_NODE_ID=1 \
+    -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+    -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+    -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
+    -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+    -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+    -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+    -e ALLOW_PLAINTEXT_LISTENER=yes \
+    -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+    -e KAFKA_CFG_MESSAGE_MAX_BYTES=1048576 \
+    -e KAFKA_CFG_LOG_RETENTION_HOURS=168 \
+    -e KAFKA_CFG_LOG_RETENTION_BYTES=10737418240 \
+    -v kafka-broker1-data:/bitnami/kafka/data \
+    swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
+  ```
+  **参数解释**：
+  - `KAFKA_CFG_MESSAGE_MAX_BYTES=1048576`：限制单条消息最大为 1MB。
+  - `KAFKA_CFG_LOG_RETENTION_HOURS=168`：消息保留 7 天（168 小时）。
+  - `KAFKA_CFG_LOG_RETENTION_BYTES=10737418240`：每个分区存储上限为 10GB。
+- **动态修改配置（运行时）**：
+  使用 Kafka 工具修改 Topic 级别的保留策略：
+  1. 进入 Kafka 容器：
+     ```bash
+     docker exec -it kafka-broker1 bash
+     ```
+  2. 修改特定 Topic 的保留时间（例如 `high-traffic-topic`）：
+     ```bash
+     kafka-configs --alter --entity-type topics --entity-name high-traffic-topic --add-config retention.ms=604800000 --bootstrap-server 192.168.1.101:9092
+     ```
+     **说明**：`retention.ms=604800000` 表示保留 7 天（单位：毫秒）。
+
+#### 4.3 消息积压处理不过来
+**问题描述**：消费者处理速度跟不上生产者发送速度，导致消息积压在 Topic 中，延迟增加，可能影响业务。
+
+**问题场景**：分拣中心收到太多包裹，分拣工人（消费者）处理速度跟不上，包裹堆积如山，客户（业务）投诉延迟严重。
+
+**Mermaid 图：消费者扩容与偏移量重置效果**
+```mermaid
+graph TD
+    subgraph 积压处理前
+        T1[Topic: high-traffic-topic<br>货架积压10000个包裹]
+        P1[格子 1<br>积压5000个] --> T1
+        P2[格子 2<br>积压5000个] --> T1
+        C1[工人 1<br>Consumer 1] --> P1
+        C2[工人 2<br>Consumer 2] --> P2
+    end
+
+    subgraph 增加工人后
+        T2[Topic: high-traffic-topic<br>货架积压减少]
+        P3[格子 1] --> T2
+        P4[格子 2] --> T2
+        C3[工人 1<br>Consumer 1] --> P3
+        C4[工人 2<br>Consumer 2] --> P3
+        C5[工人 3<br>Consumer 3] --> P4
+        C6[工人 4<br>Consumer 4] --> P4
+    end
+
+    subgraph 重置偏移量后
+        T3[Topic: high-traffic-topic<br>跳过旧包裹]
+        P5[格子 1<br>只处理新包裹] --> T3
+        P6[格子 2<br>只处理新包裹] --> T3
+        C7[工人 1<br>Consumer 1] --> P5
+        C8[工人 2<br>Consumer 2] --> P6
+    end
+```
+
+**图解释**：
+- **增加工人（消费者）**：原来只有 2 个工人处理 2 个格子，积压严重；增加到 4 个工人后，每个格子有更多人处理，积压快速减少。
+- **重置偏移量**：就像放弃积压的旧包裹，工人只处理新到的包裹，分拣中心恢复正常运营。
+
+**解决方法**：
+1. **增加消费者数量**：
+   - 在消费者组中增加消费者实例，利用 Kafka 的消费者组机制并行处理消息。
+   - 类比: 就像多雇佣几个分拣工人，每个工人处理一部分包裹，加速分拣。
+2. **优化消费者性能**：
+   - 调整 `fetch.max.bytes` 和 `max.partition.fetch.bytes`，控制每次拉取的数据量，避免过载。
+   - 优化消费者业务逻辑，减少处理时间。
+   - 类比: 就像给工人更好的工具（调整参数），或者简化分拣流程（优化代码），让一个人能处理更多包裹。
+3. **临时扩容消费者组**：
+   - 快速部署更多消费者实例，处理积压后缩减。
+   - 类比: 就像临时加派人手帮忙，处理完积压后再减少人数。
+4. **跳过积压消息（重置偏移量）**：
+   - 若积压消息已无价值，可重置消费者组偏移量到最新位置，跳过旧消息。
+   - 类比: 就像直接扔掉过期的包裹，只处理新到的包裹，放弃旧的。
+5. **回压生产者**：
+   - 通知生产者降低发送速率，或暂停生产，直到积压缓解。
+   - 类比: 就像告诉寄包裹的人“别送了，等我们处理完再送”，暂时停止接收新包裹。
+
+**实践操作（基于 Docker 环境）**：
+- **增加消费者数量（Docker 部署消费者）**：
+  假设消费者是一个简单的应用程序镜像 `my-consumer-app`，可通过 Docker 启动多个实例：
+  ```bash
+  docker run -d --name consumer-1 my-consumer-app --group-id my-group --bootstrap-server 192.168.1.101:9092,192.168.1.102:9092,192.168.1.103:9092
+  docker run -d --name consumer-2 my-consumer-app --group-id my-group --bootstrap-server 192.168.1.101:9092,192.168.1.102:9092,192.168.1.103:9092
+  ```
+  **说明**：确保消费者实例加入同一个消费者组（如 `my-group`），Kafka 会自动分配分区给不同消费者。
+- **消费者组管理（查看状态）**：
+  进入 Kafka 容器查看消费者组状态：
+  ```bash
+  docker exec -it kafka-broker1 bash
+  kafka-consumer-groups --describe --group my-group --bootstrap-server 192.168.1.101:9092
+  ```
+  **说明**：输出中可查看各消费者分配的分区及积压情况（`LAG` 字段）。
+- **偏移量重置步骤（跳过积压）**：
+  若决定跳过积压消息，可重置消费者组偏移量到最新位置：
+  ```bash
+  kafka-consumer-groups --reset-offsets --group my-group --topic high-traffic-topic --to-latest --bootstrap-server 192.168.1.101:9092
+  ```
+  **说明**：`--to-latest` 表示重置到最新偏移量，消费者将从最新消息开始消费，旧消息被忽略。执行前可加上 `--dry-run` 预览效果。
