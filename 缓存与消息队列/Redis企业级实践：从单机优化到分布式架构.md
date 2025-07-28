@@ -183,7 +183,7 @@ graph TD
    sudo apt install redis-server
    ```
    安装过程中可能需要确认，输入`Y`并回车。
-3. **检查安装是否成功**：  
+3. **检查安装是否成功:**
    安装完成后，检查Redis版本：  
    ```bash
    redis-server --version
@@ -204,7 +204,7 @@ graph TD
    redis-cli
    ```
    进入Redis命令行后，输入`ping`，如果返回`PONG`，说明Redis服务器正常运行。退出命令行输入`exit`。
-6. **设置开机自启**：  
+6. **设置开机自启**：
    确保Redis在系统重启后自动运行：  
    ```bash
    sudo systemctl enable redis
