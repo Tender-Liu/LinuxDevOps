@@ -217,8 +217,8 @@ graph TD
 - 安装并启动Redis后，我们可以进行简单的测试，确保一切正常。  
   1. 进入Redis命令行：`redis-cli`。  
   2. 设置一个键值对：输入`SET mykey "Hello Redis"`，回车。  
-  3. 获取值：输入`GET mykey`，回车，应返回`"Hello Redis"`。  
-  4. 退出：输入`exit`。  
+  3. 获取值：输入`GET mykey`，回车，应返回`"Hello Redis"`。
+  4. 退出：输入`exit`。
 - **通俗解释**：Redis就像一个超级快的笔记本，你可以用`SET`命令写下内容（键值对），用`GET`命令查看内容，操作简单且速度极快。
 
 **学习建议**：小白用户安装完成后，先不要急于深入配置，重点是确保Redis能正常启动和连接，后续再逐步学习优化配置。
@@ -382,9 +382,16 @@ requirepass admin123    # 设置密码，生产环境必须配置，防止未经
 1. **创建用户**  
    在单机场景下，创建一个用户`singleuser`，密码为`123456`，赋予最大权限（允许操作所有键和所有命令）：  
    ```bash
-   ACL SETUSER singleuser on >123456 +@all +flushall
+   # ACL SETUSER singleuser on >123456 ~* &* +@all +flushall
+   ACL SETUSER singleuser on >123456 ~* &* +@all
    ```
-   解释：`on`表示启用用户，`>123456`设置密码，`+@all`表示赋予所有命令权限，`+flushall`额外授权危险命令，确保权限最大化。
+   解释：
+   - `on`表示启用用户
+   - `>123456`设置密码 
+   - `~*` 允许该用户访问所有键。~ 后面的 * 表示匹配所有键名
+   - `&*` 允许该用户访问所有频道。这适用于发布/订阅（Pub/Sub）功能，& 后面的 * 表示匹配所有频道名。
+   - `+@all`表示赋予所有命令权 
+   - `+flushall`额外授权危险命令，确保权限最大化。
 
 2. **测试权限**  
    - 使用`singleuser`用户登录：  
@@ -414,7 +421,7 @@ requirepass admin123    # 设置密码，生产环境必须配置，防止未经
 1. **创建用户并设置最大权限**  
    为单机环境创建一个用户`singleuser`，密码为`123456`，赋予所有命令权限：  
    ```bash
-   ACL SETUSER singleuser on >123456 +@all +flushall
+   ACL SETUSER singleuser on >123456 ~* &* +@all
    ```
    使用`ACL LIST`查看用户权限：  
    ```bash
@@ -423,7 +430,7 @@ requirepass admin123    # 设置密码，生产环境必须配置，防止未经
    预期输出类似：  
    ```
    1) "user default on nopass ~* +@all"
-   2) "user singleuser on >****** ~* +@all +flushall"
+   2) "user singleuser on >****** ~* +@all"
    ```
 
 2. **测试用户权限**  
