@@ -567,11 +567,14 @@ Ansible 支持对多台主机同时执行任务，通过主机组或模式匹配
   以下是 Ansible 通过跳板机执行命令的流程图，帮助理解整个操作步骤：  
   ```mermaid
   flowchart TD
-    A[控制节点 A<br>运行 Ansible 命令] -->|1. 使用私钥连接| B[跳板机 B<br>192.168.110.171]
-    B -->|2. 中转到| C[内网主机 C<br>192.168.110.172]
-    C -->|3. 执行命令<br>如 `uname -a`| D[返回结果]
+    A[控制节点 A<br>运行 Ansible 命令] -->|1. 使用私钥连接跳板机| B[跳板机 B<br>192.168.110.171]
+    B -->|2. 中转到内网主机| C[内网主机 C<br>192.168.110.172]
+    C -->|3. 执行命令<br>如 uname -a| D[返回结果]
     D -->|4. 结果通过跳板机返回| B
-    B -->|5. 返回控制节点| A
+    B -->|5. 结果返回控制节点| A
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#bfb,stroke:#333,stroke-width:2px
   ```
   *解释*：从图中可以看出，Ansible 命令从控制节点 A 发出，先通过跳板机 B 中转到内网主机 C，执行命令后，结果再通过跳板机 B 返回到控制节点 A。整个过程就像“快递员通过门卫送包裹，再把回执带回来”。
 
