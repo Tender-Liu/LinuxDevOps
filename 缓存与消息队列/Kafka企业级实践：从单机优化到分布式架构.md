@@ -763,6 +763,7 @@ docker run -d \
   -e KAFKA_CFG_NODE_ID=${NODE_ID} \
   -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
   -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=${QUORUM_VOTERS} \
+  -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
   -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
   -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://${HOST_IP}:9092 \
   -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
@@ -799,7 +800,8 @@ echo "Kafka Broker ${BROKER_ID} 已启动！"
   进入容器并使用 Kafka 工具查看集群状态：
   ```bash
   docker exec -it kafka-broker1 bash
-  kafka-cluster cluster-id --bootstrap-server 192.168.1.101:9092
+  kafka-cluster.sh cluster-id --bootstrap-server 192.168.1.101:9092
+
   ```
   如果输出集群 ID，说明集群初始化成功。
 
@@ -810,7 +812,7 @@ echo "Kafka Broker ${BROKER_ID} 已启动！"
 1. **创建 Topic**：
    在主机 1 上执行（假设主机 1 的 IP 为 `192.168.1.101`）：
    ```bash
-   docker exec -it kafka-broker1 kafka-topics --create --topic test-topic --bootstrap-server 192.168.1.101:9092 --partitions 3 --replication-factor 3
+   docker exec -it kafka-broker1 kafka-topics.sh --create --topic test-topic --bootstrap-server 192.168.1.101:9092 --partitions 3 --replication-factor 3
    ```
    **命令解释**：
    - `docker exec -it kafka-broker1`：进入名为 `kafka-broker1` 的容器内部。
@@ -823,16 +825,17 @@ echo "Kafka Broker ${BROKER_ID} 已启动！"
 2. **发送消息**：
    在主机 2 上执行（假设主机 1 的 IP 为 `192.168.1.101`）：
    ```bash
-   docker exec -it kafka-broker2 kafka-console-producer --topic test-topic --bootstrap-server 192.168.1.101:9092
+   docker exec -it kafka-broker2 kafka-console-producer.sh --topic test-topic --bootstrap-server 192.168.1.101:9092
    ```
    **命令解释**：
-   - `kafka-console-producer`：Kafka 提供的生产者工具，用于发送消息。
+   - `kafka-console-producer.sh`：Kafka 提供的生产者工具，用于发送消息。
+
    - 输入任意消息后回车，例如：`Hello, Kafka Cluster!`，然后按 `Ctrl+C` 退出。
 
 3. **消费消息**：
    在主机 3 上执行（假设主机 1 的 IP 为 `192.168.1.101`）：
    ```bash
-   docker exec -it kafka-broker3 kafka-console-consumer --topic test-topic --bootstrap-server 192.168.1.101:9092 --from-beginning
+   docker exec -it kafka-broker3 kafka-console-consumer.sh --topic test-topic --bootstrap-server 192.168.1.101:9092 --from-beginning
    ```
    **命令解释**：
    - `kafka-console-consumer`：Kafka 提供的消费者工具，用于接收消息。
@@ -954,7 +957,7 @@ graph TD
      ```
   2. 使用 Kafka 工具增加分区：
      ```bash
-     kafka-topics --alter --topic high-traffic-topic --partitions 6 --bootstrap-server 192.168.1.101:9092
+     kafka-topics.sh --alter --topic high-traffic-topic --partitions 6 --bootstrap-server 192.168.1.101:9092
      ```
      **说明**：分区数只能增加，不能减少。增加后需检查消费者组是否能充分利用新分区。
 - **Broker 扩容步骤**：
@@ -971,6 +974,7 @@ graph TD
        -e KAFKA_CFG_NODE_ID=4 \
        -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
        -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093,4@kafka-broker4:9093 \
+       -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
        -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
        -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.104:9092 \
        -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
@@ -984,7 +988,7 @@ graph TD
      ```
   3. 重新平衡分区（可选，确保负载均衡）：
      ```bash
-     kafka-reassign-partitions --bootstrap-server 192.168.1.101:9092 --topics-to-move-json-file topics.json --broker-list 1,2,3,4 --generate
+     kafka-reassign-partitions.sh --bootstrap-server 192.168.1.101:9092 --topics-to-move-json-file topics.json --broker-list 1,2,3,4 --generate
      ```
      **说明**：需根据实际情况调整分区重新分配计划，执行后应用计划以完成平衡。
 - **调整生产者配置**：
@@ -1039,6 +1043,7 @@ graph TD
     -e KAFKA_CFG_NODE_ID=1 \
     -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
     -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
     -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
     -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
     -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
@@ -1064,7 +1069,7 @@ graph TD
      ```
   2. 修改特定 Topic 的保留时间（例如 `high-traffic-topic`）：
      ```bash
-     kafka-configs --alter --entity-type topics --entity-name high-traffic-topic --add-config retention.ms=604800000 --bootstrap-server 192.168.1.101:9092
+     kafka-configs.sh --alter --entity-type topics --entity-name high-traffic-topic --add-config retention.ms=604800000 --bootstrap-server 192.168.1.101:9092
      ```
      **说明**：`retention.ms=604800000` 表示保留 7 天（单位：毫秒）。
 
@@ -1137,12 +1142,12 @@ graph TD
   进入 Kafka 容器查看消费者组状态：
   ```bash
   docker exec -it kafka-broker1 bash
-  kafka-consumer-groups --describe --group my-group --bootstrap-server 192.168.1.101:9092
+  kafka-consumer-groups.sh --describe --group my-group --bootstrap-server 192.168.1.101:9092
   ```
   **说明**：输出中可查看各消费者分配的分区及积压情况（`LAG` 字段）。
 - **偏移量重置步骤（跳过积压）**：
   若决定跳过积压消息，可重置消费者组偏移量到最新位置：
   ```bash
-  kafka-consumer-groups --reset-offsets --group my-group --topic high-traffic-topic --to-latest --bootstrap-server 192.168.1.101:9092
+  kafka-consumer-groups.sh --reset-offsets --group my-group --topic high-traffic-topic --to-latest --bootstrap-server 192.168.1.101:9092
   ```
   **说明**：`--to-latest` 表示重置到最新偏移量，消费者将从最新消息开始消费，旧消息被忽略。执行前可加上 `--dry-run` 预览效果。

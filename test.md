@@ -247,3 +247,25 @@
 - 对于 Playbook 的变量和条件判断，是否需要更多复杂场景的示例？
 
 期待你的反馈，我可以根据你的需求进一步调整大纲内容或教学重点！
+
+
+
+docker run -d \
+  --restart=always \
+  --network=host \
+  --name kafka-1 \
+  -e KAFKA_CFG_NODE_ID=1 \
+  -e KAFKA_CFG_PROCESS_ROLES=controller,broker \
+  -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.110.8:9093,2@192.168.110.171:9093,3@192.168.110.172:9093 \
+  -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
+  -e KAFKA_CFG_LISTENERS=PLAINTEXT://:9091,CONTROLLER://:9093 \
+  -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.110.8:9091 \
+  -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+  -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+  -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+  -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+  -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+  -e BITNAMI_DEBUG=true \
+  -v /opt/kafka:/bitnami/kafka \
+  -v /etc/localtime:/etc/localtime \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
