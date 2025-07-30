@@ -659,8 +659,10 @@ KRaft 模式是 Kafka 3.0+ 引入的新特性，使用内置的 Raft 协议管�
     --name kafka-broker1 \
     --network host \
     -e KAFKA_CFG_NODE_ID=1 \
+    -e KAFKA_CFG_BROKER_ID=1 \
     -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
     -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
     -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
     -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
     -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
@@ -680,8 +682,10 @@ KRaft 模式是 Kafka 3.0+ 引入的新特性，使用内置的 Raft 协议管�
     --name kafka-broker2 \
     --network host \
     -e KAFKA_CFG_NODE_ID=2 \
+    -e KAFKA_CFG_BROKER_ID=2 \
     -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
     -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
     -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
     -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.102:9092 \
     -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
@@ -701,8 +705,10 @@ KRaft 模式是 Kafka 3.0+ 引入的新特性，使用内置的 Raft 协议管�
     --name kafka-broker3 \
     --network host \
     -e KAFKA_CFG_NODE_ID=3 \
+    -e KAFKA_CFG_BROKER_ID=3 \
     -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
     -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+    -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
     -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
     -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.103:9092 \
     -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
