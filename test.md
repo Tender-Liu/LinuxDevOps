@@ -1,271 +1,311 @@
-好的，我理解你的需求。在编写 Playbook 自动化部署 Docker 化的 Java 和前端项目之前，我们先专注于学习 Playbook 的基本语法和核心概念，为后续的自动化部署打下基础。以下是针对小白同学设计的 Playbook 语法学习内容，内容通俗易懂，并结合简单的示例和类比帮助理解。待你提供具体步骤后，我会根据你的要求再编写具体的自动化部署 Playbook。
+好的，我非常乐意帮你完善这个 Git 教学大纲，补充权限分配、项目实现的具体步骤，以及实验内容，确保每个知识点都包含理论讲解和实践操作。以下是基于你提供的大纲，新增了权限管理、Gitee 项目创建、Windows 和 Linux 环境下免密配置、以及详细的实验步骤，涵盖从创建账号到代码提交、分支切换、版本创建等完整流程。我会尽量用通俗易懂的方式描述，适合小白学习，同时确保内容系统且全面。
 
 ---
 
-### 第五部分：Playbook 语法基础学习（自动化部署前的准备）
+### 修订版：Git 教学大纲（含权限分配、项目实现及实验）
 
-#### 1. 什么是 Playbook？
-- **定义**：Playbook 是 Ansible 的自动化脚本文件，使用 YAML 格式编写，用于定义和管理一组任务（tasks），可以实现批量配置、部署和管理服务器。  
-- *小白类比*：Playbook 就像一个“菜谱”，里面写好了做菜的每一步（任务），Ansible 就像“厨师”，按照菜谱一步步执行，最终完成一道菜（服务器配置或项目部署）。
-
-#### 2. Playbook 的基本结构
-- Playbook 文件通常以 `.yml` 或 `.yaml` 作为扩展名，内容由以下核心部分组成：
-  1. **头部定义**：指定 Playbook 的基本信息，如目标主机组。
-  2. **变量定义（可选）**：定义一些可复用的参数，如端口号、项目类型等。
-  3. **任务列表（tasks）**：定义要执行的具体操作，如安装软件、复制文件等。
-  4. **条件判断和循环（可选）**：根据条件执行不同任务，或对多个对象重复执行任务。
-  5. **处理器（handlers，可选）**：定义一些特殊任务，如服务重启，通常在某些条件触发时执行。
-
-- **基本结构示例**：
-  ```yaml
-  ---
-  - name: 我的第一个 Playbook
-    hosts: webservers
-    tasks:
-      - name: 安装 Nginx
-        apt:
-          name: nginx
-          state: present
-      - name: 启动 Nginx 服务
-        service:
-          name: nginx
-          state: started
-  ```
-  *解释*：
-  - `---`：表示 YAML 文件的开始。
-  - `name`：给 Playbook 或任务起一个名字，方便阅读和调试。
-  - `hosts`：指定目标主机组（需要在 Inventory 文件中定义）。
-  - `tasks`：任务列表，每个任务使用模块（如 `apt`、`service`）执行具体操作。
-  - *小白类比*：这就像菜谱的第一步“准备食材”（安装 Nginx），第二步“开火烹饪”（启动 Nginx）。
-
-#### 3. Playbook 核心语法与功能
-##### 3.1 变量（Variables）
-- **作用**：变量可以让你在 Playbook 中定义可复用的值，避免硬编码，提高灵活性。
-- **定义方式**：可以在 Playbook 中通过 `vars` 关键字定义，也可以在外部文件或命令行中传入。
-- **示例**：
-  ```yaml
-  ---
-  - name: 使用变量的 Playbook
-    hosts: webservers
-    vars:
-      package_name: nginx
-      service_state: started
-    tasks:
-      - name: 安装软件包
-        apt:
-          name: "{{ package_name }}"
-          state: present
-      - name: 启动服务
-        service:
-          name: "{{ package_name }}"
-          state: "{{ service_state }}"
-  ```
-  *解释*：`{{ package_name }}` 表示引用变量，变量值可以动态替换为 `nginx`。这就像菜谱中写“加盐适量”，具体多少盐可以根据口味调整。
-
-##### 3.2 条件判断（when）
-- **作用**：根据条件决定是否执行某个任务，适合不同场景下的差异化部署。
-- **示例**：
-  ```yaml
-  ---
-  - name: 根据系统类型安装软件
-    hosts: all
-    tasks:
-      - name: 安装 Nginx（Ubuntu 系统）
-        apt:
-          name: nginx
-          state: present
-        when: ansible_os_family == "Debian"
-      - name: 安装 Nginx（CentOS 系统）
-        yum:
-          name: nginx
-          state: present
-        when: ansible_os_family == "RedHat"
-  ```
-  *解释*：`when` 条件判断系统类型（`ansible_os_family` 是 Ansible 的内置变量），如果是 Ubuntu（Debian 家族），用 `apt` 安装；如果是 CentOS（RedHat 家族），用 `yum` 安装。  
-  *小白类比*：这就像做菜时，“如果是素菜就加点酱油，如果是荤菜就加点辣椒”。
-
-##### 3.3 循环（loop）
-- **作用**：对一组数据重复执行任务，适合批量操作。
-- **示例**：
-  ```yaml
-  ---
-  - name: 安装多个软件包
-    hosts: webservers
-    tasks:
-      - name: 安装软件包列表
-        apt:
-          name: "{{ item }}"
-          state: present
-        loop:
-          - nginx
-          - vim
-          - git
-  ```
-  *解释*：`loop` 会遍历列表中的每个元素（`item`），逐一执行安装任务。这就像菜谱中写“把每种蔬菜都洗一遍”。
-
-##### 3.4 处理器（handlers）
-- **作用**：Handlers 是一些特殊任务，通常在某些条件触发时执行，如服务重启。
-- **示例**：
-  ```yaml
-  ---
-  - name: 安装并配置 Nginx
-    hosts: webservers
-    tasks:
-      - name: 安装 Nginx
-        apt:
-          name: nginx
-          state: present
-      - name: 修改 Nginx 配置文件
-        copy:
-          src: ./nginx.conf
-          dest: /etc/nginx/nginx.conf
-        notify: 重启 Nginx
-    handlers:
-      - name: 重启 Nginx
-        service:
-          name: nginx
-          state: restarted
-  ```
-  *解释*：当配置文件发生变化时，`notify` 会触发 `handlers` 中定义的“重启 Nginx”任务。这就像做菜时，“如果加了新调料，就搅拌一下锅里的菜”。
-
-##### 3.5 模块（Modules）
-- **作用**：Ansible 提供大量模块，用于执行具体操作，如文件操作、软件安装、Docker 管理等。
-- **常用模块示例**：
-  - `apt` / `yum`：安装软件包。
-  - `copy` / `template`：复制文件或生成配置文件。
-  - `service` / `systemd`：管理服务状态。
-  - `shell` / `command`：执行命令行操作。
-  - `docker_container`：管理 Docker 容器。
-- *小白类比*：模块就像厨师的“工具”，每个工具都有特定用途，比如刀用来切菜，锅用来煮汤。
-
-#### 4. Playbook 执行与调试
-- **执行 Playbook**：  
-  使用 `ansible-playbook` 命令运行 Playbook 文件：  
-  ```bash
-  ansible-playbook playbook.yml
-  ```
-  *解释*：这就像告诉厨师，“按照这个菜谱开始做菜吧”。
-
-- **调试技巧**：
-  1. **干跑（Dry Run）**：检查 Playbook 语法是否正确，不实际执行任务：  
-     ```bash
-     ansible-playbook playbook.yml --check
-     ```
-  2. **详细输出**：显示更多执行细节，便于排查问题：  
-     ```bash
-     ansible-playbook playbook.yml -v
-     ```
-  3. **逐步执行**：一步步执行任务，确认每步结果：  
-     ```bash
-     ansible-playbook playbook.yml --step
-     ```
-  *小白类比*：调试就像做菜时“先尝一小口”，看看味道对不对，不对就调整。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### 第五部分：Playbook 自动化部署 Docker 化的 Java 和前端项目（第 5 天）
-- **目标**：通过 Playbook 实现 Docker 环境下 Java 项目和前端项目的自动化远程部署。
-- **内容**：
-  1. Docker 项目部署流程分析
-     - 环境准备（Docker 和 Docker Compose 安装）。
-     - 项目文件传输（Dockerfile、镜像或源码）。
-     - 容器启动与验证。
-     - Java 项目和前端项目的部署差异分析。
-  2. 编写部署 Playbook（带变量和条件判断）
-     - 定义变量：项目类型（`project_type`）、镜像名称（`image_name`）、端口号（`container_port`）等。
-     - 使用 `when` 条件判断：
-       - 如果 `project_type == "java"`，部署 Java 项目（如 Spring Boot 应用）。
-       - 如果 `project_type == "frontend"`，部署前端项目（如 Nginx 托管的 Vue/React 应用）。
-     - 使用 `docker_container` 模块管理 Docker 容器（或通过 `shell` 模块调用 `docker` 命令）。
-     - 使用 `template` 模块生成 Docker Compose 文件（可选）。
-     - 使用 `shell` 模块验证部署结果（如检查容器状态或端口是否监听）。
-  3. 优化与容错
-     - 增加回滚机制（备份旧镜像或容器）。
-     - 使用 `handlers` 实现容器重启。
-     - 处理 Docker 镜像拉取失败的情况（`ignore_errors` 或重试）。
-  4. 实践案例
-     - 案例 1：自动化部署一个 Docker 化的 Spring Boot 项目。
-     - 案例 2：自动化部署一个 Docker 化的前端项目（Nginx + Vue/React）。
-- **学习成果**：能够使用 Playbook 完成 Docker 环境下 Java 和前端项目的自动化部署，并根据变量和条件判断灵活调整部署策略。
+#### 1. Git 基础概念
+**目标**：理解 Git 的核心概念，为后续命令学习打下理论基础。  
+**内容**：
+- **版本控制**：Git 是一个版本控制系统，用于跟踪代码变更。
+- **仓库（Repository）**：分为本地仓库和远程仓库，本地是你电脑上的代码副本，远程是托管在 Gitee 等平台上的代码。
+- **分支（Branch）**：Git 支持多分支开发，方便并行开发和代码隔离。
+- **提交（Commit）**：每次代码变更的记录。
+- **合并（Merge）**：将不同分支的代码整合到一起。
+  
+**实验**：
+- 无具体操作，主要是概念理解。可以通过类比（如日记本记录）帮助记忆。
 
 ---
 
-#### 课程总结与实践项目
-- **总结**：
-  - 回顾课程内容，梳理 Ansible 核心知识点。
-  - 答疑与讨论。
-- **综合实践**：
-  - 设计一个综合任务：通过跳板机批量部署 Docker 化的 Java 项目和前端项目到多台 Ubuntu 主机，使用带参数和条件判断的 Playbook 完成任务。
-- **学习成果评估**：
-  - 完成综合实践任务，提交 Playbook 代码。
-  - 能够独立解决 Ansible 相关问题。
+#### 2. 学习 Git 的核心命令
+**目标**：掌握 Git 基础命令，理解每个命令的作用。  
+**内容**（按功能分类）：
+
+##### 2.1 初始化和配置
+- `git init`：在本地创建一个新的 Git 仓库。
+- `git config --global user.name "你的名字"`：设置你的用户名。
+- `git config --global user.email "你的邮箱"`：设置你的邮箱（通常与 Gitee 账户关联）。
+  
+**实验**：
+- 在本地电脑（Windows 或 Linux）创建一个空文件夹，使用 `git init` 初始化一个仓库。
+- 设置用户名和邮箱，完成后用 `git config --list` 查看配置是否生效。
+
+##### 2.2 创建和克隆项目
+- `git clone <仓库地址>`：从 Gitee 克隆一个远程仓库到本地。
+  - 示例：`git clone https://gitee.com/你的用户名/项目名.git`
+- `git remote add origin <仓库地址>`：将本地仓库与 Gitee 远程仓库关联。
+
+**实验**：
+- 在 Gitee 上创建一个新项目（具体步骤见下文第 3 部分）。
+- 复制项目地址，使用 `git clone` 命令克隆到本地，查看本地文件夹是否成功创建。
+
+##### 2.3 基本操作（代码提交）
+- `git status`：查看当前仓库的状态，了解哪些文件被修改或未跟踪。
+- `git add <文件名>` 或 `git add .`：将修改的文件添加到暂存区。
+- `git commit -m "提交信息"`：提交暂存区的修改到本地仓库，提交信息要简洁有意义。
+- `git push origin <分支名>`：将本地提交推送到 Gitee 远程仓库，例如 `git push origin main`。
+
+**实验**：
+- 在克隆的项目中创建一个文本文件（如 `test.txt`），写入内容。
+- 使用 `git status` 查看状态，`git add .` 添加修改，`git commit -m "初次提交"` 提交变更。
+- 使用 `git push origin main` 推送到 Gitee，登录 Gitee 网站确认文件是否上传成功。
+
+##### 2.4 分支管理
+- `git branch`：查看当前分支列表。
+- `git branch <分支名>`：创建新分支。
+- `git checkout <分支名>` 或 `git switch <分支名>`：切换到指定分支。
+- `git merge <分支名>`：将指定分支合并到当前分支。
+- `git pull origin <分支名>`：从远程仓库拉取最新代码并合并到本地。
+
+**实验**：
+- 使用 `git branch dev` 创建一个名为 `dev` 的分支。
+- 使用 `git checkout dev` 切换到 `dev` 分支，修改 `test.txt` 文件内容，提交变更。
+- 切换回 `main` 分支（`git checkout main`），使用 `git merge dev` 合并 `dev` 分支的变更。
+- 使用 `git push origin main` 推送合并后的代码到 Gitee。
+
+##### 2.5 查看历史和差异
+- `git log`：查看提交历史记录。
+- `git diff`：查看当前未暂存的修改。
+- `git show <提交ID>`：查看某次提交的详细信息。
+
+**实验**：
+- 使用 `git log` 查看提交历史，记录某次提交的 ID。
+- 修改文件但不提交，使用 `git diff` 查看差异。
+- 使用 `git show <提交ID>` 查看某次提交的详细信息。
+
+##### 2.6 撤销和回退
+- `git reset <提交ID>`：回退到某个提交版本（谨慎使用，可能丢失未保存的修改）。
+- `git checkout -- <文件名>`：撤销对某个文件的修改（未暂存的修改）。
+- `git revert <提交ID>`：创建一个新的提交来撤销指定提交的影响（更安全的方式）。
+
+**实验**：
+- 修改文件后不提交，使用 `git checkout -- <文件名>` 撤销修改。
+- 使用 `git log` 找到之前的提交 ID，使用 `git revert <提交ID>` 撤销某次提交的影响，并查看结果。
+
+##### 2.7 与远程仓库交互
+- `git fetch origin`：从远程仓库获取最新代码，但不自动合并。
+- `git pull origin <分支名>`：获取并合并远程代码。
+- `git push origin <分支名>`：推送本地代码到远程。
+
+**实验**：
+- 在 Gitee 网站上修改文件，提交变更。
+- 在本地使用 `git fetch origin` 获取远程更新，再用 `git pull origin main` 合并到本地。
+- 修改本地文件，提交后用 `git push origin main` 推送回 Gitee。
+
+##### 2.8 创建版本（Tag）
+- `git tag <版本号>`：为当前提交创建一个轻量级标签，例如 `git tag v1.0`。
+- `git tag -a <版本号> -m "版本说明"`：创建一个带注释的标签。
+- `git push origin <版本号>`：推送标签到远程仓库。
+
+**实验**：
+- 在当前提交点使用 `git tag v1.0` 创建版本标签。
+- 使用 `git tag -a v1.1 -m "版本1.1发布"` 创建带注释的标签。
+- 使用 `git push origin v1.0` 和 `git push origin v1.1` 推送标签到 Gitee，登录网站查看标签是否显示。
 
 ---
 
-### 教学方法
-- **理论讲解**：通过 PPT 或文档讲解 Ansible 的概念和用法。
-- **实践操作**：提供虚拟机或云服务器环境，边学边练。
-- **案例驱动**：以真实企业场景为案例，引导学习者解决问题。
-- **互动讨论**：鼓励提问，针对具体问题进行深入探讨。
+#### 3. 使用 Gitee 学习 Git 的实践步骤
+**目标**：通过 Gitee 平台，完成从账号注册到项目创建、权限分配的全流程实践。  
+**内容及实验**：
 
-### 所需资源
-- 虚拟机或云服务器（至少 3 台，用于模拟跳板机和目标主机，均为 Ubuntu 系统）。
-- Ansible 安装包及相关文档。
-- Docker 环境及相关工具（Docker Compose 可选）。
-- 一个简单的 Docker 化 Java 项目（Spring Boot 或 JAR 文件）和前端项目（Vue/React 静态文件）用于部署实践。
+1. **注册 Gitee 账户**：
+   - 打开 Gitee 官网（https://gitee.com），点击“注册”按钮，填写邮箱、用户名、密码等信息，完成注册。
+   - **实验**：注册完成后登录账户，熟悉 Gitee 界面。
+
+2. **创建新项目**：
+   - 登录后，点击右上角“+”号，选择“新建仓库”。
+   - 填写仓库名称（如 `test-project`），选择公开或私有，点击“创建”。
+   - **实验**：创建完成后，复制仓库的 HTTPS 或 SSH 链接，用于后续克隆。
+
+3. **克隆到本地**：
+   - 在本地电脑上安装 Git（Windows 可下载 Git for Windows，Linux 使用包管理器安装）。
+   - 使用 `git clone <仓库地址>` 将项目克隆到本地。
+   - **实验**：克隆完成后，进入项目文件夹，查看是否成功。
+
+4. **修改和提交**：
+   - 在本地修改文件，使用 `git add` 和 `git commit` 提交。
+   - **实验**：创建一个 `readme.txt`，写入内容，提交变更。
+
+5. **推送至远程**：
+   - 使用 `git push` 将本地提交推送到 Gitee。
+   - **实验**：推送后登录 Gitee，确认文件是否更新。
+
+6. **分支操作**：
+   - 创建新分支，切换分支，合并分支，并推送分支到 Gitee。
+   - **实验**：参考 2.4 分支管理实验。
+
+7. **查看历史**：
+   - 使用 `git log` 查看提交记录，熟悉版本管理。
+   - **实验**：参考 2.5 查看历史和差异实验。
 
 ---
 
-### 补充说明与注意事项
-1. **Ubuntu 环境适配**：所有命令和模块用法都基于 Ubuntu 系统（如使用 `apt` 进行包管理）。
-2. **免密登录**：由于已配置 SSH 免密登录，课程将跳过相关配置步骤，直接进入批量操作和跳板机配置的实践环节。
-3. **企业场景贴合实际**：企业场景聚焦于安全策略检查、系统配置统一、日志收集和性能监控等核心任务，避免不必要的软件安装任务。
-4. **变量与条件判断**：在 Playbook 中，变量和条件判断是实现灵活部署的关键，特别是在区分 Java 和前端项目时。课程将通过具体示例帮助学习者掌握这一技能。
-5. **Docker 部署**：重点讲解如何使用 Ansible 管理 Docker 容器，包括镜像拉取、容器启动、网络配置等。如果学习者需要镜像构建流程，可以额外补充 `docker build` 相关任务。
-6. **时间灵活性**：如果 5 天时间不足以覆盖所有内容，可以将课程拆分为更小的模块，延长学习周期，或将某些部分（如跳板机或 Docker 部署）作为选修内容。
+#### 4. Gitee 权限分配
+**目标**：学习如何在 Gitee 上为不同角色分配权限，满足团队协作需求。  
+**内容**：
+- **权限角色**：
+  - 只读（Reporter）：只能查看和拉取代码，适合运维发布人员。
+  - 开发者（Developer）：可以提交代码，适合开发人员。
+  - 管理者（Administrator）：拥有全部权限，适合领导或负责人。
+- **配置步骤**：
+  1. 登录 Gitee，进入目标项目。
+  2. 点击“管理”或“设置”，进入“成员管理”。
+  3. 点击“添加成员”，输入成员的 Gitee 用户名或邮箱，选择对应权限角色。
+  4. 确认添加，成员接受邀请后即可按权限访问项目。
+
+**实验**：
+- 邀请一个朋友或自己创建的另一个 Gitee 账户，分别设置为“只读”、“开发者”和“管理者”角色。
+- 测试不同权限账户的操作限制（如只读账户无法推送代码）。
 
 ---
 
-### 反馈与调整
-- 是否需要更详细的某部分内容（如 Docker 镜像构建、Docker Compose 使用）？
-- 是否有特定的 Java 或前端框架需要重点讲解（如 Spring Boot、Vue.js）？
-- 时间安排是否合适？是否需要调整为更短或更长的周期？
-- 对于企业场景，是否需要加入更具体的任务（如检查特定服务的端口、自动化备份、配置防火墙规则）？
-- 对于 Playbook 的变量和条件判断，是否需要更多复杂场景的示例？
+#### 5. 配置 Windows 与 Linux 环境下免密拉取代码
+**目标**：通过 SSH 公钥配置，实现免密拉取和推送代码。  
+**内容及实验**：
 
-期待你的反馈，我可以根据你的需求进一步调整大纲内容或教学重点！
+##### 5.1 生成 SSH 密钥
+- **Windows 环境**：
+  1. 安装 Git for Windows，打开 Git Bash。
+  2. 输入命令：`ssh-keygen -t rsa -C "你的邮箱"`，一路回车（默认路径和无密码）。
+  3. 在用户目录下的 `.ssh` 文件夹中找到 `id_rsa.pub` 文件，内容为公钥。
+- **Linux 环境**：
+  1. 打开终端，输入命令：`ssh-keygen -t rsa -C "你的邮箱"`，一路回车。
+  2. 在 `~/.ssh` 目录下找到 `id_rsa.pub` 文件，内容为公钥。
+- **实验**：生成密钥后，查看公钥内容（使用 `cat ~/.ssh/id_rsa.pub` 或文本编辑器打开）。
+
+##### 5.2 在 Gitee 上添加公钥
+1. 登录 Gitee，点击右上角头像，选择“设置”。
+2. 找到“SSH 公钥”选项，点击“添加公钥”。
+3. 复制 `id_rsa.pub` 文件内容，粘贴到公钥输入框，点击“确定”。
+- **实验**：添加完成后，在 Gitee 上查看公钥是否显示。
+
+##### 5.3 测试免密操作
+1. 在本地使用 SSH 地址克隆项目：`git clone git@gitee.com:用户名/项目名.git`。
+2. 测试 `git pull` 和 `git push`，确认无需输入密码。
+- **实验**：克隆一个项目，推送一次代码，确认免密是否生效。
+
+---
+
+#### 6. 运维人员需要关注的 Git 相关技能
+**目标**：将 Git 应用到运维场景中，提升工作效率。  
+**内容**：
+- **自动化脚本版本管理**：将运维脚本纳入 Git 管理。
+  - **实验**：创建一个 Shell 脚本，提交到 Gitee 仓库。
+- **配置文件管理**：通过 Git 管理服务器配置文件。
+  - **实验**：将一个配置文件（如 Nginx 配置）纳入 Git 管理，提交变更。
+- **CI/CD 集成**：了解 Git 与 Jenkins 或 Gitee CI/CD 的集成。
+  - **实验**：在 Gitee 上查看 CI/CD 配置选项，初步了解流程。
+- **权限管理**：学习如何设置仓库权限。
+  - **实验**：参考第 4 部分实验。
+- **冲突解决**：学习如何手动解决代码冲突。
+  - **实验**：模拟冲突场景（如在两个分支修改同一文件），使用 `git merge` 解决冲突。
+
+---
+
+#### 7. 学习建议
+- **实践为主**：理论结合实验，在 Gitee 上多创建小项目，尝试每个命令。
+- **参考文档**：阅读 Git 官方文档（https://git-scm.com/doc）或 Gitee 帮助文档（https://gitee.com/help）。
+- **工具辅助**：使用图形化工具（如 SourceTree、GitKraken）辅助理解 Git 流程。
+- **模拟场景**：模拟团队协作，自己扮演多个角色，创建分支、提交代码、处理冲突。
+
+---
+
+#### 总结
+本大纲涵盖了 Git 基础概念、核心命令、Gitee 项目实践、权限分配、免密配置以及运维相关技能。每个知识点均配有实验步骤，确保学习者能够边学边练，逐步掌握 Git 的使用。作为运维人员，重点是将 Git 应用到脚本管理、配置管理和自动化部署中。
+
+如果你对某个部分有疑问，或希望进一步细化某个实验步骤（如某个命令的详细用法），请随时告诉我，我会继续完善或提供更详细的指导！下一步你想重点学习哪个部分呢？
 
 
 
-docker run -d \
-  --restart=always \
-  --network=host \
-  --name kafka-1 \
-  -e KAFKA_CFG_NODE_ID=1 \
-  -e KAFKA_CFG_PROCESS_ROLES=controller,broker \
-  -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.110.8:9093,2@192.168.110.171:9093,3@192.168.110.172:9093 \
-  -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
-  -e KAFKA_CFG_LISTENERS=PLAINTEXT://:9091,CONTROLLER://:9093 \
-  -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.110.8:9091 \
-  -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
-  -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
-  -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-  -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
-  -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
-  -e BITNAMI_DEBUG=true \
-  -v /opt/kafka:/bitnami/kafka \
-  -v /etc/localtime:/etc/localtime \
-  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+你好！没关系，第一次学习 Git 确实可能对概念和流程感到抽象，Mermaid 图可以帮助你更直观地理解 Git 的基本概念和操作流程。Mermaid 是一种基于文本的图表工具，可以用简单的代码生成流程图、时序图等，适合用来展示 Git 的工作原理。我会为你提供几个 Mermaid 图，涵盖 Git 的核心概念和常见操作流程，并附上简要解释，帮助你建立直观的理解。以下内容将以中文简体编写，图表代码可以直接复制到支持 Mermaid 的编辑器（如 Markdown 编辑器、Gitee 的在线编辑器）中查看效果。
+
+---
+
+### 1. Git 基本概念图
+**目标**：帮助你理解 Git 的核心组成部分，如仓库、分支、提交等。  
+
+
+**使用建议**：你可以将这段 Mermaid 代码复制到支持 Mermaid 的编辑器（如 VS Code 的 Markdown 预览，或 Gitee 的在线编辑器）中查看图形效果，边看图边思考每个部分的含义。
+
+---
+
+### 2. Git 基本工作流程图
+**目标**：展示从修改文件到提交到远程仓库的基本流程。  
+
+
+**使用建议**：这个流程是 Git 的核心操作，建议结合实际操作（如之前大纲中的实践练习）对照这个图，理解每一步的作用。
+
+---
+
+### 3. Git 分支管理流程图
+**目标**：帮助你理解分支的创建、切换和合并过程。  
+**Mermaid 图**：  
+```mermaid
+graph TD
+    A[主分支<br>（main）] --> B[git branch dev<br>创建开发分支]
+    B --> C[git checkout dev<br>切换到 dev 分支]
+    C --> D[修改代码并提交<br>git add & git commit]
+    D --> E[git checkout main<br>切换回主分支]
+    E --> F[git merge dev<br>合并 dev 到 main]
+    F --> G[git push origin main<br>推送合并结果到 Gitee]
+```
+
+**解释**：  
+- **分支创建与切换**：通过 `git branch` 和 `git checkout`，你可以创建新分支并切换过去，分支之间修改互不影响。
+- **合并分支**：开发完成后，切换回主分支，用 `git merge` 将开发分支的变更整合到主分支。
+- **推送结果**：合并后推送至 Gitee，完成整个流程。
+
+**使用建议**：分支是 Git 的强大功能，这个图展示了多分支开发的典型流程。结合之前的实践练习，尝试自己创建和合并分支，对照图理解每一步。
+
+---
+
+### 4. Git 提交历史图（时间线）
+**目标**：展示提交历史如何记录代码版本。  
+**Mermaid 图**：  
+```mermaid
+graph TD
+    A[初始提交<br>Commit ID: abc123] --> B[第二次提交<br>Commit ID: def456<br>添加 test.txt]
+    B --> C[第三次提交<br>Commit ID: ghi789<br>修改 test.txt]
+    C --> D[当前 HEAD<br>指向最新提交]
+    subgraph 分支
+    B --> E[dev 分支提交<br>Commit ID: jkl012<br>开发新功能]
+    end
+```
+
+**解释**：  
+- **提交历史**：每次 `git commit` 都会生成一个提交记录（Commit），有唯一的 ID，记录代码的快照。
+- **HEAD**：指向当前所在的分支最新提交，告诉你当前代码状态。
+- **分支提交**：在不同分支上提交会形成不同的历史线，最终可以合并。
+
+**使用建议**：使用 `git log` 命令查看提交历史，对照这个图理解提交之间的关系，以及分支如何分叉。
+
+---
+
+### 如何使用这些 Mermaid 图
+1. **查看图形**：将以上 Mermaid 代码复制到支持 Mermaid 的工具中查看效果，例如：
+   - **VS Code**：安装 Markdown 预览插件（如 Markdown All in One），粘贴代码即可看到图。
+   - **Gitee**：在 Gitee 的仓库中新建或编辑一个 `.md` 文件，粘贴代码，提交后查看渲染效果。
+   - **在线工具**：访问 https://mermaid.live/，粘贴代码即可实时预览。
+2. **结合学习**：对照这些图，回顾之前大纲中的概念和命令，边操作边理解。
+3. **保存参考**：你可以将这些图保存到你的学习笔记中，随时复习。
+
+---
+
+### 小结与下一步
+**小结**：以上 4 个 Mermaid 图分别展示了 Git 的基本概念、工作流程、分支管理和提交历史，希望能帮助你更直观地理解 Git 的运作原理。如果你是第一次学习，不用担心无法完全理解，建议结合实际操作（如克隆项目、提交代码）逐步加深印象。  
+**下一步**：如果你对这些图有疑问，或希望我针对某个具体流程（如冲突解决）再绘制 Mermaid 图，请随时告诉我！同时，你可以继续按照之前的教学大纲进行实践，边做边对照这些图，效果会更好。你现在想重点理解哪个部分呢？或者是否需要我提供更多图表支持？

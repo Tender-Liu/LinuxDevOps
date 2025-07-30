@@ -934,7 +934,7 @@ Ansible 支持对多台主机同时执行任务，通过主机组或模式匹配
     - name: 备份目标主机的原始 Chrony 配置文件
       copy:  # 使用 copy 模块进行文件备份
         src: /etc/chrony/chrony.conf  # 源文件路径（目标主机）
-        dest: /etc/chrony/chrony.conf.bak  # 备份文件路径（目标主机）
+        dest: /etc/chrony/chrony.conf.bak_{{ansible_date_time.date}}  # 备份文件路径（目标主机）
         remote_src: yes  # 表示源文件在目标主机上
       become: yes  # 以 root 权限执行
       ignore_errors: yes  # 文件不存在时忽略错误
