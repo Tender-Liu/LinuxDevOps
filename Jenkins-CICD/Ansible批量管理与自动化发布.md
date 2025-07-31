@@ -409,7 +409,7 @@ Ansible 支持对多台主机同时执行任务，通过主机组或模式匹配
   - **示例**：
     - 对 `web_servers` 和 `app_servers` 执行 ping 测试：`ansible "web_servers:app_servers" -m ping`  
       *解释*：对两个组的所有主机执行连通性测试。
-    - 对 `web_servers` 组中除 `192.168.1.101` 外的其他主机检查版本：`ansible "web_servers:!192.168.1.101" -m command -a "lsb_release -a"`  
+    - 对 `web_servers` 组中除 `192.168.1.101` 外的其他主机检查版本：`ansible 'web_servers:!192.168.1.101' -m command -a "lsb_release -a"`  
       *解释*：排除特定主机，检查其余主机的系统版本。
   - **验证**：检查输出，确保只对匹配的主机执行了任务。
 
