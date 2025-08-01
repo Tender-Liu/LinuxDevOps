@@ -1,232 +1,198 @@
-# 教案：从零开始学习 CI/CD 与 PyDockerDeploy 项目实践
-
-## 一、课程目标
-1. 让零基础学员理解 CI/CD 的基本概念及其在软件开发中的作用，认识常见 CI/CD 工具。
-2. 熟悉 PyDockerDeploy 项目的功能和使用场景，掌握其核心代码逻辑。
-3. 学会如何准备环境并实践 Docker 容器部署。
+你好！很高兴能继续帮助你和同学们完成 Cloudflare 的实验环节。以下是针对实验环节的详细步骤说明，内容面向小白群体，用通俗易懂的语言解释如何注册 Cloudflare、配置公网域名、开启 CDN、配置 Nginx 域名解析到 Docker 前端服务，以及检查是否成功开启 CDN 和后端服务访问情况。我还会尽量用结构化的方式整理内容，并结合 Mermaid 图来直观展示流程。
 
 ---
 
-## 二、课程内容
+### Cloudflare 实验环节：详细步骤指导（面向小白群体）
 
-### 1. CI/CD 概念介绍（通俗易懂，形象类比）
+**时间：30-40 分钟**
 
-**目标：通过生活化的比喻让小白群体理解 CI/CD 的重要性，并认识常见的 CI/CD 工具及其作用。**
+**目标：帮助同学们完成 Cloudflare 注册、域名授权、CDN 开启、Nginx 配置，并验证结果。**
 
-- **什么是 CI/CD？**
-  - **CI（持续集成）**：想象你在和朋友一起准备一顿大餐，每个人负责不同的菜（比如炒菜、煮汤、做甜点）。为了确保最后能顺利开饭，每当一个人做好一道菜，就会马上放到餐桌上，和其他已经完成的菜一起试着搭配，看看味道是否协调。如果有问题（比如太咸或太甜），马上调整。这就是持续集成——在软件开发中，开发人员经常把自己的代码合并到主代码库（就像餐桌），并通过自动化测试检查代码是否有问题（就像试味道），确保整体项目不会因为某个人的代码而出错。
-  - **CD（持续交付/持续部署）**：继续大餐的例子，当一道菜做好并确认没问题后，我们不是等所有菜都做好才上桌，而是立刻端给客人品尝。这就是持续交付/持续部署——通过自动化工具快速把代码更新送到用户手中（生产环境，就像餐厅的餐桌），让用户能尽早用上新功能。持续交付（Continuous Delivery）是指确保代码随时可以部署，而持续部署（Continuous Deployment）是指代码通过测试后自动部署到生产环境。
+#### 1. 注册 Cloudflare 账号
+- **步骤：**
+  1. 打开浏览器，访问 Cloudflare 官网（`https://www.cloudflare.com/`）。
+  2. 点击“Sign Up”或“注册”按钮，输入邮箱地址和密码，完成注册。
+  3. 注册后，登录 Cloudflare 账号，进入管理控制台（Dashboard）。
+- **通俗解释：**
+  - 就像你去开一个淘宝店，先要注册一个账号，才能管理你的店铺。Cloudflare 账号就是你管理网站加速和安全的“后台”。
+- **注意：**
+  - 使用常用的邮箱，确保能收到验证邮件。如果注册遇到问题，及时告诉老师。
 
-- **CI/CD 的好处：**
-  - **CI 的好处**：就像试菜能及时发现味道问题，持续集成让团队早发现代码中的 Bug，减少后期修复成本。如果不及时测试，问题可能堆积到最后，导致项目延期或失败。
-  - **CD 的好处**：就像及时上菜能让客人满意，持续部署让用户更快体验到新功能，同时减少手动部署出错的风险。手动部署就像手忙脚乱地上菜，容易出错，而自动化部署就像有服务员机器人帮忙，省力又准确。
-
-- **没有 CI/CD 会怎样？**
-  - 没有 CI：就像所有人做完菜才发现搭配不好，代码问题可能堆积到最后，比如一个人的代码和其他人的代码冲突，或者某个功能有 Bug 导致整个项目崩溃，修复成本非常高。
-  - 没有 CD：就像等所有菜都做好才上桌，用户要等很久才能看到新功能，体验很差。而且手动部署还可能因为人为失误（如配置错误）导致服务宕机。
-
-- **CI/CD 工具的作用与常见工具介绍：**
-  - CI/CD 就像餐厅里的分工体系，需要不同的工具（就像不同的厨具和服务员）来完成从做菜到上菜的全流程。下面是一些常见的 CI/CD 工具，各自有不同的“专长”：
-    1. **Jenkins（CI 工具）**：
-       - 作用：Jenkins 是一个非常流行的持续集成工具，就像餐厅里的“总厨”，负责协调大家做菜。它可以自动运行测试、构建软件（把代码变成可运行的程序或镜像），确保每道菜（代码）都没问题。
-       - 例子：当你提交代码后，Jenkins 会自动运行测试脚本，如果测试通过，它会把代码打包成 Docker 镜像（就像把菜装盘），为后续部署做好准备。
-    2. **GitLab Runner（CI/CD 工具）**：
-       - 作用：GitLab Runner 是 GitLab 平台自带的 CI/CD 工具，就像餐厅里的“多面手服务员”，既能帮忙做菜（运行测试、构建），也能帮忙上菜（部署）。它通过 GitLab 的配置文件（`.gitlab-ci.yml`）来定义整个流程。
-       - 例子：你可以在 GitLab 上设置，当代码提交到某个分支时，GitLab Runner 自动运行测试、构建镜像，并推送到镜像仓库。
-    3. **ArgoCD（CD 工具）**：
-       - 作用：ArgoCD 是一个专注于持续部署的工具，特别适合 Kubernetes 环境（一种管理容器化应用的系统）。它就像餐厅里的“智能上菜机器人”，会持续监控目标环境，确保部署的软件版本和期望的一致，如果不一致就自动调整。
-       - 例子：ArgoCD 可以自动检测代码仓库中的配置文件变化，然后把最新的应用部署到 Kubernetes 集群中。
-    4. **PyDockerDeploy（我们自己的 CD 工具）**：
-       - 作用：PyDockerDeploy 是我们今天要学习的工具，专注于 Docker 容器的持续部署。它就像一个“专职送菜员”，负责把 Jenkins 或 GitLab Runner 构建好的 Docker 镜像（已经做好的菜）快速送到目标服务器（餐桌），并确保软件正常运行。
-       - 例子：PyDockerDeploy 可以连接多台服务器，自动下载指定镜像并启动容器，完成从镜像到运行服务的最后一步。
-
-- **CI/CD 工具如何协同工作？**
-  - 就像餐厅里总厨（Jenkins）负责做菜，多面手服务员（GitLab Runner）帮忙做菜和送菜，智能机器人（ArgoCD）和专职送菜员（PyDockerDeploy）负责把菜送到客人面前，这些工具可以组合使用，形成一个完整的 CI/CD 流水线。
-  - 典型流程：开发人员提交代码 → Jenkins/GitLab Runner 运行测试并构建镜像 → 镜像推送到仓库（如 Harbor）→ PyDockerDeploy/ArgoCD 拉取镜像并部署到服务器。
-  - 通俗解释：就像做菜（CI）完成后，有人负责把菜送到餐桌（CD），PyDockerDeploy 就是我们自己打造的“送菜工具”，简单好用，专注于 Docker 部署。
-
-- **互动环节：**
-  - 提问：如果做菜时不试味道、不及时上菜，会发生什么问题？（引导学生类比到软件开发中的代码冲突、部署延迟等问题）
-  - 提问：如果餐厅里没有总厨（Jenkins）或送菜员（PyDockerDeploy），会怎样影响效率？（引导学生思考 CI/CD 工具在自动化和分工中的作用）
-
-
-### 2. PyDockerDeploy 项目介绍
-
-**目标：让小白群体了解 PyDockerDeploy 项目的用途和功能。**
-
-- **项目是什么？**
-  - PyDockerDeploy 是一个用 Python 写的小工具，专门用来帮助我们把 Docker 容器（可以理解为一个轻量化的软件运行环境）快速部署到服务器上。
-  - 它就像一个“快递员”，负责把开发好的软件（Docker 镜像）送到目标地点（服务器），并确保软件能正常运行。
-  - 项目地址：https://gitee.com/Tender-Liu/PyDockerDeploy.git
-
-- **项目能做什么？**
-  1. 支持一次性把软件部署到多台服务器。
-  2. 提供三种部署方式：可以根据代码分支部署、直接指定软件版本部署，或者用服务器上已有的最新版本重新启动。
-  3. 还能管理软件的运行状态（启动、停止、删除）和清理不需要的老版本。
-
-- **项目在 CI/CD 中的位置：**
-  - 它主要负责 CD（持续部署）部分，是 CI/CD 流程的“最后一站”，把 CI 阶段构建好的软件（Docker 镜像）部署到服务器上。
-  - 简单来说，CI 负责“做菜”（代码测试和构建），CD 负责“上菜”（部署到用户环境），而 PyDockerDeploy 就是“上菜的工具”。
-
-- **互动环节：**
-  - 提问：如果你是餐厅服务员，有什么工具能帮你更快、更准确地上菜？（引导学生类比到 PyDockerDeploy 的自动化部署功能）
-
-
-### 3. PyDockerDeploy 项目结构与逻辑（Mermaid 图与解释）
-**时间：20 分钟**
-
-**目标：通过结构图和简单解释让小白群体了解项目的组成和逻辑。**
-
-- **项目结构图展示：**
+#### 2. 老师授权域名（labworlds.cc）
+- **说明：**
+  - 老师会在 Cloudflare 平台上为每位同学分配一个子域名，比如 `shiqi.admin.labworlds.cc`，并完成域名授权。
+- **通俗解释：**
+  - 就像老师帮你在导航系统上登记了一个地址（域名），用户才能通过这个地址找到你的网站。
+- **Mermaid 结构图：域名授权流程**
   ```mermaid
-  classDiagram
-      class DeployConfig {
-          +str project_name
-          +str git_branch
-          +str image_tag
-          +List[str] hosts
-      }
-      class DockerDeployer {
-          +deploy()
-          +deploy_to_host()
-      }
-      class DockerManager {
-          +pull_image()
-          +start_container()
-          +stop_container()
-      }
-      DockerDeployer --> DeployConfig
-      DockerDeployer --> DockerManager
+  sequenceDiagram
+      participant S as 学生
+      participant T as 老师
+      participant C as Cloudflare
+      S->>T: 告知子域名需求<br>（如 shiqi.admin.labworlds.cc）
+      T->>C: 配置子域名授权<br>（添加解析记录）
+      C->>T: 授权完成
+      T->>S: 通知授权成功
   ```
+- **注意：**
+  - 确保老师已完成授权，否则域名无法使用。如果有疑问，及时问老师确认。
 
-- **结构图解释（通俗版）：**
-  1. **DeployConfig（部署配置）**：
-     - 就像一个“任务清单”，记录了我们要部署什么软件（`project_name`）、用哪个版本（`git_branch` 和 `image_tag`）、送到哪些服务器（`hosts`）。
-     - 作用：告诉其他部分该做什么。
-  2. **DockerDeployer（部署执行者）**：
-     - 就像一个“总指挥”，负责看任务清单，然后安排部署工作。
-     - 主要任务：`deploy()` 是总部署计划，指挥所有服务器完成部署；`deploy_to_host()` 是单台服务器的部署步骤。
-  3. **DockerManager（Docker 工具箱）**：
-     - 就像一个“具体干活的工人”，专门负责和服务器上的 Docker 打交道。
-     - 主要任务：`pull_image()` 是下载软件版本，`start_container()` 是启动软件，`stop_container()` 是停止软件运行。
-  4. **关系箭头**：
-     - `DockerDeployer --> DeployConfig`：总指挥要看任务清单才能知道做什么。
-     - `DockerDeployer --> DockerManager`：总指挥指挥工人去干具体的活。
+#### 3. 配置公网域名解析
+- **背景说明：**
+  - 由于教室的公网 IP 是临时的，且教室环境全面翻墙，无法直接获取固定 IP，需要通过百度搜索“IP 查询”来获取当前公网 IP。
+- **步骤：**
+  1. 打开浏览器，访问百度（`https://www.baidu.com/`）。
+  2. 在搜索框输入“IP 查询”或“我的 IP”，百度会显示当前公网 IP 地址（比如 `114.114.114.114`），记下这个 IP。
+  3. 如果老师已在 Cloudflare 上完成域名解析配置，学生无需自己操作解析；如果需要学生配合，老师会提供具体指引。
+- **通俗解释：**
+  - 就像你需要知道自己家的地址（公网 IP），才能告诉导航系统（Cloudflare）怎么找到你。百度搜索 IP 就像问路人“我的位置在哪”。
+- **注意：**
+  - 公网 IP 是临时的，可能随时变化。如果访问网站时发现域名解析不对，及时重新查询 IP 并通知老师更新解析。
 
-- **互动环节：**
-  - 提问：如果任务清单（DeployConfig）写错了，会发生什么？（引导学生思考配置错误会导致部署失败）
+#### 4. 开启 Cloudflare CDN
+- **步骤：**
+  1. 登录 Cloudflare 账号，进入管理控制台（Dashboard）。
+  2. 在左侧菜单选择“DNS”选项，确认老师已为你的域名（比如 `shiqi.admin.labworlds.cc`）添加了记录。
+  3. 在 DNS 记录中，找到你的域名记录，确保右侧的“云朵图标”是橙色（表示 CDN 已开启）。如果不是橙色，点击图标切换到橙色状态。
+- **通俗解释：**
+  - 就像你告诉 Cloudflare：“请帮我开分店（边缘节点），让顾客能快速买到东西。”橙色云朵图标就是“分店已开”的标志。
+- **Mermaid 结构图：CDN 开启效果**
+  ```mermaid
+  graph TD
+      A[用户] -->|访问 shiqi.admin.labworlds.cc| B[Cloudflare CDN]
+      B -->|选择最近边缘节点| C[边缘节点]
+      C -->|快速返回内容| A
+      D[源服务器] -.->|同步内容| C
+  ```
+- **注意：**
+  - CDN 开启后，需要几分钟生效。如果访问网站时速度慢，稍等片刻或问老师确认。
+
+#### 5. 配置 Nginx 域名解析到 Docker 前端服务
+- **背景说明：**
+  - Nginx 是一个反向代理服务器，负责把用户的请求转发到你的 Docker 前端服务（比如运行在 `192.168.110.6:8000` 的服务）。
+- **步骤：**
+  1. 登录服务器（老师提供的虚拟机或容器环境），进入 Nginx 配置文件目录：
+     ```bash
+     cd /etc/nginx/conf.d/
+     ```
+  2. 创建或编辑配置文件（以 `shiqi.admin.labworlds.cc.conf` 为例），内容如下（老师已提供模板，直接复制粘贴）：
+     ```nginx
+     # HTTPS server
+     server {
+         listen 1443 ssl;
+         server_name shiqi.admin.labworlds.cc;
+         access_log /var/log/nginx/shiqi.admin.labworlds.cc.access.log json_combined;
+         error_log /var/log/nginx/shiqi.admin.labworlds.cc.error.log warn;
+         
+         # 证书文件路径
+         ssl_certificate /etc/nginx/ssl/shiqi.admin.labworlds.cc/certificate.crt;
+         ssl_certificate_key /etc/nginx/ssl/shiqi.admin.labworlds.cc/private.key;
+         
+         # SSL优化配置
+         ssl_protocols TLSv1.2 TLSv1.3;
+         ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+         ssl_prefer_server_ciphers on;
+         ssl_session_cache shared:SSL:10m;
+         ssl_session_timeout 10m;
+         ssl_stapling on;
+         ssl_stapling_verify on;
+         
+         # 添加location配置
+         location / {
+             proxy_pass http://admin_fronend;
+             proxy_http_version 1.1;
+             proxy_set_header Host $host;
+             proxy_set_header X-Real-IP $remote_addr;
+             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+             proxy_set_header X-Forwarded-Proto $scheme;
+             proxy_connect_timeout 60s;
+             proxy_send_timeout 60s;
+             proxy_read_timeout 60s;
+         }
+     }
+
+     # 将HTTP请求重定向到HTTPS
+     server {
+         listen 180;
+         server_name shiqi.admin.labworlds.cc;
+         return 301 https://$server_name:1443$request_uri;
+     }
+
+     upstream admin_fronend {
+         server 192.168.110.6:8000 max_fails=3 fail_timeout=30s;
+     }
+     ```
+  3. 生成 SSL 证书（用于 HTTPS 加密访问）：
+     ```bash
+     mkdir -p /etc/nginx/ssl/shiqi.admin.labworlds.cc/
+     openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/shiqi.admin.labworlds.cc/private.key -out /etc/nginx/ssl/shiqi.admin.labworlds.cc/certificate.crt -subj "/C=CN/ST=Beijing/L=Beijing/O=liujun/CN=shiqi.admin.labworlds.cc"
+     ```
+  4. 检查 Nginx 配置是否正确：
+     ```bash
+     nginx -t
+     ```
+  5. 重启 Nginx 使配置生效：
+     ```bash
+     systemctl reload nginx
+     ```
+- **通俗解释：**
+  - Nginx 就像一个“门卫”，用户的请求（访问 `shiqi.admin.labworlds.cc:1443`）先到门卫这里，门卫再把请求转给里面的 Docker 前端服务（`192.168.110.6:8000`）。
+  - SSL 证书就像“安全锁”，保证用户和网站之间的通信是加密的，不会被偷看。
+- **Mermaid 结构图：Nginx 转发流程**
+  ```mermaid
+  graph TD
+      A[用户] -->|访问 https://shiqi.admin.labworlds.cc:1443| B[Nginx 反向代理]
+      B -->|转发请求| C[Docker 前端服务<br>192.168.110.6:8000]
+      C -->|返回内容| B
+      B -->|返回内容| A
+  ```
+- **注意：**
+  - 确保 Docker 前端服务已启动（`192.168.110.6:8000`），否则 Nginx 转发会失败。
+  - 如果 `nginx -t` 报错，检查配置文件是否有语法错误，及时问老师。
+
+#### 6. 验证 Cloudflare CDN 是否开启
+- **步骤：**
+  1. 打开 Google Chrome 浏览器，访问你的网站：
+     ```
+     https://shiqi.admin.labworlds.cc:1443
+     ```
+  2. 按 `F12` 打开开发者工具，选择“Network”选项卡，刷新页面。
+  3. 查看请求的响应头（Response Headers），寻找类似 `CF-Cache-Status: HIT` 的字段：
+     - 如果有 `HIT`，说明内容是从 Cloudflare 边缘节点获取的，CDN 已开启。
+     - 如果是 `MISS` 或没有相关字段，可能 CDN 未生效，稍等几分钟或问老师确认。
+- **通俗解释：**
+  - 就像你买东西时，包裹上写着“本地仓库发货”（HIT），说明是从 Cloudflare 的小仓库拿的，速度快。如果写“总店发货”（MISS），说明还没用上 CDN。
+- **注意：**
+  - 首次访问可能是 `MISS`，因为内容还没缓存到边缘节点，多刷新几次可能变成 `HIT`。
+
+#### 7. 检查页面访问后端服务
+- **步骤：**
+  1. 在浏览器中访问网站（`https://shiqi.admin.labworlds.cc:1443`），按 `F12` 打开开发者工具，选择“Network”选项卡。
+  2. 查看页面发出的后端请求 URL，确认是否以 `/admin3/` 开头（比如 `/admin3/userinfo`）。
+  3. 如果后端服务未部署，请求会返回 `500` 错误（服务器内部错误），这是正常现象，后续会学习配置后端服务。
+- **通俗解释：**
+  - 就像你点了外卖，但餐厅（后端服务）还没开张，订单会失败（返回 500）。现在先记住后端 URL 的前缀（`/admin3/`），等会开张餐厅时要用。
+- **注意：**
+  - 记录下后端 URL 前缀（`/admin3/`），后续配置后端服务时会用到。
+  - 如果页面无法加载，确认 Nginx 和 Docker 前端服务是否正常运行。
+
+#### 8. 常见问题解答
+- **问题 1：访问网站时提示证书错误怎么办？**
+  - 答：因为我们用的是自签名证书（`openssl` 生成），浏览器会提示不安全。点击“继续访问”或“接受风险”即可，实验环境不影响使用。
+  - 通俗解释：就像你用了一个临时门锁，保安（浏览器）不认识，提醒你小心，但你可以放心进门。
+- **问题 2：CDN 一直显示 MISS 怎么办？**
+  - 答：可能是 CDN 缓存未生效，等待几分钟或多刷新几次。如果仍无效，确认 Cloudflare DNS 记录的云朵图标是否为橙色。
+  - 通俗解释：就像小仓库刚开张，东西还没送来，多等一会或问店长（老师）。
+
+#### 9. 互动环节
+- 提问：访问网站后，开发者工具显示 `CF-Cache-Status: HIT` 了吗？如果没有，可能是什么原因？（引导学生理解 CDN 缓存机制）
+- 讨论：后端 URL 以 `/admin3/` 开头，为什么现在访问会返回 500？（引导学生思考前后端分离的概念）
+
+#### 10. 总结
+- 完成以上步骤后，你已经成功注册 Cloudflare、配置了域名（`shiqi.admin.labworlds.cc`）、开启了 CDN，并通过 Nginx 将请求转发到 Docker 前端服务。
+- 下一步将学习配置后端服务，解决页面访问后端返回 500 的问题。
+- 通俗解释：就像你已经开好了一家店的前门（前端服务），顾客能进来看商品了，但后厨（后端服务）还没开工，下一步我们要开后厨。
 
 ---
 
-### 4. 核心代码讲解（简单易懂）
-**时间：25 分钟**
-
-**目标：通过核心代码片段让小白群体理解 PyDockerDeploy 的工作原理。**
-
-- **代码文件总览：**
-  - `deployer.py`：主程序，负责接收命令和整体部署流程。
-  - `utils/docker_manager.py`：负责 Docker 的具体操作（如下载、启动软件）。
-  - `utils/ssh_client.py`：负责连接服务器，就像一个“远程遥控器”。
-  - `config_manager.py`：负责上传配置文件，就像“送材料到工地”。
-
-- **核心代码片段讲解：**
-  1. **DeployConfig 类（任务清单）**：
-     - 代码作用：保存部署需要的各种信息，比如软件名字、版本、目标服务器。
-     - 通俗解释：就像你点外卖时填写的订单信息（收货地址、餐品名称），没有这个清单，后面就不知道送哪里、送什么。
-     - 示例代码（简化版）：
-       ```python
-       class DeployConfig:
-           def __init__(self, project_name, docker_run, hosts, harbor_registry):
-               self.project_name = project_name  # 软件名称
-               self.docker_run = docker_run      # 启动软件的命令
-               self.hosts = hosts                # 目标服务器列表
-               self.harbor_registry = harbor_registry  # 软件仓库地址
-       ```
-
-  2. **DockerDeployer 类（总指挥）**：
-     - 代码作用：读取任务清单，安排部署步骤。
-     - 通俗解释：就像外卖配送中心，接到订单后安排骑手送餐，确保每个地址都送到。
-     - 示例代码（简化版）：
-       ```python
-       class DockerDeployer:
-           def __init__(self, config):
-               self.config = config  # 保存任务清单
-           
-           def deploy(self, ssh_clients):
-               print("开始部署...")
-               for ssh_client in ssh_clients:  # 遍历每个服务器
-                   self.deploy_to_host(ssh_client)  # 部署到单台服务器
-               print("部署完成！")
-       ```
-
-  3. **DockerManager 类（具体工人）**：
-     - 代码作用：执行具体的 Docker 操作，比如下载软件、启动软件。
-     - 通俗解释：就像外卖骑手，具体负责把餐送到客户手上。
-     - 示例代码（简化版）：
-       ```python
-       class DockerManager:
-           def pull_image(self, image_name):
-               print(f"下载软件版本: {image_name}")
-               # 通过 SSH 远程执行 Docker 命令下载
-           
-           def start_container(self, container_name, docker_run):
-               print(f"启动软件: {container_name}")
-               # 通过 SSH 远程启动 Docker 容器
-       ```
-
-- **互动环节：**
-  - 提问：如果骑手（DockerManager）送餐时地址错了，会发生什么？（引导学生思考 Docker 命令执行错误的影响）
-
-### 5. 安装依赖说明（环境准备）
-**时间：15 分钟**
-
-**目标：指导小白群体如何准备 PyDockerDeploy 的运行环境。**
-
-- **为什么需要准备环境？**
-  - 就像你要骑自行车送外卖，得先有自行车和头盔，PyDockerDeploy 也需要一些“工具”才能正常工作。
-
-- **每台服务器需要安装的依赖：**
-  1. 安装 Python 的 SSH 工具：
-     ```bash
-     sudo apt install python3-paramiko
-     ```
-     - 作用：`paramiko` 是一个 Python 库，让 PyDockerDeploy 能远程控制服务器，就像“遥控器”。
-  2. 配置 Docker 使用权限：
-     ```bash
-     sudo usermod -aG docker ubuntu
-     ```
-     - 作用：让 `ubuntu` 用户有权限操作 Docker，就像给骑手发放通行证。配置后需要重新登录服务器让权限生效。
-
-- **提前准备项目镜像：**
-  - 就像外卖平台要先有餐品库存，PyDockerDeploy 需要有软件版本（Docker 镜像）才能部署。
-  - 建议提前在镜像仓库（如 Harbor）准备好镜像，示例：`harbor.labworlds.cc/go-starter/master:liujun-v1.0`。
-  - 说明：这些镜像通常由 CI 流程（比如 Jenkins）自动生成并上传。
-
-
-### 6. 实践操作：部署测试
-**时间：30 分钟**
-
-**目标：通过实际操作让小白群体掌握 PyDockerDeploy 的基本使用。**
-
-- **测试场景：**
-  - 我们用 PyDockerDeploy 把一个软件（Docker 镜像）部署到一台服务器上。
-  - 命令示例（基于 Git 分支部署）：
-    ```bash
-    python deployer.py -p go-starter --git_branch master --image_tag liujun-v1.0 \
-        --hosts 192.168.110.8 --harbor_registry harbor.labworlds.cc \
-        --docker_run "docker run -d -p 9006:8080"
-    ```
-  - 通俗解释：这段命令就像告诉快递员：“把 go-starter 这个软件的 master 分支、liujun-v1.0 版本，送到 192.168.110.8 这台服务器，启动时用指定方式运行。”
-
-- **操作步骤：**
-  1. 下载 PyDockerDeploy 项目代码到本地（就像拿到快递工具）。
-  2. 修改 `deployer.py` 文件中的 SSH 配置（比如用户名、私钥路径），就像设置快递员的导航地址。
-  3. 在终端运行上面的命令，观察部署过程（就像看着快递员送货）。
-  4. 登录目标服务器，用 `docker ps` 命令检查软件是否正常运行（就像确认客户收到货）。
-
-- **互动环节：**
-  - 学生分组实践，教师巡回指导，解决常见问题（如 SSH 连接不上、命令参数错误）。
-
-测试
-
-1231231
+希望这些详细步骤和图解能帮助你和同学们顺利完成实验环节。如果在操作过程中遇到问题（比如域名解析失败、Nginx 配置报错、CDN 未生效等），随时告诉我或问老师，我会继续提供帮助！

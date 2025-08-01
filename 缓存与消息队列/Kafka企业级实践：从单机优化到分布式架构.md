@@ -877,25 +877,28 @@ docker run -d \
 部署完成后，在浏览器中访问 `http://你的主机IP:8080`（例如 `http://192.168.1.101:8080`），即可看到 Kafka UI 界面。你可以在界面中查看集群状态、主题列表、消息内容等。
 
 
-## 第四部分 企业级问题解决：消息处理与优化 （高薪必学）
+# 第四部分 企业级问题解决：消息处理与优化 （高薪必学）
+
 在企业级应用中，Kafka 常用于处理高并发、大规模的消息流。然而，消息过载、积压或资源限制等问题可能影响系统稳定性和性能。本节将针对常见问题提供解决方法，并结合 Docker 环境给出具体实践操作，确保学员能够在实际场景中快速应对。
 
-### 1. 整体 Kafka 系统类比：快递分拣中心
+## 1. 整体 Kafka 系统类比：快递分拣中心
+
 在开始具体问题之前，先用一个统一的类比帮助大家建立 Kafka 的整体认知：
-- **Kafka 集群**：就像一个大型“快递分拣中心”，负责接收、存储和分发快递包裹（消息）。
-- **Broker 节点**：分拣中心里的每个“分拣站”，负责处理一部分包裹（存储和转发消息）。
-- **Topic**：就像分拣中心里的“分类货架”，每个货架存放特定类型的包裹（特定主题的消息）。
-- **Partition（分区）**：每个货架上的“格子”，一个 Topic 分成多个格子，方便多人同时处理。
-- **生产者（Producer）**：就像“寄快递的人”，不断把包裹送到分拣中心。
-- **消费者（Consumer）**：就像“收快递的人”，从分拣中心取走包裹。
-- **消费者组**：就像一个“收件团队”，团队里多人分工取包裹，每个格子只被一个人负责，避免重复。
+- **Kafka 集群**：就像一个大型"快递分拣中心"，负责接收、存储和分发快递包裹（消息）。
+- **Broker 节点**：分拣中心里的每个"分拣站"，负责处理一部分包裹（存储和转发消息）。
+- **Topic**：就像分拣中心里的"分类货架"，每个货架存放特定类型的包裹（特定主题的消息）。
+- **Partition（分区）**：每个货架上的"格子"，一个 Topic 分成多个格子，方便多人同时处理。
+- **生产者（Producer）**：就像"寄快递的人"，不断把包裹送到分拣中心。
+- **消费者（Consumer）**：就像"收快递的人"，从分拣中心取走包裹。
+- **消费者组**：就像一个"收件团队"，团队里多人分工取包裹，每个格子只被一个人负责，避免重复。
 
 这个类比将贯穿下面的问题解释，帮助大家把抽象概念映射到熟悉的场景。
 
-### 4.1 消息来得太快
+## 4.1 消息来得太快
+
 **问题描述**：当生产者发送消息的速度远超消费者处理能力或 Broker 存储能力时，可能导致消息积压、系统延迟甚至崩溃。
 
-**问题场景**：想象快递分拣中心每天收到 10 万个包裹，但分拣站的工人（消费者）和仓库空间（Broker 存储）只能处理 5 万个，包裹堆积如山，中心快要“爆仓”。
+**问题场景**：想象快递分拣中心每天收到 10 万个包裹，但分拣站的工人（消费者）和仓库空间（Broker 存储）只能处理 5 万个，包裹堆积如山，中心快要"爆仓"。
 
 **Mermaid 图：增加分区数的效果**
 ```mermaid
@@ -931,74 +934,138 @@ graph TD
 - 增加分区数就像把货架分成更多小格子，每个格子可以被一个工人（消费者）负责，处理速度变快，包裹不再堆积。
 - 注意：如果工人数量没增加（消费者数量不足），多出来的格子也没人处理，效果就不明显。
 
-**解决方法**：
-1. **增加分区数**：
-   - 分区（Partition）是 Kafka 提高并行处理能力的关键。增加 Topic 的分区数可以让更多消费者并行处理消息，从而提升吞吐量。
-   - 注意：分区数增加后需确保消费者组中有足够消费者，否则效果有限。
-   - 类比：就像把一个大货架拆分成更多小格子，每个格子可以分配给不同工人同时处理，加快分拣速度。
-2. **扩展 Broker 节点**：
-   - 通过增加 Kafka Broker 节点分担负载，提升集群存储和处理能力。
-   - 新增 Broker 后，需重新平衡分区分配，确保负载均匀。
-   - 类比：就像在城市里新增一个分拣站，把一部分包裹分流过去，减轻原有站点的压力。
-3. **调整生产者配置**：
-   - 设置 `linger.ms`：增加生产者发送消息的延迟时间，批量发送消息，减少请求次数。
-   - 设置 `compression.type`：启用压缩（如 `gzip` 或 `snappy`），减少消息体积，降低网络和存储压力。
-   - 类比：就像告诉寄快递的人“别一次送太多，攒一攒再送
-4. **生产者限流**：
-   - 在生产者端实现限流逻辑，控制发送速率，避免压垮 Broker。
-   - 类比：就像在分拣站门口设个限流闸，每天只收一定数量的包裹，确保不超载。
+### 解决方法
 
-**实践操作（基于 Docker 环境）**：
-- **增加分区数**：
-  假设已有 Topic 名为 `high-traffic-topic`，当前分区数为 3，想增加到 6：
-  1. 进入任意 Kafka 容器（例如 `kafka-broker1`）：
-     ```bash
-     docker exec -it kafka-broker1 bash
-     ```
-  2. 使用 Kafka 工具增加分区：
-     ```bash
-     kafka-topics.sh --alter --topic high-traffic-topic --partitions 6 --bootstrap-server 192.168.1.101:9092
-     ```
-     **说明**：分区数只能增加，不能减少。增加后需检查消费者组是否能充分利用新分区。
-- **Broker 扩容步骤**：
-  假设要在第 4 台主机（IP 为 `192.168.1.104`）上新增一个 Broker 节点：
-  1. 配置主机名和 hosts 解析（参考前文步骤），设置主机名为 `kafka-broker4`，并在所有主机 `/etc/hosts` 中添加解析：
-     ```
-     192.168.1.104 kafka-broker4
-     ```
-  2. 在新主机上启动 Kafka Broker 容器（`node.id=4`）：
-     ```bash
-     docker run -d \
-       --name kafka-broker4 \
-       --network host \
-       -e KAFKA_CFG_NODE_ID=4 \
-       -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
-       -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093,4@kafka-broker4:9093 \
-       -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
-       -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-       -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.104:9092 \
-       -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
-       -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
-       -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-       -e ALLOW_PLAINTEXT_LISTENER=yes \
-       -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
-       -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
-       -v kafka-broker4-data:/bitnami/kafka/data \
-       swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
-     ```
-  3. 重新平衡分区（可选，确保负载均衡）：
-     ```bash
-     kafka-reassign-partitions.sh --bootstrap-server 192.168.1.101:9092 --topics-to-move-json-file topics.json --broker-list 1,2,3,4 --generate
-     ```
-     **说明**：需根据实际情况调整分区重新分配计划，执行后应用计划以完成平衡。
-- **调整生产者配置**：
-  生产者配置通常在应用代码中设置，以下是示例（Java 生产者）：
-  ```java
-  properties.put("linger.ms", 50); // 延迟 50ms 批量发送
-  properties.put("compression.type", "gzip"); // 使用 gzip 压缩
-  ```
+#### 1. 增加分区数
+- 分区（Partition）是 Kafka 提高并行处理能力的关键。增加 Topic 的分区数可以让更多消费者并行处理消息，从而提升吞吐量。
+- 注意：分区数增加后需确保消费者组中有足够消费者，否则效果有限。
+- 类比：就像把一个大货架拆分成更多小格子，每个格子可以分配给不同工人同时处理，加快分拣速度。
 
-### 4.2 限制最大消息数
+#### 2. 扩展 Broker 节点
+- 通过增加 Kafka Broker 节点分担负载，提升集群存储和处理能力。
+- 新增 Broker 后，需重新平衡分区分配，确保负载均匀。
+- 类比：就像在城市里新增一个分拣站，把一部分包裹分流过去，减轻原有站点的压力。
+
+#### 3. 调整生产者配置
+- 设置 `linger.ms`：增加生产者发送消息的延迟时间，批量发送消息，减少请求次数。
+- 设置 `compression.type`：启用压缩（如 `gzip` 或 `snappy`），减少消息体积，降低网络和存储压力。
+- 类比：就像告诉寄快递的人"别一次送太多，攒一攒再送"，减少分拣站的处理压力。
+
+#### 4. 生产者限流
+- 在生产者端实现限流逻辑，控制发送速率，避免压垮 Broker。
+- 类比：就像在分拣站门口设个限流闸，每天只收一定数量的包裹，确保不超载。
+
+### 实践操作（基于 Docker 环境）
+
+#### 增加分区数
+假设已有 Topic 名为 `high-traffic-topic`，当前分区数为 3，想增加到 6：
+
+1. 进入任意 Kafka 容器（例如 `kafka-broker1`）：
+   ```bash
+   docker exec -it kafka-broker1 bash
+   ```
+
+2. 使用 Kafka 工具增加分区：
+   ```bash
+   kafka-topics.sh --alter --topic high-traffic-topic --partitions 6 --bootstrap-server 192.168.1.101:9092
+   ```
+   **说明**：分区数只能增加，不能减少。增加后需检查消费者组是否能充分利用新分区。
+
+3. 验证分区数变更：
+   ```bash
+   kafka-topics.sh --describe --topic high-traffic-topic --bootstrap-server 192.168.1.101:9092
+   ```
+
+#### Broker 扩容步骤
+假设要在第 4 台主机（IP 为 `192.168.1.104`）上新增一个 Broker 节点：
+
+1. 配置主机名和 hosts 解析，设置主机名为 `kafka-broker4`，并在所有主机 `/etc/hosts` 中添加解析：
+   ```
+   192.168.1.104 kafka-broker4
+   ```
+
+2. 在新主机上启动 Kafka Broker 容器（`node.id=4`）：
+   ```bash
+   docker run -d \
+     --name kafka-broker4 \
+     --network host \
+     -e KAFKA_CFG_NODE_ID=4 \
+     -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+     -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093,4@kafka-broker4:9093 \
+     -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
+     -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+     -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.104:9092 \
+     -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+     -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+     -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+     -e ALLOW_PLAINTEXT_LISTENER=yes \
+     -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+     -e KAFKA_JVM_PERFORMANCE_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35" \
+     -v kafka-broker4-data:/bitnami/kafka/data \
+     swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
+   ```
+
+3. 验证新 Broker 加入集群：
+   ```bash
+   docker exec -it kafka-broker1 bash
+   kafka-broker-api-versions.sh --bootstrap-server 192.168.1.104:9092
+   ```
+
+4. 重新平衡分区（可选，确保负载均衡）：
+   ```bash
+   # 创建分区重分配计划
+   echo '{"topics": [{"topic": "high-traffic-topic"}], "version": 1}' > topics.json
+   
+   kafka-reassign-partitions.sh --bootstrap-server 192.168.1.101:9092 \
+     --topics-to-move-json-file topics.json \
+     --broker-list 1,2,3,4 \
+     --generate
+   ```
+
+#### 调整生产者配置
+生产者配置通常在应用代码中设置，以下是示例：
+
+**Java 生产者配置**：
+```java
+Properties properties = new Properties();
+properties.put("bootstrap.servers", "192.168.1.101:9092,192.168.1.102:9092,192.168.1.103:9092");
+properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+
+// 批量发送优化
+properties.put("linger.ms", 50);        // 延迟 50ms 批量发送
+properties.put("batch.size", 32768);    // 批次大小 32KB
+
+// 压缩优化
+properties.put("compression.type", "gzip"); // 使用 gzip 压缩
+
+// 限流配置
+properties.put("max.in.flight.requests.per.connection", 1); // 限制并发请求数
+```
+
+**Python 生产者配置**：
+```python
+from kafka import KafkaProducer
+import json
+
+producer = KafkaProducer(
+    bootstrap_servers=['192.168.1.101:9092', '192.168.1.102:9092', '192.168.1.103:9092'],
+    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    
+    # 批量发送优化
+    linger_ms=50,
+    batch_size=32768,
+    
+    # 压缩优化
+    compression_type='gzip',
+    
+    # 限流配置
+    max_in_flight_requests_per_connection=1
+)
+```
+
+## 4.2 限制最大消息数
+
 **问题描述**：Kafka 集群存储空间有限，过多的消息可能导致磁盘爆满，影响服务可用性。此外，超大消息可能导致处理延迟。
 
 **问题场景**：分拣中心的仓库空间有限，如果包裹太大或数量太多，仓库会装不下，影响正常运营。
@@ -1020,55 +1087,148 @@ graph TD
 **图解释**：
 - Topic 就像一个仓库，包裹（消息）有存储时间和大小限制。超过 7 天的旧包裹会被清理，超大包裹直接不收，确保仓库空间够用。
 
-**解决方法**：
-1. **限制单条消息大小**：
-   - 配置 `message.max.bytes` 参数，限制单条消息的最大字节数，避免超大消息影响性能。
-   - 类比: 就像规定每个包裹不能超过 5 公斤，超重的包裹直接拒收，确保分拣和存储不超载。
-2. **控制存储总量**：
-   - 配置 `log.retention.bytes`：限制每个 Topic 或分区的总存储大小，超出后删除旧消息。
-   - 配置 `log.retention.hours`：限制消息保留时间，过期后自动删除。
-   - 类比: 就像设定仓库最多存 1000 个包裹，或者只存 7 天的包裹，超限就清理掉旧包裹，给新包裹腾地方。
+### 解决方法
 
-**配置建议**：
-- 合理设置消息保留策略，避免存储压力过大。例如，设置 7 天保留时间或 10GB 存储上限。
-- 可通过 Docker 环境变量在启动时设置，或通过配置文件动态修改。
+#### 1. 限制单条消息大小
+- 在 Broker 级别配置 `message.max.bytes` 参数，限制单条消息的最大字节数，避免超大消息影响性能。
+- 在 Topic 级别配置 `max.message.bytes` 参数，针对特定 Topic 设置消息大小限制。
+- 类比：就像规定每个包裹不能超过 5 公斤，超重的包裹直接拒收，确保分拣和存储不超载。
 
-**实践操作（基于 Docker 环境）**：
-- **通过环境变量设置（启动时）**：
-  在启动 Kafka Broker 容器时添加以下环境变量（以 `kafka-broker1` 为例）：
-  ```bash
-  docker run -d \
-    --name kafka-broker1 \
-    --network host \
-    -e KAFKA_CFG_NODE_ID=1 \
-    -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
-    -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
-    -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
-    -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-    -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
-    -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
-    -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
-    -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
-    -e ALLOW_PLAINTEXT_LISTENER=yes \
-    -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
-    -e KAFKA_CFG_MESSAGE_MAX_BYTES=1048576 \
-    -e KAFKA_CFG_LOG_RETENTION_HOURS=168 \
-    -e KAFKA_CFG_LOG_RETENTION_BYTES=10737418240 \
-    -v kafka-broker1-data:/bitnami/kafka/data \
-    swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
-  ```
-  **参数解释**：
-  - `KAFKA_CFG_MESSAGE_MAX_BYTES=1048576`：限制单条消息最大为 1MB。
-  - `KAFKA_CFG_LOG_RETENTION_HOURS=168`：消息保留 7 天（168 小时）。
-  - `KAFKA_CFG_LOG_RETENTION_BYTES=10737418240`：每个分区存储上限为 10GB。
-- **动态修改配置（运行时）**：
-  使用 Kafka 工具修改 Topic 级别的保留策略：
-  1. 进入 Kafka 容器：
-     ```bash
-     docker exec -it kafka-broker1 bash
-     ```
-  2. 修改特定 Topic 的保留时间（例如 `high-traffic-topic`）：
-     ```bash
-     kafka-configs.sh --alter --entity-type topics --entity-name high-traffic-topic --add-config retention.ms=604800000 --bootstrap-server 192.168.1.101:9092
-     ```
-     **说明**：`retention.ms=604800000` 表示保留 7 天（单位：毫秒）。
+#### 2. 控制存储总量
+- 配置 `retention.bytes`：限制每个 Topic 分区的总存储大小，超出后删除旧消息。
+- 配置 `retention.ms`：限制消息保留时间，过期后自动删除。
+- 类比：就像设定仓库最多存 1000 个包裹，或者只存 7 天的包裹，超限就清理掉旧包裹，给新包裹腾地方。
+
+### 配置参数分类
+
+| 功能 | Broker 级别参数 | Topic 级别参数 | 优先级 |
+|------|----------------|----------------|--------|
+| 单条消息最大大小 | `message.max.bytes` | `max.message.bytes` | Topic 覆盖 Broker |
+| 消息保留时间 | `log.retention.hours` | `retention.ms` | Topic 覆盖 Broker |
+| 存储大小限制 | `log.retention.bytes` | `retention.bytes` | Topic 覆盖 Broker |
+| 日志段大小 | `log.segment.bytes` | `segment.bytes` | Topic 覆盖 Broker |
+
+### 实践操作（基于 Docker 环境）
+
+#### Broker 级别配置（启动时设置）
+在启动 Kafka Broker 容器时添加以下环境变量：
+
+```bash
+docker run -d \
+  --name kafka-broker1 \
+  --network host \
+  -e KAFKA_CFG_NODE_ID=1 \
+  -e KAFKA_CFG_PROCESS_ROLES=broker,controller \
+  -e KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-broker1:9093,2@kafka-broker2:9093,3@kafka-broker3:9093 \
+  -e KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv \
+  -e KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+  -e KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.1.101:9092 \
+  -e KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT \
+  -e KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+  -e KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT \
+  -e ALLOW_PLAINTEXT_LISTENER=yes \
+  -e KAFKA_HEAP_OPTS="-Xmx2G -Xms2G" \
+  # Broker 级别的消息和存储限制配置
+  -e KAFKA_CFG_MESSAGE_MAX_BYTES=1048576 \
+  -e KAFKA_CFG_REPLICA_FETCH_MAX_BYTES=1048576 \
+  -e KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824 \
+  -e KAFKA_CFG_LOG_RETENTION_HOURS=168 \
+  -e KAFKA_CFG_LOG_RETENTION_BYTES=10737418240 \
+  -v kafka-broker1-data:/bitnami/kafka/data \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:4.0.0
+```
+
+**参数解释**：
+- `KAFKA_CFG_MESSAGE_MAX_BYTES=1048576`：Broker 级别限制单条消息最大为 1MB
+- `KAFKA_CFG_REPLICA_FETCH_MAX_BYTES=1048576`：副本同步时的最大消息大小
+- `KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824`：日志段大小为 1GB
+- `KAFKA_CFG_LOG_RETENTION_HOURS=168`：默认消息保留 7 天（168 小时）
+- `KAFKA_CFG_LOG_RETENTION_BYTES=10737418240`：默认每个分区存储上限为 10GB
+
+#### Topic 级别配置
+
+**1. 创建 Topic 时设置保留策略**：
+```bash
+docker exec -it kafka-broker1 bash
+
+# 创建 Topic 并设置保留策略
+kafka-topics.sh --create \
+  --topic high-traffic-topic \
+  --partitions 6 \
+  --replication-factor 3 \
+  --config retention.ms=604800000 \
+  --config retention.bytes=10737418240 \
+  --config max.message.bytes=1048576 \
+  --config segment.bytes=536870912 \
+  --bootstrap-server 192.168.1.101:9092
+```
+
+**参数解释**：
+- `retention.ms=604800000`：消息保留 7 天（单位：毫秒）
+- `retention.bytes=10737418240`：每个分区最大存储 10GB
+- `max.message.bytes=1048576`：单条消息最大 1MB
+- `segment.bytes=536870912`：日志段大小 512MB
+
+**2. 修改现有 Topic 的配置**：
+```bash
+# 进入 Kafka 容器
+docker exec -it kafka-broker1 bash
+
+# 修改消息保留时间为 7 天
+kafka-configs.sh --alter \
+  --entity-type topics \
+  --entity-name high-traffic-topic \
+  --add-config retention.ms=604800000 \
+  --bootstrap-server 192.168.1.101:9092
+
+# 修改存储大小限制为 10GB
+kafka-configs.sh --alter \
+  --entity-type topics \
+  --entity-name high-traffic-topic \
+  --add-config retention.bytes=10737418240 \
+  --bootstrap-server 192.168.1.101:9092
+
+# 修改单条消息大小限制为 1MB
+kafka-configs.sh --alter \
+  --entity-type topics \
+  --entity-name high-traffic-topic \
+  --add-config max.message.bytes=1048576 \
+  --bootstrap-server 192.168.1.101:9092
+
+# 修改日志段大小为 512MB
+kafka-configs.sh --alter \
+  --entity-type topics \
+  --entity-name high-traffic-topic \
+  --add-config segment.bytes=536870912 \
+  --bootstrap-server 192.168.1.101:9092
+```
+
+**3. 查看和验证配置**：
+```bash
+# 查看 Topic 配置
+kafka-configs.sh --describe \
+  --entity-type topics \
+  --entity-name high-traffic-topic \
+  --bootstrap-server 192.168.1.101:9092
+
+# 查看 Broker 配置
+kafka-configs.sh --describe \
+  --entity-type brokers \
+  --entity-name 1 \
+  --bootstrap-server 192.168.1.101:9092
+
+# 查看 Topic 详细信息
+kafka-topics.sh --describe \
+  --topic high-traffic-topic \
+  --bootstrap-server 192.168.1.101:9092
+```
+
+**4. 删除配置（恢复默认值）**：
+```bash
+# 删除特定配置，恢复为 Broker 默认值
+kafka-configs.sh --alter \
+  --entity-type topics \
+  --entity-name high-traffic-topic \
+  --delete-config retention.ms,retention.bytes,max.message.bytes \
+  --bootstrap-server 192.168.1.101:9092
+```
