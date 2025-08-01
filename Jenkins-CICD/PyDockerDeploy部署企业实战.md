@@ -183,13 +183,12 @@
   | `-r`              | `--harbor_registry` | 指定软件镜像仓库地址，就像包裹的发货仓库（例如：harbor.labworlds.cc）。      |
   | `-d`              | `--docker_run`      | 指定启动软件的命令，就像告诉快递员如何摆放包裹（例如：`docker run -d -p 9006:8080`）。 |
 
-  **config_manager.py 参数表格：**
+  **config_manager.py 参数表格（修正版）：**
   | 参数名             | 完整形式            | 作用与通俗解释                                                                 |
   |--------------------|---------------------|------------------------------------------------------------------------------|
-  | `-p`              | `--project`         | 指定要管理的软件名称，就像告诉管理员你要管理哪个包裹（例如：go-starter）。    |
-  | `-h`              | `--hosts`           | 指定目标服务器地址，就像管理员要知道包裹在哪个地方（例如：192.168.110.8,192.168.110.171）。  |
-  | `-a`              | `--action`          | 指定操作类型，就像告诉管理员你要做什么（例如：upload 上传配置，delete 删除）。|
-  | `-f`              | `--file`            | 指定配置文件路径，就像管理员要知道管理哪个文件（例如：config.yaml）。         |
+  | `--data`          | 无短形式            | 指定配置文件内容，就像告诉管理员你要上传的具体文件内容。                      |
+  | `--filepath`      | 无短形式            | 指定远程配置文件路径，就像告诉管理员文件要放在服务器的哪个位置（例如：`/opt/项目名称/config.yml`）。 |
+  | `--hosts`         | 无短形式            | 指定目标主机地址列表，就像告诉管理员要将文件送到哪些地址（多个主机用逗号分隔，例如：`192.168.110.8,192.168.110.171`）。 |
 
 - **命令参数详细解释（以 deployer.py 示例命令为例）：**
   - `python deployer.py`：运行部署脚本，就像启动快递系统。
@@ -199,6 +198,12 @@
   - `--hosts 192.168.110.8`：指定目标服务器为 192.168.110.8，就像告诉快递员送货地址。
   - `--harbor_registry harbor.labworlds.cc`：指定镜像仓库地址为 harbor.labworlds.cc，就像告诉快递员从哪个仓库取货。
   - `--docker_run "docker run -d -p 9006:8080"`：指定启动命令，就像告诉快递员如何安装或摆放包裹（`-d` 表示后台运行，`-p 9006:8080` 表示将服务器的 9006 端口映射到软件的 8080 端口）。
+
+- **命令参数详细解释（以 config_manager.py 示例命令为例）：**
+  - `python config_manager.py`：运行配置文件上传工具脚本，就像启动文件管理系统。
+  - `--data "配置文件内容"`：指定要上传的配置文件内容，就像告诉系统你要上传的具体文件数据。
+  - `--filepath "/opt/go-starter/config.yml"`：指定远程服务器上的文件路径，就像告诉系统文件要放在服务器的哪个位置。
+  - `--hosts "192.168.110.8,192.168.110.171"`：指定目标主机地址列表，就像告诉系统要将文件上传到哪些服务器。
 
 - **互动环节：**
   - 提问：如果骑手（DockerManager）送餐时地址错了，会发生什么？（引导学生思考 Docker 命令执行错误的影响）
@@ -424,7 +429,7 @@
       --image_tag zhang-san-v1.0 \
       --hosts 192.168.110.8 \
       --harbor_registry harbor.labworlds.cc \
-      --docker_run "docker run -d -p 80:80"
+      --docker_run "docker run -d -p 8000:80"
   ```
 - 通俗解释：
   - `python3 deployer.py`：启动部署工具，就像叫来一个快递员。
@@ -433,7 +438,7 @@
   - `--image_tag zhang-san-v1.0`：指定版本号，就像包裹上的具体标签。
   - `--hosts 192.168.110.8`：指定目标服务器地址，就像告诉快递员送货地点。
   - `--harbor_registry harbor.labworlds.cc`：指定镜像仓库地址，就像告诉快递员从哪里取货。
-  - `--docker_run "docker run -d -p 80:80 --restart=always --cpus=\"1.0\" --memory=\"512m\""`：指定启动命令，就像告诉快递员如何摆放包裹（`-d` 后台运行，`-p 80:80` 将服务器的 80 端口映射到容器的 80 端口，让用户可以访问页面）。
+  - `--docker_run "docker run -d -p 8000:80 --restart=always --cpus=\"1.0\" --memory=\"512m\""`：指定启动命令，就像告诉快递员如何摆放包裹（`-d` 后台运行，`-p 80:80` 将服务器的 8000 端口映射到容器的 80 端口，让用户可以访问页面）。
 
 #### 步骤 7：验证部署结果
 - 登录目标服务器检查是否正常运行：
@@ -694,7 +699,7 @@
 
 #### 6. 配置 Nginx 域名解析到 Docker 前端服务
 - **背景说明：**
-  - Nginx 是一个反向代理服务器，负责把用户的请求转发到你的 Docker 前端服务（比如运行在 `192.168.110.8:80` 的服务）。
+  - Nginx 是一个反向代理服务器，负责把用户的请求转发到你的 Docker 前端服务（比如运行在 `192.168.110.8:8000` 的服务）。
 - **步骤：**
   1. 登录服务器 `192.168.110.167`（老师提供的虚拟机或容器环境），进入 Nginx 配置文件目录：
      ```bash
@@ -744,7 +749,7 @@
      }
 
      upstream admin_fronend {
-         server 192.168.110.6:8000 max_fails=3 fail_timeout=30s;
+         server 192.168.110.8:8000 max_fails=3 fail_timeout=30s;
      }
      ```
   3. 生成 SSL 证书（用于 HTTPS 加密访问）：
@@ -813,3 +818,259 @@
 #### 9. 互动环节
 - 提问：访问网站后，开发者工具显示 `CF-Cache-Status: HIT` 了吗？如果没有，可能是什么原因？（引导学生理解 CDN 缓存机制）
 - 讨论：后端 URL 以 `/admin3/` 开头，为什么现在访问会返回 500？（引导学生思考前后端分离的概念）
+
+
+
+
+好的，以下是针对 `admin3-server` 后端服务配置实验的完整教案内容，包括 Dockerfile 解释、配置文件说明、命令解析、Nginx 配置以及跨域概念的讲解。我会尽量通俗易懂地解释每个部分，方便学生理解。
+
+---
+
+### 教案：配置 admin3 后端服务 admin3-server
+
+#### 一、实验目标
+1. 掌握 Docker 镜像构建与推送的基本操作。
+2. 理解 `admin3-server` 服务的 Dockerfile 和配置文件内容。
+3. 使用 `config_manager.py` 和 `deployer.py` 脚本完成配置文件的上传和服务的部署。
+4. 配置 Nginx 反向代理，理解跨域概念并完成前后端联调。
+5. 测试系统登录功能，验证后端服务是否正常运行。
+
+#### 二、实验环境
+- **顶级域名**：labworlds.cc（由老师授权）
+- **数据库**：由老师提供，已学习过 MySQL 主从与 ProxySQL 读写代理，无需自行部署。
+- **目标服务器**：192.168.110.8
+- **镜像仓库**：harbor.labworlds.cc
+- **Harbor 仓库查看地址**：192.168.110.164（账号：admin，密码：admin123）
+
+#### 三、实验步骤与内容解释
+
+##### 1. 构建 admin3-server 镜像
+- **进入项目目录**：
+  ```bash
+  cd admin3/admin3-server
+  ```
+  说明：进入 `admin3-server` 项目目录，准备构建 Docker 镜像。
+
+- **Dockerfile 内容解释**：
+  Dockerfile 是一个用于构建 Docker 镜像的脚本文件，类似于一份“制作说明书”，告诉 Docker 如何一步步构建一个可以运行的服务镜像。以下是 `admin3-server` 的 Dockerfile 内容及逐行解释：
+  ```dockerfile
+  # 第一阶段：构建阶段
+  FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/maven:3.9.9-eclipse-temurin-21-alpine AS builder
+  # 使用 Maven 镜像作为基础镜像，包含 Java 21 和 Maven 工具，用于编译代码。AS builder 表示这是一个临时阶段，命名为 builder。
+
+  WORKDIR /build
+  # 设置工作目录为 /build，所有后续操作都在这个目录下进行，就像设置一个临时工作台。
+
+  COPY pom.xml .
+  COPY src src/
+  # 将项目中的 pom.xml 和 src 目录复制到工作目录，pom.xml 是项目依赖文件，src 是源代码目录。
+
+  RUN mkdir -p /usr/share/maven/conf/ && \
+      sed -i '/<mirrors>/a\    <mirror>\n      <id>aliyun-public</id>\n      <mirrorOf>*</mirrorOf>\n      <name>Aliyun Public</name>\n      <url>https://maven.aliyun.com/nexus/content/groups/public/</url>\n    </mirror>' /usr/share/maven/conf/settings.xml
+  # 配置 Maven 镜像源为阿里云镜像，加快依赖包下载速度，就像告诉系统“去这个更快的仓库拿材料”。
+
+  RUN mvn clean package -DskipTests
+  # 执行 Maven 构建命令，清理旧文件并打包项目，-DskipTests 表示跳过测试环节，生成可执行的 jar 文件。
+
+  # 第二阶段：运行阶段
+  FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/eclipse-temurin:21-jdk-alpine
+  # 使用一个更小的 Java 21 运行时镜像作为基础镜像，用于运行打包好的程序，减少镜像体积。
+
+  WORKDIR /app
+  # 设置工作目录为 /app，所有运行时操作都在这个目录下进行。
+
+  COPY --from=builder /build/target/admin3-server-*-SNAPSHOT.jar admin3-server.jar
+  # 从第一阶段（builder）中复制生成的 jar 文件到当前镜像的 /app 目录，并重命名为 admin3-server.jar。
+
+  ENV JAVA_OPTS="-Xms256m -Xmx512m"
+  # 设置 Java 虚拟机参数，-Xms256m 表示初始内存为 256MB，-Xmx512m 表示最大内存为 512MB，防止程序占用过多内存。
+
+  EXPOSE 8080
+  # 暴露 8080 端口，表示程序会通过这个端口对外提供服务，就像打开一扇门让外界访问。
+
+  ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar admin3-server.jar --spring.config.location=file:/app/application.yml"]
+  # 设置容器启动命令，使用 java 运行 jar 文件，并指定配置文件位置为 /app/application.yml，就像告诉系统“启动时用这个配置运行程序”。
+  ```
+
+- **构建镜像命令**：
+  ```bash
+  docker build -t harbor.labworlds.cc/admin3-server/分支名:名字-版本 .
+  ```
+  命令解释：
+  - `docker build`：构建 Docker 镜像，就像按照说明书制作一个产品。
+  - `-t harbor.labworlds.cc/admin3-server/分支名:名字-版本`：为镜像指定一个标签，格式为“仓库地址/项目名/分支名:版本名”，例如 `harbor.labworlds.cc/admin3-server/master:liujun-v1.0`，就像给产品贴上名称和版本号。
+  - `.`：表示在当前目录查找 Dockerfile 文件。
+
+- **推送镜像到仓库**：
+  构建完成后，使用以下命令推送镜像到 Harbor 仓库：
+  ```bash
+  docker push harbor.labworlds.cc/admin3-server/分支名:名字-版本
+  ```
+  说明：推送镜像到 `harbor.labworlds.cc` 仓库，完成后可登录 192.168.110.164（账号：admin，密码：admin123）查看镜像是否上传成功。
+
+##### 2. 配置文件 application.yml 解释
+配置文件 `application.yml` 是 Spring Boot 应用程序的配置文件，定义了程序运行时的各种参数，类似于一份“设置清单”。以下是内容及解释：
+```yaml
+spring:
+  jpa:
+    generate-ddl: true
+    defer-datasource-initialization: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.auto_quote_keyword: true
+  # JPA 配置，用于与数据库交互。generate-ddl 和 ddl-auto: update 表示自动生成和更新数据库表结构；show-sql: true 表示打印 SQL 语句，方便调试。
+
+  application:
+    name: admin3
+  # 设置应用名称为 admin3，就像给程序取个名字。
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.110.163:3306/admin3?characterEncoding=utf8
+    username: admin
+    password: admin123
+  # 数据库连接配置，指定 MySQL 驱动、连接地址（192.168.110.163:3306）、数据库名称（admin3）、用户名和密码。characterEncoding=utf8 确保中文字符不乱码。
+
+  sql:
+    init:
+      encoding: utf8
+      data-locations: classpath:data.sql
+      mode: always
+      continue-on-error: true
+  # 初始化 SQL 脚本配置，data-locations 指定初始化数据脚本位置，mode: always 表示每次启动都执行，continue-on-error: true 表示出错时继续执行。
+
+  data:
+    web:
+      pageable:
+        one-indexed-parameters: true
+  # 分页参数配置，设置为从 1 开始计数（而不是默认的 0）。
+
+  profiles:
+    include: biz
+  # 加载额外的配置文件 biz.yml，用于业务逻辑配置。
+
+server:
+  servlet:
+    context-path: /admin3
+  # 设置服务的前缀路径为 /admin3，例如访问接口时需加上 /admin3 前缀（如：http://域名/admin3/接口名）。
+```
+
+##### 3. 上传配置文件到目标服务器
+使用 `config_manager.py` 脚本将配置文件上传到目标服务器：
+```bash
+python3 /root/PyDockerDeploy/config_manager.py \
+--data """$(cat application.yml)""" \
+--filepath "/opt/admin3-server/application.yml" \
+--hosts "192.168.110.8"
+```
+命令解释：
+- `python3 /root/PyDockerDeploy/config_manager.py`：运行配置文件上传工具。
+- `--data """$(cat application.yml)"""`：指定配置文件内容，通过 `cat` 命令读取 `application.yml` 文件内容。
+- `--filepath "/opt/admin3-server/application.yml"`：指定配置文件在目标服务器上的路径。
+- `--hosts "192.168.110.8"`：指定目标服务器地址为 192.168.110.8。
+
+##### 4. 部署 admin3-server 服务
+使用 `deployer.py` 脚本部署服务：
+```bash
+python3 deployer.py -p admin3-server \
+  --git_branch master \
+  --image_tag liujun-v1.0 \
+  --hosts 192.168.110.8 \
+  --harbor_registry harbor.labworlds.cc \
+  --docker_run "docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml"
+```
+命令解释：
+- `python3 deployer.py`：运行部署脚本。
+- `-p admin3-server`：指定项目名称为 admin3-server。
+- `--git_branch master`：指定代码分支为 master。
+- `--image_tag liujun-v1.0`：指定镜像版本为 liujun-v1.0。
+- `--hosts 192.168.110.8`：指定目标服务器为 192.168.110.8。
+- `--harbor_registry harbor.labworlds.cc`：指定镜像仓库地址。
+- `--docker_run "docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml"`：
+  - `-d`：表示后台运行容器。
+  - `-p 8080:8080`：表示将服务器的 8080 端口映射到容器的 8080 端口。
+  - `-v /opt/admin3-server/application.yml:/app/application.yml`：表示将目标服务器上的 `/opt/admin3-server/application.yml` 文件挂载到容器内的 `/app/application.yml` 路径。挂载就像“借用”主机上的文件，容器可以直接读取主机上的配置文件，确保服务启动时能加载正确的配置（例如数据库连接信息）。
+
+##### 5. 配置 Nginx 反向代理
+Nginx 配置文件 `shiqi.admin.labworlds.cc.conf` 内容如下，用于配置 HTTPS 访问和反向代理：
+```nginx
+# HTTPS server
+server {
+    listen 1443 ssl;
+    server_name shiqi.admin.labworlds.cc;
+    # 监听 1443 端口并启用 SSL，支持 HTTPS 访问，server_name 指定子域名。
+
+    access_log /var/log/nginx/shiqi.admin.labworlds.cc.access.log json_combined;
+    error_log /var/log/nginx/shiqi.admin.labworlds.cc.error.log warn;
+    # 设置访问日志和错误日志路径，方便排查问题。
+
+    ssl_certificate /etc/nginx/ssl/shiqi.admin.labworlds.cc/certificate.crt;
+    ssl_certificate_key /etc/nginx/ssl/shiqi.admin.labworlds.cc/private.key;
+    # 指定 SSL 证书和私钥路径，用于 HTTPS 加密通信。
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    # SSL 优化配置，设置支持的协议和加密套件，提高安全性和性能。
+
+    location / {
+        proxy_pass http://admin_fronend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    # 配置前端代理，/ 路径下的请求转发到 admin_fronend（前端服务）。
+
+    location /admin3/ {
+        proxy_pass http://admin_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    # 配置后端代理，/admin3/ 路径下的请求转发到 admin_backend（后端服务）。
+}
+
+# HTTP 重定向到 HTTPS
+server {
+    listen 180;
+    server_name shiqi.admin.labworlds.cc;
+    return 301 https://$server_name:1443$request_uri;
+}
+# 将 180 端口的 HTTP 请求重定向到 HTTPS 1443 端口。
+
+upstream admin_backend {
+    server 192.168.110.8:8080 max_fails=3 fail_timeout=30s;
+}
+# 定义后端服务地址为 192.168.110.8:8080，设置健康检查参数。
+
+upstream admin_fronend {
+    server 192.168.110.8:8000 max_fails=3 fail_timeout=30s;
+}
+# 定义前端服务地址为 192.168.110.8:8000，设置健康检查参数。
+```
+
+- **跨域概念解释**：
+  跨域（Cross-Origin Resource Sharing, CORS）是指浏览器在访问一个网站的资源时，如果资源的域名、协议或端口与当前网站的域名、协议或端口不同，浏览器会限制这种访问，这就是“同源策略”。例如，前端运行在 `https://shiqi.admin.labworlds.cc:1443`，后端接口在 `http://192.168.110.8:8080/admin3/`，由于域名和端口不同，浏览器会认为这是跨域请求，默认会阻止。
+  - **解决方法**：在后端配置 CORS 允许跨域，或者通过 Nginx 反向代理将前后端请求统一到同一个域名下（如上配置，通过 `proxy_pass` 将请求转发到后端服务，浏览器认为请求是同源的）。
+  - **通俗比喻**：就像你在家（前端）想点外卖（后端数据），但外卖店（后端）只送给附近的人（同源），这时你请一个中间人（Nginx）帮忙，外卖店以为中间人是附近的人，就把外卖送来了。
+
+##### 6. 测试系统登录功能
+- 访问前端地址：`https://shiqi.admin.labworlds.cc:1443`，尝试登录系统。
+- 检查是否能正常调用后端接口（路径为 `/admin3/` 的请求），验证后端服务是否正常运行。
+- 如果登录成功，说明后端发布完成；如果失败，检查日志（Nginx 日志或后端服务日志）定位问题。
