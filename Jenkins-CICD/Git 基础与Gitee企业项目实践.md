@@ -380,39 +380,53 @@ graph TD
 每次使用 `git push` 或 `git pull` 时输入用户名和密码会很麻烦，SSH 免密配置可以解决这个问题。SSH 是一种安全的通信协议，通过公钥和私钥实现免密认证。以下是配置步骤。
 
 #### 2.1 生成 SSH 密钥
-**步骤**：  
-1. 打开命令行（Windows 用 Git Bash，Linux 用终端）。  
-2. 输入以下命令生成 SSH 密钥对：  
-   - `ssh-keygen -t rsa -C "你的邮箱"`  
-   - 按回车键接受默认文件路径（通常是 `~/.ssh/id_rsa`）。  
-   - 如果提示设置密码，直接回车跳过（为空密码，实现免密）。  
-3. 生成成功后，会在用户目录的 `.ssh` 文件夹中生成两个文件：  
-   - `id_rsa`：私钥，保存在本地，不要泄露。  
-   - `id_rsa.pub`：公钥，需要上传到 Gitee。  
+**步骤**：
+1. 打开命令行（Windows 用 Git Bash，Linux 用终端）。
+2. 输入以下命令生成 SSH 密钥对：
+   - `ssh-keygen -t rsa -C "你的邮箱"`
+   - 按回车键接受默认文件路径（通常是 `~/.ssh/id_rsa`）。如果需要更改密钥名称，可以在提示时输入新的文件名，例如 `~/.ssh/id_rsa_gitee`。
+   - 如果提示设置密码，直接回车跳过（为空密码，实现免密）。
+3. 生成成功后，会在用户目录的 `.ssh` 文件夹中生成两个文件：
+   - `id_rsa_gitee`：私钥，保存在本地，不要泄露。
+   - `id_rsa_gitee.pub`：公钥，需要上传到 Gitee。
 
 #### 2.2 将公钥添加到 Gitee
-**步骤**：  
-1. 查看公钥内容：  
-   - 输入 `cat ~/.ssh/id_rsa.pub`（Linux）或 `type ~/.ssh/id_rsa.pub`（Windows Git Bash），复制显示的公钥内容（以 `ssh-rsa` 开头的一串字符）。  
-2. 添加到 Gitee：  
-   - 登录 Gitee，点击右上角头像，选择“设置” -> “SSH 公钥”。  
-   - 点击“添加公钥”，粘贴刚才复制的内容，输入一个标题（如 “我的电脑”），点击“确定”。  
+**步骤**：
+1. 查看公钥内容：
+   - 输入 `cat ~/.ssh/id_rsa_gitee.pub`（Linux）或 `type ~/.ssh/id_rsa_gitee.pub`（Windows Git Bash），复制显示的公钥内容（以 `ssh-rsa` 开头的一串字符）。
+2. 添加到 Gitee：
+   - 登录 Gitee，点击右上角头像，选择“设置” -> “SSH 公钥”。
+   - 点击“添加公钥”，粘贴刚才复制的内容，输入一个标题（如 “我的电脑”），点击“确定”。
 
 #### 2.3 配置本地 SSH
-**步骤**：  
-1. 确保 SSH 配置文件正确：  
-   - 输入 `ssh -T git@gitee.com`，测试是否能连接 Gitee。  
-   - 如果提示“Permission denied”，可能是 SSH 配置问题，检查是否生成了密钥或公钥是否正确添加。  
-   - 如果提示“Hi 你的用户名”，说明配置成功。  
-2. 将仓库地址从 HTTPS 改为 SSH：  
-   - 在本地项目目录中，输入 `git remote -v` 查看当前远程地址。  
-   - 如果是 HTTPS 地址（如 `https://gitee.com/...`），用以下命令改为 SSH 地址：  
-     - `git remote set-url origin git@gitee.com:你的用户名/my-first-git-project.git`  
-   - 再次输入 `git remote -v` 确认地址已更新。  
+**步骤**：
+1. 确保 SSH 配置文件正确：
+   - 输入 `ssh -T git@gitee.com`，测试是否能连接 Gitee。
+   - 如果提示“Permission denied”，可能是 SSH 配置问题，检查是否生成了密钥或公钥是否正确添加。
+   - 如果提示“Hi 你的用户名”，说明配置成功。
+   
+2. 配置 SSH 使用自定义密钥文件：
+   - 编辑或创建 `~/.ssh/config` 文件，添加以下内容：
+     ```plaintext
+     Host gitee.com
+         HostName gitee.com
+         User git
+         IdentityFile ~/.ssh/id_rsa_gitee
+     ```
+
+3. 将仓库地址从 HTTPS 改为 SSH：
+   - 在本地项目目录中，输入 `git remote -v` 查看当前远程地址。
+   - 如果是 HTTPS 地址（如 `https://gitee.com/...`），用以下命令改为 SSH 地址：
+     - `git remote set-url origin git@gitee.com:你的用户名/my-first-git-project.git`
+   - 再次输入 `git remote -v` 确认地址已更新。
+
+### 注意事项
+- 确保在生成密钥时，使用的文件名与后续步骤中引用的名称一致。
+- 为了实现免密登录，确保 SSH 配置文件正确设置，并使用 Gitee 的 SSH 地址，而不是 HTTPS 地址。  
 
 #### 2.4 测试免密操作
 **步骤**：  
-- 修改一个文件，提交并推送：`git add .`、`git commit -m "测试 SSH 免密"`、`git push origin main`。  
+- 修改一个文件，提交并推送：`git add .`、`git commit -m "测试 SSH 免密"`、`git push origin master`。  
 - 如果无需输入密码即可成功推送，说明免密配置成功。  
 
 **实践练习**：  
