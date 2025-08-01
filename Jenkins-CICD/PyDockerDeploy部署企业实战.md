@@ -1,4 +1,4 @@
-# 教案：从零开始学习 CI/CD 与 PyDockerDeploy 项目实践
+# 从零开始学习 CI/CD 与 PyDockerDeploy 项目实践
 
 ## 一、课程目标
 1. 让零基础学员理解 CI/CD 的基本概念及其在软件开发中的作用，认识常见 CI/CD 工具。
