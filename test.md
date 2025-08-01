@@ -1,9 +1,3 @@
-你好！感谢你的提醒，确实在 `deployer.py` 命令中缺少了挂载配置文件的参数。挂载配置文件非常重要，因为 `admin3-server` 的启动命令中指定了配置文件路径为 `/app/application.yml`，如果不挂载，容器内无法找到配置文件，服务可能会启动失败或使用默认配置。
-
-以下是修正后的命令及解释：
-
----
-
 ### 修正后的部署命令
 ```bash
 python3 deployer.py -p admin3-server \
