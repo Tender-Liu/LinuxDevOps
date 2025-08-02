@@ -195,7 +195,7 @@
   | `--hosts`         | 无短形式            | 指定目标主机地址列表，就像告诉管理员要将文件送到哪些地址（多个主机用逗号分隔，例如：`192.168.110.8,192.168.110.171`）。 |
 
 - **命令参数详细解释（以 deployer.py 示例命令为例）：**
-  - `python deployer.py`：运行部署脚本，就像启动快递系统。
+  - `python3 deployer.py`：运行部署脚本，就像启动快递系统。
   - `-p go-starter`：指定软件名称为 go-starter，就像告诉系统你要送 go-starter 这个包裹。
   - `--git_branch master`：指定代码分支为 master，就像告诉系统这个包裹是 master 版本。
   - `--image_tag liujun-v1.0`：指定版本号为 liujun-v1.0，就像在包裹上贴上具体标签。
@@ -204,7 +204,7 @@
   - `--docker_run "docker run -d -p 9006:8080"`：指定启动命令，就像告诉快递员如何安装或摆放包裹（`-d` 表示后台运行，`-p 9006:8080` 表示将服务器的 9006 端口映射到软件的 8080 端口）。
 
 - **命令参数详细解释（以 config_manager.py 示例命令为例）：**
-  - `python config_manager.py`：运行配置文件上传工具脚本，就像启动文件管理系统。
+  - `python3 config_manager.py`：运行配置文件上传工具脚本，就像启动文件管理系统。
   - `--data "配置文件内容"`：指定要上传的配置文件内容，就像告诉系统你要上传的具体文件数据。
   - `--filepath "/opt/go-starter/config.yml"`：指定远程服务器上的文件路径，就像告诉系统文件要放在服务器的哪个位置。
   - `--hosts "192.168.110.8,192.168.110.171"`：指定目标主机地址列表，就像告诉系统要将文件上传到哪些服务器。
@@ -227,10 +227,11 @@
      ```
      - 作用：`paramiko` 是一个 Python 库，让 PyDockerDeploy 能远程控制服务器，就像“遥控器”。
   2. 配置 Docker 使用权限：(给控制的主机安装的)
+     - 记得自己要配置harbor私库支持以及使用ubuntu用户登录`docker login harbor.labworlds.cc`
      ```bash
      sudo usermod -aG docker ubuntu
      ```
-     - 作用：让 `ubuntu` 用户有权限操作 Docker，就像给骑手发放通行证。配置后需要重新登录服务器让权限生效。
+     - 作用：让 `ubuntu` 用户有权限操作 Docker，就像给骑手发放通行证。**配置后需要重新登录服务器让权限生效**。
 
 - **提前准备项目镜像：**
   - 就像外卖平台要先有餐品库存，PyDockerDeploy 需要有软件版本（Docker 镜像）才能部署。
@@ -248,7 +249,7 @@
   - 我们用 PyDockerDeploy 把一个软件（Docker 镜像）部署到一台服务器上。
   - 命令示例（基于 Git 分支部署）：
     ```bash
-    python deployer.py -p go-starter \
+    python3 deployer.py -p go-starter \
         --git_branch master \
         --image_tag liujun-v1.0 \
         --hosts 192.168.110.8 \
