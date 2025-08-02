@@ -220,12 +220,13 @@
   - 就像你要骑自行车送外卖，得先有自行车和头盔，PyDockerDeploy 也需要一些“工具”才能正常工作。
 
 - **每台服务器需要安装的依赖：**
-  1. 安装 Python 的 SSH 工具：
+  1. 安装 Python 的 SSH 工具： (给自己的主机安装的)
      ```bash
      sudo apt install python3-paramiko
+     sudo apt install python3-bcrypt
      ```
      - 作用：`paramiko` 是一个 Python 库，让 PyDockerDeploy 能远程控制服务器，就像“遥控器”。
-  2. 配置 Docker 使用权限：
+  2. 配置 Docker 使用权限：(给控制的主机安装的)
      ```bash
      sudo usermod -aG docker ubuntu
      ```

@@ -1,33 +1,13 @@
-### 修正后的部署命令
-```bash
-python3 deployer.py -p admin3-server \
-  --git_branch master \
-  --image_tag liujun-v1.0 \
-  --hosts 192.168.110.8 \
-  --harbor_registry harbor.labworlds.cc \
-  --docker_run "docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml"
-```
+以下是重新编写的课程目标：
 
-### 命令解释
-- `python3 deployer.py`：运行部署脚本。
-- `-p admin3-server`：指定项目名称为 admin3-server。
-- `--git_branch master`：指定代码分支为 master。
-- `--image_tag liujun-v1.0`：指定镜像版本为 liujun-v1.0。
-- `--hosts 192.168.110.8`：指定目标服务器为 192.168.110.8。
-- `--harbor_registry harbor.labworlds.cc`：指定镜像仓库地址。
-- `--docker_run "docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml"`：
-  - `-d`：表示后台运行容器。
-  - `-p 8080:8080`：表示将服务器的 8080 端口映射到容器的 8080 端口。
-  - `-v /opt/admin3-server/application.yml:/app/application.yml`：表示将目标服务器上的 `/opt/admin3-server/application.yml` 文件挂载到容器内的 `/app/application.yml` 路径。挂载就像“借用”主机上的文件，容器可以直接读取主机上的配置文件，确保服务启动时能加载正确的配置（例如数据库连接信息）。
+## 一、课程目标
 
-### 补充说明
-- **为什么需要挂载配置文件？**  
-  在 Dockerfile 中，启动命令指定了配置文件路径为 `/app/application.yml`（`--spring.config.location=file:/app/application.yml`）。如果不挂载，容器内不会有这个文件，程序可能无法连接数据库或加载正确的配置，导致服务启动失败。
-- **通俗比喻**：挂载就像给容器“递一张纸条”，纸条上写着运行时需要的配置信息，容器按照纸条上的内容去连接数据库、设置路径等。
+1. **掌握 CI/CD 基础知识**：理解持续集成（CI）和持续交付/部署（CD）的基本概念及其在现代软件开发中的重要性。
+2. **深入了解 PyDockerDeploy**：熟悉 PyDockerDeploy 的功能、应用场景及其核心代码结构，以便在实际项目中有效使用。
+3. **环境搭建与实践操作**：学习如何搭建开发环境，掌握 Docker 容器的创建、管理和部署。
+4. **CI/CD 工具集成能力**：掌握如何将 PyDockerDeploy 与 CI/CD 工具（如 Jenkins 和 GitLab Runner）进行集成，实现自动化部署。
+5. **企业级应用理解**：通过实际案例分析，理解 CI/CD 在企业级项目中的应用及其面临的挑战和解决方案。
+6. **容器生命周期管理**：学习如何有效管理 Docker 容器的生命周期，包括启动、停止和清理操作。
+7. **安全性与流量管理**：理解如何将 PyDockerDeploy 与 Cloudflare 等工具结合，确保容器部署的安全性和流量管理。
 
-### 互动环节补充
-- 提问：如果没有挂载配置文件 `-v`，`admin3-server` 服务会发生什么？（引导学生思考配置文件对服务启动的影响）
-
----
-
-如果还有其他遗漏或需要补充的内容，请随时告诉我！😊
+希望这些目标能更好地符合你的需求！如有进一步修改意见，请告诉我。
