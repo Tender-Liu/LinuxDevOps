@@ -165,6 +165,11 @@
             </site>
             </sites>
             ```
+        3. 批量修改jenkins插件源
+        ```bash
+        sed -i 's#www.google.com#https:/www.baidu.com#g' default.json
+        sed -i 's#http://updates.jenkins-ci.org/download#https://mirrors.huaweicloud.com/jenkins/#g' default.json
+        ```
   6. **以 root 用户启动 Jenkins**：
      ```bash
      vim /usr/lib/systemd/system/jenkins.service
@@ -553,15 +558,6 @@ graph TD
   - 初次创建 Pipeline 时，建议使用简单的脚本测试，熟悉界面操作后再添加复杂逻辑。
   - 如果遇到权限问题或界面选项缺失，请联系管理员或导师确认环境是否正确配置。
 
-
-你好！以下是从 **第四部分: Pipeline 参数化构建：properties 和 parameters** 开始的完整内容，按照您的要求进行调整：
-1. 去掉了课程目标、时长和适用对象部分。
-2. 补充了联动参数 `ChoiceParameter` 和 `CascadeChoiceParameter` 的内容。
-
-内容将专注于理论、语法、实验练习和总结，确保结构清晰，并按照之前的 Job 命名规则 `training-parameters-类型名-liujun`。
-
----
-
 ## 第四部分：Jenkins Pipeline 参数化构建：properties 和 parameters
 
 ### 1.1 `properties` 是什么？
@@ -602,14 +598,19 @@ graph TD
 5. **Password 参数（密码）**：
    - 描述：输入敏感信息，界面显示为星号（***）。
    - 插件依赖：无需额外插件，Jenkins 核心支持。
-6. **MultiSelect 参数（多选框）**：
-   - 描述：从列表中选择多个选项，返回逗号分隔的字符串。
+6. **隐藏参数（Hidden Parameter）**：
+   - 描述：不在构建页面显示的参数，通常用于传递内部配置值或系统变量。
+   - 插件依赖：需要安装 `Hidden Parameter Plugin`。
+7. **extendedChoice 参数（多选框）**：
+   - 描述：支持复选框、多选下拉框等多种形式，可选择多个选项并返回逗号分隔的字符串。
+   - 插件依赖：需要安装 `Extended Choice Parameter Plugin`。
+
+8. **activeChoiceParam（动态选择框）**：
+   - 描述：通过 Groovy 脚本动态生成选项列表，支持根据时间、环境变量等条件生成不同选项。
    - 插件依赖：需要安装 `Active Choices Plugin`。
-7. **ChoiceParameter（动态选择框）**：
-   - 描述：通过脚本动态生成选项，支持更灵活的选择框。
-   - 插件依赖：需要安装 `Active Choices Plugin`。
-8. **CascadeChoiceParameter（联动选择框）**：
-   - 描述：基于其他参数值的选择动态更新选项，实现参数间的联动。
+
+9. **activeChoiceReactiveParam（联动选择框）**：
+   - 描述：基于其他参数的选择值动态更新当前参数的选项列表，实现参数间的级联联动效果。
    - 插件依赖：需要安装 `Active Choices Plugin`。
 
 **插件安装步骤**（如需 MultiSelect、ChoiceParameter 或 CascadeChoiceParameter 参数）：
@@ -617,14 +618,13 @@ graph TD
 - 在“Available”或“可用插件”选项卡中搜索 `Active Choices Plugin`，勾选并点击“Install without restart”或“安装无需重启”。
 - 如果无权限，请联系管理员。
 
----
 
 ### 第三部分：实验练习
 
 本部分为每个参数类型提供详细的实验练习，包括 Job 创建、脚本配置、构建步骤和预期结果。所有 Job 名称按照格式 `training-parameters-类型名-liujun` 命名。
 
 #### 3.1 String 参数（字符串）
-- **功能**：允许用户输入单行文本，例如用户名或版本号。
+- **功能**：允许用户输入单行文本，适用于简单的输入场景，例如用户名、版本号或配置文件路径。
 - **语法**：
   ```groovy
   properties([
@@ -633,6 +633,16 @@ graph TD
       ])
   ])
   ```
+
+- **属性解释**：
+  下表列出了 `string` 参数常用的属性及其说明：
+  | 属性名         | 说明                                                                 |
+  |----------------|----------------------------------------------------------------------|
+  | `name`        | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `defaultValue`| 默认值，如果用户未输入内容，则使用该值。                            |
+  | `description` | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+  | `trim`        | 是否去除输入内容的前后空格，默认为 `false`，可设置为 `true`。       |
+
 - **实验练习**：
   1. **创建 Job**：
      - 登录 Jenkins，点击“New Item”或“新建项目”。
@@ -668,8 +678,89 @@ graph TD
   String 参数值为：HelloJenkins
   ```
 
-#### 3.2 Text 参数（文本）
-- **功能**：允许用户输入多行文本，适合脚本片段或描述信息。
+- **扩展说明：去除空格的用法**：
+  如果用户输入的内容可能包含前后空格，可以设置 `trim: true` 来自动去除这些空格。例如：
+    ```groovy
+    properties([
+        parameters([
+            string(name: 'MY_STRING', defaultValue: 'default', description: '请输入一个字符串', trim: true)
+        ])
+    ])
+    ```
+  这样，即使输入为 `  Hello  `，最终参数值也会被处理为 `Hello`，避免不必要的格式问题。
+
+#### 3.2 Hidden 参数（隐藏参数）
+- **功能**：不在构建页面显示的参数，通常用于传递内部配置值或系统变量，防止用户修改。
+- **插件依赖**：需要安装 `Hidden Parameter Plugin`。
+- **语法**：
+  ```groovy
+  properties([
+      parameters([
+          [$class: 'WHideParameterDefinition', 
+           name: 'HIDDEN_PARAM', 
+           defaultValue: 'secret-value', 
+           description: '隐藏的内部参数']
+      ])
+  ])
+  ```
+
+- **属性解释**：
+  下表列出了 `WHideParameterDefinition` 参数常用的属性及其说明：
+  | 属性名         | 说明                                                                 |
+  |----------------|----------------------------------------------------------------------|
+  | `$class`      | 指定参数类型为隐藏参数，固定值为 `WHideParameterDefinition`。        |
+  | `name`        | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `defaultValue`| 默认值，用户无法在界面上修改此值。                                  |
+  | `description` | 参数的描述信息，通常用于内部文档记录，界面上不可见。                 |
+
+- **实验练习**：
+  1. **创建 Job**：
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
+     - 输入 Job 名称：`training-parameters-hidden-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
+  2. **配置 Pipeline 脚本**：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
+       ```groovy
+       properties([
+           parameters([
+               [$class: 'WHideParameterDefinition', 
+                name: 'HIDDEN_PARAM', 
+                defaultValue: 'secret-config-value', 
+                description: '隐藏的内部配置参数']
+           ])
+       ])
+       pipeline {
+           agent any
+           stages {
+               stage('Print Hidden Param') {
+                   steps {
+                       echo "隐藏参数值为：${params.HIDDEN_PARAM}"
+                   }
+               }
+           }
+       }
+       ```
+  3. **保存配置**：
+     - 点击“Save”或“保存”按钮。
+  4. **触发构建**：
+     - 返回 Job 详情页面，点击“Build with Parameters”或“参数化构建”。
+     - 注意：隐藏参数不会在页面显示，直接点击“Build”或“构建”。
+  5. **查看结果**：
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
+- **预期输出**：
+  ```
+  隐藏参数值为：secret-config-value
+  ```
+
+- **扩展说明：使用场景**：
+  隐藏参数适用于需要在 Pipeline 内部传递固定配置值但不希望用户看到或修改的场景，例如内部 API 密钥、固定版本号等。需要注意的是，虽然参数在界面上不可见，但如果在日志中直接输出（如示例中的 `echo`），仍可能泄露信息，建议谨慎使用。
+
+- **注意事项**：
+  - 确保已安装 `Hidden Parameter Plugin`，否则此参数类型将不可用。
+  - 避免在日志中直接输出隐藏参数值，建议结合 Jenkins 凭据管理功能处理敏感信息。
+
+
+#### 3.3 Text 参数（文本）
+- **功能**：允许用户输入多行文本，适合输入脚本片段、描述信息或配置文件内容。
 - **语法**：
   ```groovy
   properties([
@@ -678,12 +769,21 @@ graph TD
       ])
   ])
   ```
+
+- **属性解释**：
+  下表列出了 `text` 参数常用的属性及其说明：
+  | 属性名         | 说明                                                                 |
+  |----------------|----------------------------------------------------------------------|
+  | `name`        | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `defaultValue`| 默认值，可以是多行文本内容，换行使用 `\n` 表示。                    |
+  | `description` | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+
 - **实验练习**：
   1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
      - 输入 Job 名称：`training-parameters-text-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
   2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
        ```groovy
        properties([
            parameters([
@@ -704,10 +804,10 @@ graph TD
   3. **保存配置**：
      - 点击“Save”或“保存”按钮。
   4. **触发构建**：
-     - 点击“Build with Parameters”或“参数化构建”。
-     - 输入多行文本（例如 `Line 1\nLine 2`），点击“Build”或“构建”。
+     - 返回 Job 详情页面，点击“Build with Parameters”或“参数化构建”。
+     - 在文本框中输入多行文本（例如 `Line 1\nLine 2`），点击“Build”或“构建”。
   5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
 - **预期输出**：
   ```
   Text 参数值为：
@@ -715,8 +815,25 @@ graph TD
   Line 2
   ```
 
+- **扩展说明：处理多行文本**：
+  `Text` 参数的值在 Pipeline 中可以直接作为脚本或配置文件内容使用。例如，可以将用户输入的文本写入文件：
+    ```groovy
+    pipeline {
+        agent any
+        stages {
+            stage('Write Text to File') {
+                steps {
+                    writeFile file: 'user_input.txt', text: "${params.MY_TEXT}"
+                    echo "已将文本内容写入文件 user_input.txt"
+                }
+            }
+        }
+    }
+    ```
+  这种用法适用于需要用户提供脚本或配置内容的场景。
+
 #### 3.3 Choice 参数（选择框）
-- **功能**：从预定义列表中选择一个选项，适合有限选项场景（如环境选择）。
+- **功能**：从预定义列表中选择一个选项，适合有限选项场景（如环境选择、版本选择）。
 - **语法**：
   ```groovy
   properties([
@@ -725,12 +842,21 @@ graph TD
       ])
   ])
   ```
+
+- **属性解释**：
+  下表列出了 `choice` 参数常用的属性及其说明：
+  | 属性名         | 说明                                                                 |
+  |----------------|----------------------------------------------------------------------|
+  | `name`        | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `choices`     | 可选值的列表，可以是字符串列表或用换行符分隔的字符串，用户只能选择一个值。 |
+  | `description` | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+
 - **实验练习**：
   1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
      - 输入 Job 名称：`training-parameters-choice-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
   2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
        ```groovy
        properties([
            parameters([
@@ -751,17 +877,32 @@ graph TD
   3. **保存配置**：
      - 点击“Save”或“保存”按钮。
   4. **触发构建**：
-     - 点击“Build with Parameters”或“参数化构建”。
-     - 选择一个选项（例如 `test`），点击“Build”或“构建”。
+     - 返回 Job 详情页面，点击“Build with Parameters”或“参数化构建”。
+     - 从下拉列表中选择一个选项（例如 `test`），点击“Build”或“构建”。
   5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
 - **预期输出**：
   ```
   Choice 参数值为：test
   ```
 
+- **扩展说明：使用换行符定义选项**：
+  如果选项列表较长或需要更好的可读性，可以使用换行符（`\n`）分隔选项。以下是示例代码片段：
+    ```groovy
+    properties([
+        parameters([
+            choice(
+                name: 'ENVIRONMENT', 
+                choices: 'dev\ntest\nprod', 
+                description: '请选择环境'
+            )
+        ])
+    ])
+    ```
+  这种写法在界面上效果与列表形式一致，但代码更易于维护。
+
 #### 3.4 Boolean 参数（布尔）
-- **功能**：复选框，允许用户选择 true 或 false，适合开关类型选项。
+- **功能**：提供复选框形式，允许用户选择 `true` 或 `false`，适合开关类型选项（如是否启用某功能）。
 - **语法**：
   ```groovy
   properties([
@@ -770,12 +911,21 @@ graph TD
       ])
   ])
   ```
+
+- **属性解释**：
+  下表列出了 `booleanParam` 参数常用的属性及其说明：
+  | 属性名         | 说明                                                                 |
+  |----------------|----------------------------------------------------------------------|
+  | `name`        | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `defaultValue`| 默认值，`true` 表示默认勾选，`false` 表示默认未勾选。               |
+  | `description` | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+
 - **实验练习**：
   1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
      - 输入 Job 名称：`training-parameters-boolean-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
   2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
        ```groovy
        properties([
            parameters([
@@ -796,10 +946,10 @@ graph TD
   3. **保存配置**：
      - 点击“Save”或“保存”按钮。
   4. **触发构建**：
-     - 点击“Build with Parameters”或“参数化构建”。
+     - 返回 Job 详情页面，点击“Build with Parameters”或“参数化构建”。
      - 勾选或取消勾选“是否启用调试模式”，点击“Build”或“构建”。
   5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
 - **预期输出**：
   - 如果勾选：
     ```
@@ -810,8 +960,27 @@ graph TD
     Boolean 参数值为：false
     ```
 
+- **扩展说明：条件逻辑应用**：
+  `Boolean` 参数常用于条件判断。例如，可以根据参数值决定是否执行某个阶段：
+    ```groovy
+    pipeline {
+        agent any
+        stages {
+            stage('Debug Mode') {
+                when {
+                    expression { params.IS_DEBUG == 'true' }
+                }
+                steps {
+                    echo "调试模式已启用，正在执行调试步骤..."
+                }
+            }
+        }
+    }
+    ```
+  这种用法在自动化流程中非常实用。
+
 #### 3.5 Password 参数（密码）
-- **功能**：输入敏感信息，界面显示为星号（***），保护隐私。
+- **功能**：用于输入敏感信息（如密码、密钥），界面上显示为星号（***）以保护隐私。
 - **语法**：
   ```groovy
   properties([
@@ -820,12 +989,21 @@ graph TD
       ])
   ])
   ```
+
+- **属性解释**：
+  下表列出了 `password` 参数常用的属性及其说明：
+  | 属性名         | 说明                                                                 |
+  |----------------|----------------------------------------------------------------------|
+  | `name`        | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `defaultValue`| 默认值，通常为空字符串（''），不建议直接设置默认密码。              |
+  | `description` | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+
 - **实验练习**：
   1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
      - 输入 Job 名称：`training-parameters-password-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
   2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
        ```groovy
        properties([
            parameters([
@@ -846,211 +1024,434 @@ graph TD
   3. **保存配置**：
      - 点击“Save”或“保存”按钮。
   4. **触发构建**：
-     - 点击“Build with Parameters”或“参数化构建”。
+     - 返回 Job 详情页面，点击“Build with Parameters”或“参数化构建”。
      - 输入一个密码（例如 `MySecret123`），点击“Build”或“构建”。
   5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
 - **预期输出**：
   ```
   Password 参数值为：MySecret123
   ```
-- **注意**：实际使用中避免直接输出密码到控制台，建议结合 Jenkins 凭据管理功能（Credentials Plugin）。
 
-#### 3.6 MultiSelect 参数（多选框）
-- **功能**：从列表中选择多个选项，返回逗号分隔的字符串。
+- **注意事项**：
+  - **避免直接输出密码**：在实际使用中，避免将密码直接输出到控制台日志，以防止敏感信息泄露。建议结合 Jenkins 的凭据管理功能（Credentials Plugin）存储和使用敏感信息。
+  - **凭据管理替代方案**：可以使用 `credentials` 参数类型绑定已存储的凭据，而不是直接使用 `password` 参数。例如：
+    ```groovy
+    properties([
+        parameters([
+            credentials(
+                name: 'MY_CREDENTIAL', 
+                credentialType: 'Username with password', 
+                description: '请选择凭据'
+            )
+        ])
+    ])
+    ```
+  这种方式更安全，推荐在生产环境中使用。
+
+#### 3.6 extendedChoice 参数（多选框）
+- **功能**：支持复选框、多选下拉框等多种形式，可选择多个选项并返回逗号分隔的字符串。
+- **插件依赖**：需要安装 `Extended Choice Parameter Plugin`。
 - **语法**：
-  ```groovy
-  properties([
-      parameters([
-          [$class: 'ChoiceParameter', 
-           name: 'MULTI_SELECT', 
-           choices: ['option1', 'option2', 'option3'], 
-           description: '请选择多个选项', 
-           multiSelect: true]
-      ])
-  ])
-  ```
+    ```groovy
+    properties([
+        parameters([
+            extendedChoice(
+            name: 'MULTI_SELECT', 
+            type: 'PT_CHECKBOX', 
+            value: 'option1,option2,option3', 
+            description: '请选择多个选项'
+            )
+        ])
+    ])
+    ```
+
+- **属性解释**：
+  下表列出了 `extendedChoice` 参数常用的属性及其说明（以多选框 `PT_CHECKBOX` 为重点）：
+  | 属性名                 | 说明                                                                 |
+  |------------------------|----------------------------------------------------------------------|
+  | `name`                | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `type`                | 参数类型，对于多选框通常设置为 `PT_CHECKBOX`，也可设置为 `PT_MULTI_SELECT`（多选下拉框）。 |
+  | `value`               | 可选值的列表，多个值之间用逗号（`,`）分隔，用户可选择多个值。        |
+  | `description`         | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+  | `defaultValue`        | 默认选中的值，可以是 `value` 中的一个或多个值，用逗号分隔。          |
+  | `delimiter`           | 多选框专用，定义多选结果的拼接分隔符，默认值为逗号（`,`），可自定义为其他字符如 `;`。 |
+  | `visibleItemCnt`      | 可见项目数量，控制界面上可见的选项数量，若选项较多可通过滚动查看，默认为全部可见。 |
+  | `quoteValue`          | 是否为选项值添加引号，通常设置为 `false`，默认为 `false`。          |
+
 - **实验练习**：
   1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
-     - 输入 Job 名称：`training-parameters-multiselect-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
+     - 登录 Jenkins，点击"New Item"或"新建项目"。
+     - 输入 Job 名称：`training-parameters-extendedchoice-liujun`，选择类型为"Pipeline"，点击"OK"或"确定"。
   2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
-       ```groovy
-       properties([
-           parameters([
-               [$class: 'ChoiceParameter', 
+     - 在 Job 配置页面，滚动到"Pipeline"部分，输入以下脚本：
+        ```groovy
+        properties([
+            parameters([
+                extendedChoice(
+                    name: 'MULTI_SELECT', 
+                    type: 'PT_CHECKBOX', 
+                    value: 'option1,option2,option3', 
+                    description: '请选择多个选项'
+                )
+            ])
+        ])
+        pipeline {
+            agent any
+            stages {
+                stage('Print Extended Choice Param') {
+                    steps {
+                        echo "Extended Choice 参数值为：${params.MULTI_SELECT}"
+                    }
+                }
+            }
+        }
+        ```
+  3. **保存配置**：
+     - 点击"Save"或"保存"按钮。
+  4. **触发构建**：
+     - 返回 Job 详情页面，点击"Build with Parameters"或"参数化构建"。
+     - 选择多个选项（例如 `option1` 和 `option3`），点击"Build"或"构建"。
+  5. **查看结果**：
+     - 构建完成后，点击构建记录，查看"Console Output"或"控制台输出"。
+- **预期输出**：
+  ```
+  Extended Choice 参数值为：option1,option3
+  ```
+
+- **扩展说明：自定义分隔符**：
+  如果需要更改多选结果的分隔符，可以使用 `delimiter` 属性。例如，将分隔符改为分号（`;`），只需在参数配置中添加 `delimiter: ';'`，则选择 `option1` 和 `option3` 后的输出为 `option1;option3`。以下是示例代码片段：
+    ```groovy
+    properties([
+        parameters([
+            extendedChoice(
                 name: 'MULTI_SELECT', 
-                choices: ['option1', 'option2', 'option3'], 
-                description: '请选择多个选项', 
-                multiSelect: true]
-           ])
-       ])
-       pipeline {
-           agent any
-           stages {
-               stage('Print MultiSelect Param') {
-                   steps {
-                       echo "MultiSelect 参数值为：${params.MULTI_SELECT}"
-                   }
-               }
-           }
-       }
-       ```
-  3. **保存配置**：
-     - 点击“Save”或“保存”按钮。
-  4. **触发构建**：
-     - 点击“Build with Parameters”或“参数化构建”。
-     - 选择多个选项（例如 `option1` 和 `option2`），点击“Build”或“构建”。
-  5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
-- **预期输出**：
-  ```
-  MultiSelect 参数值为：option1,option2
-  ```
-- **注意**：需要安装 `Active Choices Plugin`，否则此参数类型无法正常工作。
+                type: 'PT_CHECKBOX', 
+                value: 'option1,option2,option3', 
+                description: '请选择多个选项',
+                delimiter: ';'
+            )
+        ])
+    ])
+    ```
 
-#### 3.7 ChoiceParameter 参数（动态选择框）
-- **功能**：通过脚本动态生成选项，支持更灵活的选择框，选项可以基于外部数据或逻辑生成。
+- **扩展说明：设置可见项目数量**：
+  如果选项列表较长，可以通过 `visibleItemCnt` 属性限制界面上可见的项目数量，用户可通过滚动查看更多选项。例如，将可见项目数量设为 `2`，只需在参数配置中添加 `visibleItemCnt: 2`。以下是示例代码片段：
+    ```groovy
+    properties([
+        parameters([
+            extendedChoice(
+                name: 'MULTI_SELECT', 
+                type: 'PT_CHECKBOX', 
+                value: 'option1,option2,option3,option4,option5', 
+                description: '请选择多个选项',
+                visibleItemCnt: 2
+            )
+        ])
+    ])
+    ```
+
+#### 3.7 extendedChoice 参数（单选按钮）
+- **功能**：以单选按钮的形式展示选项，用户只能选择一个选项。
+- **插件依赖**：需要安装 `Extended Choice Parameter Plugin`。
 - **语法**：
-  ```groovy
-  properties([
-      parameters([
-          [$class: 'ChoiceParameter', 
-           name: 'DYNAMIC_CHOICE', 
-           script: [$class: 'GroovyScript', 
-                    script: [classpath: [], 
-                             sandbox: false, 
-                             script: '''
-                             return ['dynamic1', 'dynamic2', 'dynamic3']
-                             ''']], 
-           description: '动态选择框']
-      ])
-  ])
-  ```
+    ```groovy
+    properties([
+        parameters([
+            extendedChoice(
+                name: 'RADIO_SELECT', 
+                type: 'PT_RADIO', 
+                value: 'option1,option2,option3', 
+                description: '请选择一个选项'
+            )
+        ])
+    ])
+    ```
+
+- **属性解释**：
+  下表列出了 `extendedChoice` 参数常用的属性及其说明（以单选按钮 `PT_RADIO` 为重点）：
+  | 属性名             | 说明                                                                 |
+  |--------------------|----------------------------------------------------------------------|
+  | `name`            | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `type`            | 参数类型，对于单选按钮必须设置为 `PT_RADIO`。                       |
+  | `value`           | 可选值的列表，多个值之间用逗号（`,`）分隔，用户只能选择一个。        |
+  | `description`     | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+  | `defaultValue`    | 默认选中的值，必须是 `value` 中的一个值，适用于单选按钮。            |
+  | `visibleItemCnt`  | 控制界面上可见的选项数量，若选项较多可通过滚动查看，默认为全部可见。  |
+  | `quoteValue`      | 是否为选项值添加引号，通常设置为 `false`，默认为 `false`。          |
+
 - **实验练习**：
   1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
-     - 输入 Job 名称：`training-parameters-choiceparameter-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
+     - 登录 Jenkins，点击"New Item"或"新建项目"。
+     - 输入 Job 名称：`training-parameters-radio-liujun`，选择类型为"Pipeline"，点击"OK"或"确定"。
   2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
-       ```groovy
-       properties([
-           parameters([
-               [$class: 'ChoiceParameter', 
-                name: 'DYNAMIC_CHOICE', 
-                script: [$class: 'GroovyScript', 
-                         script: [classpath: [], 
-                                  sandbox: false, 
-                                  script: '''
-                                  return ['dynamic1', 'dynamic2', 'dynamic3']
-                                  ''']], 
-                description: '动态选择框']
-           ])
-       ])
-       pipeline {
-           agent any
-           stages {
-               stage('Print Dynamic Choice Param') {
-                   steps {
-                       echo "Dynamic Choice 参数值为：${params.DYNAMIC_CHOICE}"
-                   }
-               }
-           }
-       }
-       ```
+     - 在 Job 配置页面，滚动到"Pipeline"部分，输入以下脚本：
+        ```groovy
+        properties([
+            parameters([
+                extendedChoice(
+                    name: 'RADIO_SELECT', 
+                    type: 'PT_RADIO', 
+                    value: 'option1,option2,option3', 
+                    description: '请选择一个选项'
+                )
+            ])
+        ])
+        pipeline {
+            agent any
+            stages {
+                stage('Print Radio Param') {
+                    steps {
+                        echo "Radio 参数值为：${params.RADIO_SELECT}"
+                    }
+                }
+            }
+        }
+        ```
   3. **保存配置**：
-     - 点击“Save”或“保存”按钮。
+     - 点击"Save"或"保存"按钮。
   4. **触发构建**：
-     - 点击“Build with Parameters”或“参数化构建”。
-     - 选择一个选项（例如 `dynamic2`），点击“Build”或“构建”。
+     - 返回 Job 详情页面，点击"Build with Parameters"或"参数化构建"。
+     - 选择一个选项（例如 `option2`），点击"Build"或"构建"。
   5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
+     - 构建完成后，点击构建记录，查看"Console Output"或"控制台输出"。
 - **预期输出**：
   ```
-  Dynamic Choice 参数值为：dynamic2
+  Radio 参数值为：option2
   ```
-- **注意**：需要安装 `Active Choices Plugin`，并且脚本运行可能需要管理员权限或配置沙箱模式。
 
 #### 3.8 CascadeChoiceParameter 参数（联动选择框）
-- **功能**：基于其他参数值的选择动态更新选项，实现参数间的联动，例如根据选择的地区动态显示城市列表。
-- **语法**：
-  ```groovy
-  properties([
-      parameters([
-          choice(name: 'REGION', choices: ['North', 'South'], description: '请选择地区'),
-          [$class: 'CascadeChoiceParameter', 
-           name: 'CITY', 
-           referencedParameters: 'REGION', 
-           script: [$class: 'GroovyScript', 
-                    script: [classpath: [], 
-                             sandbox: false, 
-                             script: '''
-                             if (REGION.equals('North')) {
-                                 return ['Beijing', 'Tianjin']
-                             } else {
-                                 return ['Shanghai', 'Guangzhou']
-                             }
-                             ''']], 
-           description: '请选择城市']
-      ])
-  ])
-  ```
-- **实验练习**：
-  1. **创建 Job**：
-     - 点击“New Item”或“新建项目”。
-     - 输入 Job 名称：`training-parameters-cascadechoice-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
-  2. **配置 Pipeline 脚本**：
-     - 输入以下脚本：
-       ```groovy
-       properties([
-           parameters([
-               choice(name: 'REGION', choices: ['North', 'South'], description: '请选择地区'),
-               [$class: 'CascadeChoiceParameter', 
-                name: 'CITY', 
-                referencedParameters: 'REGION', 
-                script: [$class: 'GroovyScript', 
-                         script: [classpath: [], 
-                                  sandbox: false, 
-                                  script: '''
-                                  if (REGION.equals('North')) {
-                                      return ['Beijing', 'Tianjin']
-                                  } else {
-                                      return ['Shanghai', 'Guangzhou']
-                                  }
-                                  ''']], 
+- **声明**：非必学内容，如果老师讲了但您没有完全掌握，不必担心，这部分内容属于进阶知识，不会影响基础学习。
+- **功能**：基于其他参数值的选择动态更新选项，实现参数间的联动，例如根据选择的地区动态显示城市列表。支持单选和多选模式。
+- **前提条件**：需要安装 `Active Choices Plugin` 插件。
+- **语法（单选模式）**：
+    ```groovy
+    properties([
+        parameters([
+            choice(name: 'REGION', choices: ['', 'North', 'South'], description: '请选择地区'),
+            [
+                $class: 'CascadeChoiceParameter',
+                name: 'CITY',
+                referencedParameters: 'REGION',
+                choiceType: 'PT_RADIO',
+                script: [
+                    $class: 'GroovyScript',
+                    fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
+                    script: [
+                        classpath: [],
+                        sandbox: true,
+                        script: '''
+                        if (REGION == 'North') {
+                            return ['Beijing', 'Tianjin', 'Harbin']
+                        } else if (REGION == 'South') {
+                            return ['Shanghai', 'Guangzhou', 'Shenzhen']
+                        } else {
+                            return ['请先选择地区']
+                        }
+                        '''
+                    ]
+                ],
+                description: '请选择城市'
+            ]
+        ])
+    ])
+    ```
+
+- **语法（多选模式）**：
+    ```groovy
+    properties([
+        parameters([
+            choice(name: 'REGION', choices: ['', 'North', 'South'], description: '请选择地区'),
+            [
+                $class: 'CascadeChoiceParameter',
+                name: 'CITIES',
+                referencedParameters: 'REGION',
+                choiceType: 'PT_MULTI_SELECT',
+                script: [
+                    $class: 'GroovyScript',
+                    fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
+                    script: [
+                        classpath: [],
+                        sandbox: true,
+                        script: '''
+                        if (REGION == 'North') {
+                            return ['Beijing', 'Tianjin', 'Harbin']
+                        } else if (REGION == 'South') {
+                                return ['Shanghai', 'Guangzhou', 'Shenzhen']
+                            } else {
+                                return ['请先选择地区']
+                            }
+                            '''
+                    ]
+                ],
+                description: '请选择多个城市'
+            ]
+        ])
+    ])
+    ```
+
+- **属性解释**：
+  下表列出了 `CascadeChoiceParameter` 参数常用的属性及其说明：
+  | 属性名                  | 说明                                                                 |
+  |-------------------------|----------------------------------------------------------------------|
+  | `$class`               | 指定参数类型为级联选择参数，固定值为 `CascadeChoiceParameter`。       |
+  | `name`                 | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
+  | `referencedParameters` | 引用的参数名称，用于联动，通常是其他参数的 `name` 值。               |
+  | `choiceType`           | 选择类型，`PT_SINGLE_SELECT` 为单选，`PT_MULTI_SELECT` 为多选。      |
+  | `script`               | 动态生成选项的 Groovy 脚本，基于引用的参数值返回选项列表。          |
+  | `fallbackScript`       | 脚本执行失败时的备用脚本，通常返回默认或错误提示选项。               |
+  | `description`          | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
+
+- **实验练习（单选模式）**：
+  1. **安装必要插件**：
+     - 登录 Jenkins，进入“Manage Jenkins”或“系统管理” → “Manage Plugins”或“插件管理”。
+     - 在“Available”或“可选插件”选项卡中搜索 `Active Choices Plugin`，安装并重启 Jenkins。
+  2. **创建 Job**：
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
+     - 输入 Job 名称：`training-parameters-cascadechoice-single-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
+  3. **配置 Pipeline 脚本**：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
+        ```groovy
+        properties([
+            parameters([
+                choice(name: 'REGION', choices: ['', 'North', 'South'], description: '请选择地区'),
+                [
+                    $class: 'CascadeChoiceParameter',
+                    name: 'CITY',
+                    referencedParameters: 'REGION',
+                    choiceType: 'PT_CHECKBOX',
+                    script: [
+                        $class: 'GroovyScript',
+                        fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
+                        script: [
+                            classpath: [],
+                            sandbox: true,
+                            script: '''
+                            if (REGION == 'North') {
+                                return ['Beijing', 'Tianjin', 'Harbin']
+                            } else if (REGION == 'South') {
+                                return ['Shanghai', 'Guangzhou', 'Shenzhen']
+                            } else {
+                                return ['请先选择地区']
+                            }
+                            '''
+                        ]
+                ],
                 description: '请选择城市']
-           ])
-       ])
-       pipeline {
-           agent any
-           stages {
-               stage('Print Cascade Choice Param') {
-                   steps {
-                       echo "Region 参数值为：${params.REGION}"
-                       echo "City 参数值为：${params.CITY}"
-                   }
-               }
-           }
-       }
-       ```
-  3. **保存配置**：
+            ])
+        ])
+        pipeline {
+            agent any
+            stages {
+                stage('Print Cascade Choice Param') {
+                    steps {
+                        echo "Region 参数值为：${params.REGION}"
+                        echo "City 参数值为：${params.CITY}"
+                        script {
+                            if (params.REGION && params.CITY && params.CITY != '请先选择地区') {
+                                echo "您选择了 ${params.REGION} 地区的 ${params.CITY} 城市"
+                            } else {
+                                echo "请确保已正确选择地区和城市"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ```
+  4. **保存配置**：
      - 点击“Save”或“保存”按钮。
-  4. **触发构建**：
+  5. **初次运行**：
+     - 返回 Job 详情页面，点击“Build Now”或“立即构建”，让 Jenkins 识别参数定义。
+  6. **参数化构建**：
      - 点击“Build with Parameters”或“参数化构建”。
-     - 选择一个地区（例如 `North`），然后选择对应的城市（例如 `Beijing`），点击“Build”或“构建”。
-  5. **查看结果**：
-     - 构建完成后，查看“Console Output”或“控制台输出”。
-- **预期输出**：
+     - 先选择地区（例如 `North`），等待城市选项自动更新。
+     - 然后选择对应的城市（例如 `Beijing`），点击“Build”或“构建”。
+  7. **查看结果**：
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
+- **预期输出（单选模式）**：
   ```
   Region 参数值为：North
   City 参数值为：Beijing
+  您选择了 North 地区的 Beijing 城市
   ```
-- **注意**：需要安装 `Active Choices Plugin`，并且脚本运行可能需要管理员权限或配置沙箱模式。确保 `referencedParameters` 中引用的参数名称正确。
 
+- **实验练习（多选模式）**：
+  1. **创建 Job**：
+     - 登录 Jenkins，点击“New Item”或“新建项目”。
+     - 输入 Job 名称：`training-parameters-cascadechoice-multi-liujun`，选择类型为“Pipeline”，点击“OK”或“确定”。
+  2. **配置 Pipeline 脚本**：
+     - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
+        ```groovy
+        properties([
+            parameters([
+                choice(name: 'REGION', choices: ['', 'North', 'South'], description: '请选择地区'),
+                [
+                    $class: 'CascadeChoiceParameter',
+                    name: 'CITIES',
+                    referencedParameters: 'REGION',
+                    choiceType: 'PT_MULTI_SELECT',
+                    script: [
+                        $class: 'GroovyScript',
+                        fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
+                        script: [
+                            classpath: [],
+                            sandbox: true,
+                            script: '''
+                            if (REGION == 'North') {
+                                return ['Beijing', 'Tianjin', 'Harbin']
+                            } else if (REGION == 'South') {
+                                return ['Shanghai', 'Guangzhou', 'Shenzhen']
+                            } else {
+                                return ['请先选择地区']
+                            }
+                            '''
+                        ]
+                    ],
+                    description: '请选择多个城市'
+                ]
+            ])
+        ])
+        pipeline {
+            agent any
+            stages {
+                stage('Print Cascade Choice Param') {
+                    steps {
+                        echo "Region 参数值为：${params.REGION}"
+                        echo "Cities 参数值为：${params.CITIES}"
+                        script {
+                            if (params.REGION && params.CITIES && params.CITIES != '请先选择地区') {
+                                echo "您选择了 ${params.REGION} 地区的以下城市：${params.CITIES}"
+                            } else {
+                                echo "请确保已正确选择地区和城市"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ```
+  3. **保存配置**：
+     - 点击“Save”或“保存”按钮。
+  4. **初次运行**：
+     - 返回 Job 详情页面，点击“Build Now”或“立即构建”，让 Jenkins 识别参数定义。
+  5. **参数化构建**：
+     - 点击“Build with Parameters”或“参数化构建”。
+     - 先选择地区（例如 `South`），等待城市选项自动更新。
+     - 然后选择多个城市（例如 `Shanghai` 和 `Guangzhou`），点击“Build”或“构建”。
+  6. **查看结果**：
+     - 构建完成后，点击构建记录，查看“Console Output”或“控制台输出”。
+- **预期输出（多选模式）**：
+  ```
+  Region 参数值为：South
+  Cities 参数值为：Shanghai,Guangzhou
+  您选择了 South 地区的以下城市：Shanghai,Guangzhou
+  ```
+
+- **扩展说明：多选模式处理**：
+  在多选模式（`PT_MULTI_SELECT`）下，用户可以选择多个选项，参数值会以逗号（`,`）分隔的字符串形式返回。例如，选择 `Shanghai` 和 `Guangzhou` 后，`params.CITIES` 的值将是 `Shanghai,Guangzhou`。
 
 ### 常见问题及解决方法
-
 1. **`echo` 输出不显示内容**：
    - **原因**：
      - 未点击“Build with Parameters”或“参数化构建”，直接点击“Build Now”或“立即构建”，导致参数未传递。
@@ -1060,14 +1461,16 @@ graph TD
      - 确保点击“Build with Parameters”或“参数化构建”。
      - 检查脚本语法，确保 `properties` 在 `pipeline` 之前。
      - 查看完整控制台输出，确认是否有其他错误。
-2. **参数类型不支持（如 MultiSelect、ChoiceParameter、CascadeChoiceParameter）**：
+2. **参数类型不支持（如 `CascadeChoiceParameter`）**：
    - **原因**：缺少必要插件（如 `Active Choices Plugin`）。
-   - **解决方法**：联系管理员安装插件，或检查是否已安装。
+   - **解决方法**：联系管理员安装插件，或检查是否已安装并重启 Jenkins。
 3. **参数值为空或默认值未生效**：
    - **原因**：参数定义有误或未正确保存 Job 配置。
    - **解决方法**：重新检查脚本并保存配置，确保参数名称和默认值正确。
+4. **多选模式下参数值处理问题**：
+   - **原因**：未正确处理逗号分隔的字符串。
+   - **解决方法**：使用 `split(',')` 将多选值拆分为列表，或直接处理字符串，确保逻辑正确。
 
----
 
 ### `properties` 属性（扩展内容）
 
@@ -1119,38 +1522,40 @@ graph TD
          - `HARBOR_REGISTRY`：镜像仓库地址，字符串类型，默认值 `harbor.labworlds.cc`。
          - `DOCKER_RUN`：Docker 运行命令，字符串类型，默认值 `docker run -d -p 8000:80`。
        - 输出脚本（仅 `echo` 示例）：
-         ```groovy
-         properties([
-             parameters([
-                 string(name: 'PROJECT_NAME', defaultValue: 'admin3-ui', description: '项目名称'),
-                 string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git 分支'),
-                 string(name: 'IMAGE_TAG', defaultValue: 'liujun-0802', description: '镜像标签'),
-                 [$class: 'ChoiceParameter', 
-                  name: 'HOSTS', 
-                  choices: ['192.168.110.8', '192.168.110.9', '192.168.110.10', '192.168.110.11', '192.168.110.12', '192.168.110.13', '192.168.110.14', '192.168.110.15', '192.168.110.16', '192.168.110.17'], 
-                  description: '目标主机（支持多选）', 
-                  multiSelect: true],
-                 string(name: 'HARBOR_REGISTRY', defaultValue: 'harbor.labworlds.cc', description: '镜像仓库地址'),
-                 string(name: 'DOCKER_RUN', defaultValue: 'docker run -d -p 8000:80', description: 'Docker 运行命令')
-             ])
-         ])
-         pipeline {
-             agent any
-             stages {
-                 stage('Print Docker CD Parameters for admin3-ui') {
-                     steps {
-                         echo "部署 admin3-ui 参数如下："
-                         echo "项目名称：${params.PROJECT_NAME}"
-                         echo "Git 分支：${params.GIT_BRANCH}"
-                         echo "镜像标签：${params.IMAGE_TAG}"
-                         echo "目标主机：${params.HOSTS}"
-                         echo "镜像仓库地址：${params.HARBOR_REGISTRY}"
-                         echo "Docker 运行命令：${params.DOCKER_RUN}"
-                     }
-                 }
-             }
-         }
-         ```
+            ```groovy
+            properties([
+                parameters([
+                    string(name: 'PROJECT_NAME', defaultValue: 'admin3-ui', description: '项目名称'),
+                    string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git 分支'),
+                    string(name: 'IMAGE_TAG', defaultValue: 'liujun-0802', description: '镜像标签'),
+                    extendedChoice(
+                        name: 'HOSTS', 
+                        type: 'PT_CHECKBOX', 
+                        value: '192.168.110.8,192.168.110.9,192.168.110.10,192.168.110.11', 
+                        description: '目标主机（支持多选）'
+                    ),
+                    string(name: 'HARBOR_REGISTRY', defaultValue: 'harbor.labworlds.cc', description: '镜像仓库地址'),
+                    string(name: 'DOCKER_RUN', defaultValue: 'docker run -d -p 8000:80', description: 'Docker 运行命令')
+                ])
+            ])
+
+            pipeline {
+                agent any
+                stages {
+                    stage('Print Docker CD Parameters for admin3-ui') {
+                        steps {
+                            echo "部署 admin3-ui 参数如下："
+                            echo "项目名称：${params.PROJECT_NAME}"
+                            echo "Git 分支：${params.GIT_BRANCH}"
+                            echo "镜像标签：${params.IMAGE_TAG}"
+                            echo "目标主机：${params.HOSTS}"
+                            echo "镜像仓库地址：${params.HARBOR_REGISTRY}"
+                            echo "Docker 运行命令：${params.DOCKER_RUN}"
+                        }
+                    }
+                }
+            }
+            ```
      - **部署 go-starter**：
        - 参数：
          - `PROJECT_NAME`：项目名称，字符串类型，默认值 `go-starter`。
@@ -1160,111 +1565,72 @@ graph TD
          - `HARBOR_REGISTRY`：镜像仓库地址，字符串类型，默认值 `harbor.labworlds.cc`。
          - `DOCKER_RUN`：Docker 运行命令，字符串类型，默认值 `docker run -d -p 9006:8080`。
        - 输出脚本（仅 `echo` 示例）：
-         ```groovy
-         properties([
-             parameters([
-                 string(name: 'PROJECT_NAME', defaultValue: 'go-starter', description: '项目名称'),
-                 string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git 分支'),
-                 string(name: 'IMAGE_TAG', defaultValue: 'liujun-v1.0', description: '镜像标签'),
-                 [$class: 'ChoiceParameter', 
-                  name: 'HOSTS', 
-                  choices: ['192.168.110.8', '192.168.110.9', '192.168.110.10', '192.168.110.11', '192.168.110.12', '192.168.110.13', '192.168.110.14', '192.168.110.15', '192.168.110.16', '192.168.110.17'], 
-                  description: '目标主机（支持多选）', 
-                  multiSelect: true],
-                 string(name: 'HARBOR_REGISTRY', defaultValue: 'harbor.labworlds.cc', description: '镜像仓库地址'),
-                 string(name: 'DOCKER_RUN', defaultValue: 'docker run -d -p 9006:8080', description: 'Docker 运行命令')
-             ])
-         ])
-         pipeline {
-             agent any
-             stages {
-                 stage('Print Docker CD Parameters for go-starter') {
-                     steps {
-                         echo "部署 go-starter 参数如下："
-                         echo "项目名称：${params.PROJECT_NAME}"
-                         echo "Git 分支：${params.GIT_BRANCH}"
-                         echo "镜像标签：${params.IMAGE_TAG}"
-                         echo "目标主机：${params.HOSTS}"
-                         echo "镜像仓库地址：${params.HARBOR_REGISTRY}"
-                         echo "Docker 运行命令：${params.DOCKER_RUN}"
-                     }
-                 }
-             }
-         }
-         ```
+            ```groovy
+            properties([
+                parameters([
+                    string(name: 'PROJECT_NAME', defaultValue: 'go-starter', description: '项目名称'),
+                    string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git 分支'),
+                    string(name: 'IMAGE_TAG', defaultValue: 'liujun-v1.0', description: '镜像标签'),
+                    extendedChoice(
+                        name: 'HOSTS', 
+                        type: 'PT_CHECKBOX', 
+                        value: '192.168.110.8,192.168.110.9,192.168.110.10,192.168.110.11', 
+                        description: '目标主机（支持多选）'
+                    ),
+                    string(name: 'HARBOR_REGISTRY', defaultValue: 'harbor.labworlds.cc', description: '镜像仓库地址'),
+                    string(name: 'DOCKER_RUN', defaultValue: 'docker run -d -p 9006:8080', description: 'Docker 运行命令')
+                ])
+            ])
+            pipeline {
+                agent any
+                stages {
+                    stage('Print Docker CD Parameters for go-starter') {
+                        steps {
+                            echo "部署 go-starter 参数如下："
+                            echo "项目名称：${params.PROJECT_NAME}"
+                            echo "Git 分支：${params.GIT_BRANCH}"
+                            echo "镜像标签：${params.IMAGE_TAG}"
+                            echo "目标主机：${params.HOSTS}"
+                            echo "镜像仓库地址：${params.HARBOR_REGISTRY}"
+                            echo "Docker 运行命令：${params.DOCKER_RUN}"
+                        }
+                    }
+                }
+            }
+            ```
      - **配置管理 admin3-server**：
        - 参数：
          - `DATA`：配置文件内容，文本类型，默认值为空（可手动输入或从文件读取）。
          - `FILEPATH`：文件路径，字符串类型，默认值 `/opt/admin3-server/application.yml`。
          - `HOSTS`：目标主机，多选类型，默认值 `192.168.110.17`，选项列表为 `192.168.110.8` 到 `192.168.110.17`。
        - 输出脚本（仅 `echo` 示例）：
-         ```groovy
-         properties([
-             parameters([
-                 text(name: 'DATA', defaultValue: '', description: '配置文件内容'),
-                 string(name: 'FILEPATH', defaultValue: '/opt/admin3-server/application.yml', description: '文件路径'),
-                 [$class: 'ChoiceParameter', 
-                  name: 'HOSTS', 
-                  choices: ['192.168.110.8', '192.168.110.9', '192.168.110.10', '192.168.110.11', '192.168.110.12', '192.168.110.13', '192.168.110.14', '192.168.110.15', '192.168.110.16', '192.168.110.17'], 
-                  description: '目标主机（支持多选）', 
-                  multiSelect: true]
-             ])
-         ])
-         pipeline {
-             agent any
-             stages {
-                 stage('Print Config Manager Parameters for admin3-server') {
-                     steps {
-                         echo "配置文件管理 admin3-server 参数如下："
-                         echo "文件路径：${params.FILEPATH}"
-                         echo "目标主机：${params.HOSTS}"
-                         echo "配置文件内容：\n${params.DATA}"
-                     }
-                 }
-             }
-         }
-         ```
-     - **部署 admin3-server**：
-       - 参数：
-         - `PROJECT_NAME`：项目名称，字符串类型，默认值 `admin3-server`。
-         - `GIT_BRANCH`：Git 分支，字符串类型，默认值 `master`。
-         - `IMAGE_TAG`：镜像标签，字符串类型，默认值 `zx-0802`。
-         - `HOSTS`：目标主机，多选类型，默认值 `192.168.110.8,192.168.110.17`，选项列表为 `192.168.110.8` 到 `192.168.110.17`。
-         - `HARBOR_REGISTRY`：镜像仓库地址，字符串类型，默认值 `harbor.labworlds.cc`。
-         - `DOCKER_RUN`：Docker 运行命令，字符串类型，默认值 `docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml`。
-       - 输出脚本（仅 `echo` 示例）：
-         ```groovy
-         properties([
-             parameters([
-                 string(name: 'PROJECT_NAME', defaultValue: 'admin3-server', description: '项目名称'),
-                 string(name: 'GIT_BRANCH', defaultValue: 'master', description: 'Git 分支'),
-                 string(name: 'IMAGE_TAG', defaultValue: 'zx-0802', description: '镜像标签'),
-                 [$class: 'ChoiceParameter', 
-                  name: 'HOSTS', 
-                  choices: ['192.168.110.8', '192.168.110.9', '192.168.110.10', '192.168.110.11', '192.168.110.12', '192.168.110.13', '192.168.110.14', '192.168.110.15', '192.168.110.16', '192.168.110.17'], 
-                  description: '目标主机（支持多选）', 
-                  multiSelect: true],
-                 string(name: 'HARBOR_REGISTRY', defaultValue: 'harbor.labworlds.cc', description: '镜像仓库地址'),
-                 string(name: 'DOCKER_RUN', defaultValue: 'docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml', description: 'Docker 运行命令')
-             ])
-         ])
-         pipeline {
-             agent any
-             stages {
-                 stage('Print Docker CD Parameters for admin3-server') {
-                     steps {
-                         echo "部署 admin3-server 参数如下："
-                         echo "项目名称：${params.PROJECT_NAME}"
-                         echo "Git 分支：${params.GIT_BRANCH}"
-                         echo "镜像标签：${params.IMAGE_TAG}"
-                         echo "目标主机：${params.HOSTS}"
-                         echo "镜像仓库地址：${params.HARBOR_REGISTRY}"
-                         echo "Docker 运行命令：${params.DOCKER_RUN}"
-                     }
-                 }
-             }
-         }
-         ```
+            ```groovy
+            properties([
+                parameters([
+                    text(name: 'DATA', defaultValue: '', description: '配置文件内容'),
+                    string(name: 'FILEPATH', defaultValue: '/opt/admin3-server/application.yml', description: '文件路径'),
+                    extendedChoice(
+                        name: 'HOSTS', 
+                        type: 'PT_CHECKBOX', 
+                        value: '192.168.110.8,192.168.110.9,192.168.110.10,192.168.110.11', 
+                        description: '目标主机（支持多选）'
+                    ),
+                ])
+            ])
+            pipeline {
+                agent any
+                stages {
+                    stage('Print Config Manager Parameters for admin3-server') {
+                        steps {
+                            echo "配置文件管理 admin3-server 参数如下："
+                            echo "文件路径：${params.FILEPATH}"
+                            echo "目标主机：${params.HOSTS}"
+                            echo "配置文件内容：\n${params.DATA}"
+                        }
+                    }
+                }
+            }
+            ```
    - **任务要求**：
      - 将以上四个场景的参数化配置整合到一个 Job 中，或者分别创建四个 Job，名称分别为：
        - `training-parameters-docker-cd-admin3-ui-liujun`
