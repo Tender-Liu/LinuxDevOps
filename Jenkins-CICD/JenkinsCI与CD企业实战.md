@@ -737,7 +737,7 @@ graph TD
            stages {
                stage('Print Hidden Param') {
                    steps {
-                       echo "隐藏参数值为：${params.param_hidden}"
+                       echo "隐藏参数值为：${params.hidden_param}"
                    }
                }
            }
