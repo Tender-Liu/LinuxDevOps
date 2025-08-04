@@ -940,6 +940,9 @@ graph TD
            agent any
            stages {
                stage('Print Boolean Param') {
+                   when {
+                       expression { params.IS_DEBUG == false }
+                   }
                    steps {
                        echo "Boolean 参数值为：${params.IS_DEBUG}"
                    }
