@@ -697,11 +697,11 @@ graph TD
   properties([
       parameters([
           parameters {
-              hidden {
-                  name('param_hidden')
-                  defaultValue('hidden_value')
-                  description('Hidden parameter')
-              }
+              hidden(
+                name: 'hidden_param',
+                defaultValue: 'hidden_value',
+                description: 'Hidden parameter'
+              )
           }
       ])
   ])
@@ -725,11 +725,11 @@ graph TD
        ```groovy
        properties([
           parameters([
-              hidden {
-                  name('param_hidden')
-                  defaultValue('hidden_value')
-                  description('Hidden parameter')
-              }
+              hidden(
+                name: 'hidden_param',
+                defaultValue: 'hidden_value',
+                description: 'Hidden parameter'
+              )
           ])
        ])
        pipeline {
