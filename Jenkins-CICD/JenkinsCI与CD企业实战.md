@@ -603,12 +603,10 @@ graph TD
    - 插件依赖：需要安装 `Hidden Parameter Plugin`。
 7. **extendedChoice 参数（多选框）**：
    - 描述：支持复选框、多选下拉框等多种形式，可选择多个选项并返回逗号分隔的字符串。
-   - 插件依赖：需要安装 `Extended Choice Parameter Plugin`。
-
+   - 插件依赖：需要安装 `Dynamic Extended Choice Parameter Plugin`。
 8. **activeChoiceParam（动态选择框）**：
    - 描述：通过 Groovy 脚本动态生成选项列表，支持根据时间、环境变量等条件生成不同选项。
    - 插件依赖：需要安装 `Active Choices Plugin`。
-
 9. **activeChoiceReactiveParam（联动选择框）**：
    - 描述：基于其他参数的选择值动态更新当前参数的选项列表，实现参数间的级联联动效果。
    - 插件依赖：需要安装 `Active Choices Plugin`。
@@ -1057,7 +1055,7 @@ graph TD
 
 #### 3.6 extendedChoice 参数（多选框）
 - **功能**：支持复选框、多选下拉框等多种形式，可选择多个选项并返回逗号分隔的字符串。
-- **插件依赖**：需要安装 `Extended Choice Parameter Plugin`。
+- **插件依赖**：需要安装 `Dynamic Extended Choice Parameter Plugin`。
 - **语法**：
     ```groovy
     properties([
@@ -1159,7 +1157,7 @@ graph TD
 
 #### 3.7 extendedChoice 参数（单选按钮）
 - **功能**：以单选按钮的形式展示选项，用户只能选择一个选项。
-- **插件依赖**：需要安装 `Extended Choice Parameter Plugin`。
+- **插件依赖**：需要安装 `Dynamic Extended Choice Parameter Plugin`。
 - **语法**：
     ```groovy
     properties([
