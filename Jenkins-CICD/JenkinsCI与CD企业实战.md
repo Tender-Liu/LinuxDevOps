@@ -238,43 +238,43 @@
   - **注意事项**：新密码要足够复杂（建议包含字母、数字和符号），并妥善保存，避免忘记。如果忘记密码，可以通过文件 `/var/lib/jenkins/secrets/initialAdminPassword` 重置，但需要服务器权限。
 - **常用插件及其作用（面向小白的解释，补充完整版）**：  
   以下是 Jenkins 中最常用的几款插件，每个插件的作用通过比喻和实际功能详细讲解，帮助你理解它们在 CI/CD 流程中的价值。特别补充了与参数化构建和代码中提到的功能相关的插件。
-  1. **Git Plugin**：
+  1. **Git Plugin(1-15)**：
      - **作用**：让 Jenkins 能从 Git 仓库（如 GitHub、GitLab）拉取代码，支持多种 Git 操作。
      - **比喻**：就像给工厂管家装上一个“原料收集器”，它能自动去仓库拿最新材料（代码），不管材料放在哪个仓库（GitHub 或 GitLab），它都能找到并带回来。
      - **使用场景**：如果你用 Git 管理代码（几乎所有现代开发都用），这个插件是必装的。比如，你写完代码推送到 GitHub，Jenkins 就能立刻检测到变化并开始构建。
      - **代码关联**：在你的 `Jenkinsfile` 中，`Git Pull` 阶段使用了 `checkout` 和 `git` 命令来拉取代码，这依赖于 Git Plugin。
-  2. **Pipeline Plugin**：
+  2. **Pipeline Plugin(1-28)**：
      - **作用**：支持用脚本（Jenkinsfile）定义整个 CI/CD 流程，允许你把构建、测试、部署写成代码，版本化管理。
      - **比喻**：就像给管家一个“详细的工作手册”，你可以用文字告诉它“先搅拌，再烘焙，最后送货”，而且这手册可以存档、修改、复用，比手动点按钮更高效。
      - **使用场景**：适合复杂项目，比如一个流程有多个步骤（构建前端、后端、测试、部署），用 Pipeline 脚本能清晰定义每个步骤，还能复用到其他项目。
      - **代码关联**：你的整个脚本是一个 Pipeline 脚本，定义了从代码拉取到部署的完整流程，这依赖于 Pipeline Plugin。
-  3. **Blue Ocean Plugin**：
+  3. **Blue Ocean Plugin(1-15)**：
      - **作用**：提供一个现代化的 UI 界面，展示 Pipeline 流程，比默认界面更直观，方便查看构建状态和日志。
      - **比喻**：就像把工厂老旧的“黑白仪表盘”换成“彩色触摸屏”，你能一眼看到每台机器（每个流程步骤）在干什么，哪里出了问题一目了然。
      - **使用场景**：对新手特别友好，比如你运行一个复杂流程，Blue Ocean 会用图形展示每个阶段是否成功，点击就能看详细错误信息。
-  4. **Maven Integration Plugin**：
+  4. **Maven Integration Plugin（不装）**：
      - **作用**：支持用 Maven 构建 Java 项目，Jenkins 能自动运行 Maven 命令（如 `mvn clean install`）来编译、测试、打包代码。
      - **比喻**：就像给管家装上一个“专业搅拌机”，专门处理 Java 项目的原料（代码），能自动完成搅拌（编译）和检查（测试）。
      - **使用场景**：如果你开发 Java 项目，这个插件必装。比如，Jenkins 可以用 Maven 自动构建 Spring Boot 应用并生成 JAR 文件。
-  5. **Docker Plugin**：
+  5. **Docker Plugin（不装）**：
      - **作用**：让 Jenkins 能与 Docker 交互，比如构建 Docker 镜像、运行容器、部署应用。
      - **比喻**：就像给管家一个“集装箱工具”，它能把蛋糕（应用）装进标准集装箱（Docker 镜像），然后在任何地方快速摆摊卖（部署到任何服务器）。
      - **使用场景**：现代微服务项目常用 Docker，比如你可以用 Jenkins 构建一个 Node.js 应用的镜像，然后推送到 Docker Hub。
      - **代码关联**：在你的 `Jenkinsfile` 中，`Docker Build` 阶段使用了 `docker build` 和 `docker push` 命令，这需要 Docker Plugin 支持 Jenkins 与 Docker 交互。
-  6. **Email Extension Plugin**：
+  6. **Email Extension Plugin(就2个)**：
      - **作用**：增强 Jenkins 的邮件通知功能，可以自定义邮件内容、收件人、触发条件。
      - **比喻**：就像给管家装上一个“智能电话”，一旦工厂出问题（构建失败）或生产完成（构建成功），它会立刻打电话通知你，还能详细说明情况。
      - **使用场景**：团队协作时很重要，比如构建失败时通知开发人员，构建成功时通知测试人员。
-  7. **Credentials Plugin**：
+  7. **Credentials Plugin（就一个）**：
      - **作用**：安全地管理用户名、密码、API 密钥等敏感信息，避免直接在脚本中硬编码。
      - **比喻**：就像给管家一个“保险箱”，把工厂大门的钥匙（密码）、仓库的通行证（API 密钥）都锁进去，只有需要时才拿出来用，防止被偷。
      - **使用场景**：连接 GitHub、Docker Hub 或服务器时需要输入密码，用这个插件可以安全保存，不用担心泄露。
      - **代码关联**：在你的 `Jenkinsfile` 中，`credentialsId` 用于指定 Git 仓库的访问凭据（如 `4c4463c8-1c2b-480d-91f1-46ca481f08ab`），这依赖于 Credentials Plugin 来安全存储和调用这些凭据。
-  8. **Publish Over SSH Plugin**：
+  8. **Publish Over SSH Plugin（一个）**：
      - **作用**：通过 SSH 将构建产物（文件、包）发布到远程服务器。
      - **比喻**：就像给管家一个“远程传送器”，它能把做好的蛋糕（构建的文件）直接传送到客户家（目标服务器），不用你亲自送。
      - **使用场景**：部署应用到生产环境时常用，比如把 WAR 文件传到 Tomcat 服务器。
-  9. **Build User Vars Plugin**：
+  9. **Build User Vars Plugin（一个）**：
       - **作用**：提供构建任务的触发者信息（如用户名），可以在脚本中获取并用于通知或权限控制。
       - **比喻**：就像给管家一个“签名簿”，记录是谁下达了生产命令（触发构建），方便后续追踪或通知这个人。
       - **使用场景**：需要根据触发构建的用户发送通知或限制操作权限时使用。
@@ -282,7 +282,7 @@
       - **安装步骤**：
         1. 进入“Manage Jenkins” > “Manage Plugins” > “Available”选项卡。
         2. 搜索 `Build User Vars`，安装该插件。
-  10. **Active Choices Plugin（参数化构建插件）**：
+  10. **Active Choices Plugin（参数化构建插件）（一个）**：
       - **作用**：允许在构建任务时动态生成参数选项，比如从 Git 仓库拉取分支列表供用户选择，或者根据输入值动态生成选项。
       - **比喻**：就像管家问你“要用哪个仓库的材料？”，然后列出所有可用选项供你挑，不用自己手动输入，减少出错。
       - **使用场景**：多分支开发时，选择要构建的分支；多环境部署时，选择目标环境（如测试服、生产服）。
@@ -298,7 +298,7 @@
            return ['main', 'dev', 'feature/new-feature']
            ```
         4. 保存后，构建任务时会显示下拉菜单供用户选择参数。
-  11. **Parameterized Build Plugin（基础参数化构建插件）**：
+  11. **Parameterized Build Plugin（基础参数化构建插件）（一个）**：
       - **作用**：支持在构建任务中添加各种类型的参数，如字符串（String）、选择（Choice）、文本（Text）、隐藏（Hidden）等，让用户在触发构建时输入或选择值。
       - **比喻**：就像让管家记住你手动写的“订单号”（String Parameter），或者从“菜单”中选一个固定的菜品（Choice Parameter）。
       - **使用场景**：简单任务中需要用户输入版本号、环境名称等信息，或者隐藏一些不需要用户修改的默认值。
@@ -308,7 +308,7 @@
         - 隐藏参数：`hidden(name: "jobName", defaultValue: "${JOB_NAME}")`，用于存储默认值，不显示给用户。
         - 字符串参数：`string(name: 'git_branch', defaultValue: "", description: 'Github仓库分支')`，让用户输入 Git 分支名。
         - 文本参数：`text(name: 'meme', defaultValue: "", description: '本次发布的内容详情')`，让用户输入多行文本描述。
-  12. **Scriptler Plugin**：
+  12. **Scriptler Plugin（一个）**：
       - **作用**：允许在 Jenkins 中管理和运行 Groovy 脚本，方便复用代码逻辑或从外部文件加载脚本。
       - **比喻**：就像给管家一个“脚本库”，里面存了很多常用指令（Groovy 脚本），需要时直接调用，不用每次都重新写。
       - **使用场景**：复杂 Pipeline 中需要复用逻辑时，可以将脚本存储在 Scriptler 中，并在多个任务中调用。
