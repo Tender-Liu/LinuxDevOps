@@ -1272,7 +1272,7 @@ graph TD
                 $class: 'CascadeChoiceParameter',
                 name: 'CITIES',
                 referencedParameters: 'REGION',
-                choiceType: 'PT_MULTI_SELECT',
+                choiceType: 'PT_CHECKBOX',
                 script: [
                     $class: 'GroovyScript',
                     fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
@@ -1303,7 +1303,7 @@ graph TD
   | `$class`               | 指定参数类型为级联选择参数，固定值为 `CascadeChoiceParameter`。       |
   | `name`                 | 参数的唯一标识符，用于在 Pipeline 中引用该参数。                     |
   | `referencedParameters` | 引用的参数名称，用于联动，通常是其他参数的 `name` 值。               |
-  | `choiceType`           | 选择类型，`PT_SINGLE_SELECT` 为单选，`PT_MULTI_SELECT` 为多选。      |
+  | `choiceType`           | 选择类型，`PT_RADIO` 为单选，`PT_CHECKBOX` 为多选。      |
   | `script`               | 动态生成选项的 Groovy 脚本，基于引用的参数值返回选项列表。          |
   | `fallbackScript`       | 脚本执行失败时的备用脚本，通常返回默认或错误提示选项。               |
   | `description`          | 参数的描述信息，显示在用户界面上，帮助用户理解参数的作用。           |
