@@ -206,7 +206,7 @@
 
 
 
-python3 /home/ubuntu/PyDockerDeploy/deployer.py \
+python3 /root/PyDockerDeploy/deployer.py \
     -p admin3-ui \
     --git_branch master \
     --image_tag liujun-0802 \
@@ -214,7 +214,7 @@ python3 /home/ubuntu/PyDockerDeploy/deployer.py \
     --harbor_registry harbor.labworlds.cc \
     --docker_run "docker run -d -p 8000:80"
 
-python3 /home/ubuntu/PyDockerDeploy/deployer.py \
+python3 /root/PyDockerDeploy/deployer.py \
     -p go-starter \
     --git_branch master \
     --image_tag liujun-v1.0 \
@@ -223,13 +223,13 @@ python3 /home/ubuntu/PyDockerDeploy/deployer.py \
     --docker_run "docker run -d -p 9006:8080"
 
 
-python3 /home/ubuntu/PyDockerDeploy/config_manager.py \
---data """$(cat /home/ubuntu/admin3/admin3-server/application.yml)""" \
+python3 /root/PyDockerDeploy/config_manager.py \
+--data """$(cat //root/admin3/admin3-server/application.yml)""" \
 --filepath "/opt/admin3-server/application.yml" \
 --hosts "192.168.110.17"
 
 
-python3 /home/ubuntu/PyDockerDeploy/deployer.py \
+python3 /root/PyDockerDeploy/deployer.py \
   -p admin3-server \
   --git_branch master \
   --image_tag zx-0802 \
