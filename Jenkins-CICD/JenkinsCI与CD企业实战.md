@@ -167,8 +167,8 @@
             ```
         3. 批量修改jenkins插件源
         ```bash
-        sed -i 's#www.google.com#https:/www.baidu.com#g' default.json
-        sed -i 's#http://updates.jenkins-ci.org/download#https://mirrors.huaweicloud.com/jenkins/#g' default.json
+        sed -i 's#www.google.com#https:/www.baidu.com#g' /var/lib/jenkins/updates/default.json
+        sed -i 's#http://updates.jenkins-ci.org/download#https://mirrors.huaweicloud.com/jenkins/#g' /var/lib/jenkins/updates/default.json
         ```
   6. **以 root 用户启动 Jenkins**：
      ```bash
@@ -282,7 +282,7 @@
       - **安装步骤**：
         1. 进入“Manage Jenkins” > “Manage Plugins” > “Available”选项卡。
         2. 搜索 `Build User Vars`，安装该插件。
-  10. **Active Choices Plugin（参数化构建插件）（一个）**：
+  10. **Active Choices Plugin（参数化构建插件）（2个）**：
       - **作用**：允许在构建任务时动态生成参数选项，比如从 Git 仓库拉取分支列表供用户选择，或者根据输入值动态生成选项。
       - **比喻**：就像管家问你“要用哪个仓库的材料？”，然后列出所有可用选项供你挑，不用自己手动输入，减少出错。
       - **使用场景**：多分支开发时，选择要构建的分支；多环境部署时，选择目标环境（如测试服、生产服）。
