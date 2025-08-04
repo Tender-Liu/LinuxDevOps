@@ -696,10 +696,13 @@ graph TD
   ```groovy
   properties([
       parameters([
-          [$class: 'WHideParameterDefinition', 
-           name: 'HIDDEN_PARAM', 
-           defaultValue: 'secret-value', 
-           description: '隐藏的内部参数']
+          parameters {
+              hidden {
+                  name('param_hidden')
+                  defaultValue('hidden_value')
+                  description('Hidden parameter')
+              }
+          }
       ])
   ])
   ```
@@ -721,19 +724,20 @@ graph TD
      - 在 Job 配置页面，滚动到“Pipeline”部分，输入以下脚本：
        ```groovy
        properties([
-           parameters([
-               [$class: 'WHideParameterDefinition', 
-                name: 'HIDDEN_PARAM', 
-                defaultValue: 'secret-config-value', 
-                description: '隐藏的内部配置参数']
-           ])
+          parameters([
+              hidden {
+                  name('param_hidden')
+                  defaultValue('hidden_value')
+                  description('Hidden parameter')
+              }
+          ])
        ])
        pipeline {
            agent any
            stages {
                stage('Print Hidden Param') {
                    steps {
-                       echo "隐藏参数值为：${params.HIDDEN_PARAM}"
+                       echo "隐藏参数值为：${params.param_hidden}"
                    }
                }
            }
