@@ -78,6 +78,7 @@
          ```bash
          sudo apt update
          sudo apt install fontconfig openjdk-21-jre -y
+         sudo apt install git -y
          java -version
          ```
        - 说明：运行 `java -version` 确认 OpenJDK 安装成功，输出应包含类似 `openjdk 21` 的信息。
@@ -286,7 +287,7 @@
   - 然后编写 Pipeline 脚本，让用户可以选择分支（Branch）或标签（Tag）来拉取代码，并在特定 Agent 节点上执行任务。
   - 本节提供完整代码案例，并为每一行添加详细注释，方便学员学习和课后实践。
 - **操作步骤（结合流程图）**：
-  - 配置和拉取代码流程图（用 Mermaid 表示，方便学员理解步骤）：
+配置和拉取代码流程图（用 Mermaid 表示，方便学员理解步骤）：
     ```mermaid
     flowchart TD
         A[生成 SSH 公私钥对] --> B[将公钥添加到 Git 仓库]
@@ -294,51 +295,60 @@
         C --> D[编写 Pipeline 拉取代码]
         D --> E[运行 Pipeline 测试拉取]
     ```
+
   1. **生成 SSH 公私钥对**：
-     - **理论解释**：SSH 密钥就像一对门锁和钥匙，公钥（锁）放在 Git 仓库，私钥（钥匙）给 Jenkins，用来打开仓库大门。
-     - **实践步骤**：
-       - 在本地或服务器上生成密钥对，命令如下（供学员参考，现场可使用预生成的密钥）：
-         ```bash
-         ssh-keygen -t rsa -b 4096 -C "Jenkins Git Access" -N "" -f ~/.ssh/jenkins-git-key
-         ```
-       - 说明：`-t rsa` 指定加密类型，`-b 4096` 设置密钥强度，`-C` 是注释，`-N ""` 表示无密码，`-f` 指定文件路径。
-       - 生成后，公钥文件是 `~/.ssh/jenkins-git-key.pub`，私钥文件是 `~/.ssh/jenkins-git-key`。
+  - **理论解释**：SSH 密钥就像一对门锁和钥匙，公钥（锁）放在 Git 仓库，私钥（钥匙）给 Jenkins，用来打开仓库大门。
+  - **实践步骤**：
+    - 在本地或服务器上生成密钥对，命令如下（供学员参考，现场可使用预生成的密钥）：
+      ```bash
+      ssh-keygen -t rsa -b 4096 -C "Jenkins Git Access" -N "" -f ~/.ssh/jenkins-git-key
+      ```
+    - 说明：`-t rsa` 指定加密类型，`-b 4096` 设置密钥强度，`-C` 是注释，`-N ""` 表示无密码，`-f` 指定文件路径。
+    - 生成后，公钥文件是 `~/.ssh/jenkins-git-key.pub`，私钥文件是 `~/.ssh/jenkins-git-key`。
   2. **将公钥添加到 Git 仓库（如 Gitee）**：
-     - **理论解释**：公钥就像你告诉仓库：“这是我的身份证明，允许持有对应私钥的人进来。”
-     - **实践步骤**：
-       - 登录 Gitee 账户，进入“设置 > SSH 公钥”。
-       - 复制公钥内容（`cat ~/.ssh/jenkins-git-key.pub`），粘贴到 Gitee 的公钥输入框，保存。
-       - 说明：每个仓库或平台（如 GitHub、GitLab）都需要添加公钥，确保 Jenkins 能访问目标仓库。
+    - **理论解释**：公钥就像你告诉仓库：“这是我的身份证明，允许持有对应私钥的人进来。”
+    - **实践步骤**：
+      - 登录 Gitee 账户，进入“设置 > SSH 公钥”。
+      - 复制公钥内容（`cat ~/.ssh/jenkins-git-key.pub`），粘贴到 Gitee 的公钥输入框，保存。
+      - 说明：每个仓库或平台（如 GitHub、GitLab）都需要添加公钥，确保 Jenkins 能访问目标仓库。
   3. **将私钥存储到 Jenkins 凭据管理**：
-     - **理论解释**：私钥是访问仓库的钥匙，必须安全存放在 Jenkins 里，就像把钥匙锁在保险箱，只有需要时拿出来用。
-     - **实践演示**：
-       - 登录 Jenkins UI，进入“Manage Jenkins > Manage Credentials”。
-       - 点击“Add Credentials”，选择类型为“SSH Username with private key”。
-       - 设置参数：
-         - ID：`git-ssh-key`（凭据的唯一标识，供 Pipeline 使用）。
-         - Description：`SSH Key for Git Access`（描述，方便识别）。
-         - Username：`git`（或你的 Git 用户名）。
-         - Private Key：选择“Enter directly”，粘贴你的私钥内容（`cat ~/.ssh/jenkins-git-key` 获取）。
-       - 保存凭据，确保私钥安全存储在 Jenkins 中。
-     - **注意**：私钥非常重要，不要泄露，Jenkins 会加密存储，防止被盗用。
+    - **理论解释**：私钥是访问仓库的钥匙，必须安全存放在 Jenkins 里，就像把钥匙锁在保险箱，只有需要时拿出来用。
+    - **实践演示**：
+      - 登录 Jenkins UI，进入“Manage Jenkins > Manage Credentials”。
+      - 点击“Add Credentials”，选择类型为“SSH Username with private key”。
+      - 设置参数：
+        - ID：`git-ssh-key`（凭据的唯一标识，供 Pipeline 使用）。
+        - Description：`SSH Key for Git Access`（描述，方便识别）。
+        - Username：`git`（或你的 Git 用户名）。
+        - Private Key：选择“Enter directly”，粘贴你的私钥内容（`cat ~/.ssh/jenkins-git-key` 获取）。
+      - 保存凭据，确保私钥安全存储在 Jenkins 中。
+    - **注意**：私钥非常重要，不要泄露，Jenkins 会加密存储，防止被盗用。
   4. **配置 SSH 配置文件**（推荐）：
-     - 在每台主机上编辑或创建 `~/.ssh/config` 文件（如果没有则创建）。
-     - 添加以下内容，指定连接 Gitee 时使用的私钥文件：
-       ```bash
-       Host gitee.com
-           HostName gitee.com
-           User git
-           IdentityFile ~/.ssh/jenkins-git-key
-           IdentitiesOnly yes
-       ```
-     - 说明：`IdentityFile` 指定私钥路径，`IdentitiesOnly yes` 确保只使用指定的密钥。
+    - 在每台主机上编辑或创建 `~/.ssh/config` 文件（如果没有则创建）。
+    - 添加以下内容，指定连接 Gitee 时使用的私钥文件：
+      ```bash
+      Host gitee.com
+          HostName gitee.com
+          User git
+          IdentityFile ~/.ssh/jenkins-git-key
+          IdentitiesOnly yes
+      ```
+    - 说明：`IdentityFile` 指定私钥路径，`IdentitiesOnly yes` 确保只使用指定的密钥。
   5. **设置文件权限**：
      - 确保私钥文件和配置文件权限正确，运行以下命令：
        ```bash
        chmod 600 ~/.ssh/jenkins-git-key ~/.ssh/config
        ```
      - 说明：权限 `600` 表示只有文件拥有者可读写，SSH 要求严格的权限设置，否则会拒绝使用。
-  6. **编写 Pipeline 脚本拉取代码**：
+  6. **配置 Git 主机密钥验证**：
+    - **理论解释**：Jenkins 在首次连接 Git 仓库时会验证主机密钥，以确保连接的安全性。如果没有预先配置，可能会因为未知主机密钥导致拉取代码失败。将其设置为“No verification”可以跳过此验证，适合测试环境或信任的内部网络。
+    - **实践步骤**：
+      - 登录 Jenkins UI，进入“Manage Jenkins > Security”。
+      - 找到“Git Host Key Verification Configuration”选项。
+      - 将其设置为“No verification”（无验证）。
+      - 保存配置。
+    - **注意**：在生产环境中，建议使用“Known hosts file”或手动添加主机密钥以确保安全性，避免潜在的中间人攻击。
+  7. **编写 Pipeline 脚本拉取代码**：
      - **理论解释**：Pipeline 就像一份任务清单，告诉 Jenkins 去哪个仓库拿代码，拿哪个分支或标签，拿完后做什么。
      - **实践演示**：以下是一个完整的 Pipeline 脚本案例，包含用户参数选择（如分支、标签）和 Git 代码拉取逻辑，每行代码都有详细注释，方便学习。
        ```groovy
