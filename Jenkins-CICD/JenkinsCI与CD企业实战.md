@@ -1323,7 +1323,7 @@ graph TD
                     $class: 'CascadeChoiceParameter',
                     name: 'CITY',
                     referencedParameters: 'REGION',
-                    choiceType: 'PT_CHECKBOX',
+                    choiceType: 'PT_RADIO',
                     script: [
                         $class: 'GroovyScript',
                         fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
@@ -1394,7 +1394,7 @@ graph TD
                     $class: 'CascadeChoiceParameter',
                     name: 'CITIES',
                     referencedParameters: 'REGION',
-                    choiceType: 'PT_MULTI_SELECT',
+                    choiceType: 'PT_CHECKBOX',
                     script: [
                         $class: 'GroovyScript',
                         fallbackScript: [classpath: [], sandbox: true, script: 'return ["请先选择地区"]'],
