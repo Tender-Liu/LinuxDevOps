@@ -89,7 +89,7 @@
          ssh-keygen -p -m PEM -f ~/.ssh/id_rsa
          ```
      - **实践演示**：
-       - 登录 Jenkins UI，进入“Manage Jenkins > Manage Credentials”。
+       - 登录 Jenkins UI，进入“Manage Jenkins > Manage Credentials > Stores scoped to Jenkins里面有个System > Global credentials (unrestricted) ”。
        - 点击“Add Credentials”，选择类型为“SSH Username with private key”。
        - 设置参数：
          - ID：`agent-ssh-key`（凭据的唯一标识，供后续使用）。
@@ -104,7 +104,7 @@
        - 登录 Jenkins UI，进入“Manage Jenkins > Manage Nodes and Clouds > New Node”。
        - 输入节点名称（如 `node-192.168.110.6-shiqi`），选择“Permanent Agent”。
        - 配置参数：
-         - Remote root directory：`/home/jenkins/agent`（Agent 工作目录，就像给助手安排一个办公桌）。
+         - Remote root directory：`/home/ubuntu/jenkins/agent`（Agent 工作目录，就像给助手安排一个办公桌）。
          - Labels：`node-192.168.110.6-shiqi`（标签，就像给助手贴上“擅长构建”的标记）。
          - Launch method：选择“Launch via SSH”（通过 SSH 连接）。
          - Host：Agent 的 IP 地址（例如 `192.168.110.6`，Docker 模拟时为宿主机 IP）。
