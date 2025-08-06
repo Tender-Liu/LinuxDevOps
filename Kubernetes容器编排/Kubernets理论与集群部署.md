@@ -579,6 +579,20 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
     sudo systemctl restart containerd
     sudo systemctl enable containerd
     ```
+ - 9.9 测试一下能不能拉去镜像
+    ```bash
+    # 输出显示镜像成功拉取，包括 manifest 和 layers 均显示 "done"，表明 HTTP 下载配置有效。
+    sudo ctr image pull --user admin:admin123 --plain-http=true harbor.labworlds.cc/go-starter/dev:lbw-v1.0
+
+    # 输出应显示 harbor.labworlds.cc/go-starter/dev:lbw-v1.0 镜像存在于列表中，确认镜像已下载到 Containerd 的存储中
+    sudo ctr images ls
+
+    # 如果 Containerd 已配置支持 HTTP 明文传输（通过 hosts.toml 或其他方式），此命令应成功拉取镜像并显示进度和完成信息
+    sudo crictl pull --creds admin:admin123 harbor.labworlds.cc/go-starter/dev:lbw-v1.0
+
+    # 查看Containerd 镜像
+    crictl images
+    ```
 ##### 10. **配置 kubelet、kubeadm、kubectl：**
 - 配置 Kubernetes 组件安装源并安装。
 - 命令：
