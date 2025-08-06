@@ -892,12 +892,12 @@ pipeline {
                             extensions: [],
                             userRemoteConfigs: [[
                                 credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca',
-                                url: 'git@gitee.com:Tender-Liu/admin3-ui.git'
+                                url: 'git@gitee.com:Tender-Liu/admin3.git'
                             ]]
                         ])
                         branch = params.git_tag
                     } else {
-                        git credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca', url: 'git@gitee.com:Tender-Liu/admin3-ui.git', branch: "${params.git_branch}"
+                        git credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca', url: 'git@gitee.com:Tender-Liu/admin3.git', branch: "${params.git_branch}"
                         branch = params.git_branch
                     }
                 }
@@ -910,7 +910,7 @@ pipeline {
             }
             steps {
                 script {
-                    sh "sed -i 's|^VITE_BASE_URI=.*|VITE_BASE_URI=${params.domain}|' .env"
+                    sh "sed -i 's|^VITE_BASE_URI=.*|VITE_BASE_URI=${params.domain}|' ./admin3-ui/.env"
                 }
             }
         }
@@ -922,7 +922,7 @@ pipeline {
             steps {
                 script {
                     def docker_image_name = "${params.harbor_registry}/${params.project_name}/${branch}:${image_tag}"
-                    sh "docker build -t ${docker_image_name} ."
+                    sh "cd ./admin3-ui && docker build -t ${docker_image_name} ."
                     sh "docker push ${docker_image_name}"
                     sh "docker rmi ${docker_image_name}"
                 }
@@ -1446,7 +1446,7 @@ pipeline {
             steps {
                 script {
                     def docker_image_name = "${params.harbor_registry}/${params.project_name}/${branch}:${image_tag}"
-                    sh "docker build -t ${docker_image_name} ."
+                    sh "cd ./admin3-server && docker build -t ${docker_image_name} ."
                     sh "docker push ${docker_image_name}"
                     sh "docker rmi ${docker_image_name}"
                 }
