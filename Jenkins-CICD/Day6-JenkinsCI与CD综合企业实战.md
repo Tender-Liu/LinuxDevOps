@@ -782,16 +782,6 @@ pipeline {
                 echo "Env Edit 阶段，具体步骤将在后续实现"
             }
         }
-        // 阶段 3：编译代码 - 占位阶段
-        stage('Compile Code') {
-            when {
-                expression { params.rendering == false && (params.git_branch != "" || params.git_tag != "") }
-            }
-            steps {
-                // 占位符，具体实现将在后续阶段添加
-                echo "Compile Code 阶段，具体步骤将在后续实现"
-            }
-        }
         // 阶段 4：构建镜像 - 占位阶段
         stage('Build Image') {
             when {
@@ -921,18 +911,6 @@ pipeline {
             steps {
                 script {
                     sh "sed -i 's|^VITE_BASE_URI=.*|VITE_BASE_URI=${params.domain}|' .env"
-                }
-            }
-        }
-        // 阶段 3：编译代码
-        stage('Compile Code') {
-            when {
-                expression { params.rendering == false && (params.git_tag != "" || params.git_branch != "") }
-            }
-            steps {
-                script {
-                    sh "npm install"
-                    sh "npm run build"
                 }
             }
         }
@@ -1313,17 +1291,7 @@ pipeline {
                 echo "Git Clone 阶段，具体步骤将在后续实现"
             }
         }
-        // 阶段 2：编译代码 - 占位阶段
-        stage('Compile Code') {
-            when {
-                expression { params.rendering == false && (params.git_branch != "" || params.git_tag != "") }
-            }
-            steps {
-                // 占位符，具体实现将在后续阶段添加
-                echo "Compile Code 阶段，具体步骤将在后续实现"
-            }
-        }
-        // 阶段 3：构建镜像 - 占位阶段
+        // 阶段 2：构建镜像 - 占位阶段
         stage('Build Image') {
             when {
                 expression { params.rendering == false && (params.git_branch != "" || params.git_tag != "") }
@@ -1467,17 +1435,6 @@ pipeline {
                         git credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca', url: 'git@gitee.com:Tender-Liu/admin3-server.git', branch: "${params.git_branch}"
                         branch = params.git_branch
                     }
-                }
-            }
-        }
-        // 阶段 2：编译代码
-        stage('Compile Code') {
-            when {
-                expression { params.rendering == false && (params.git_tag != "" || params.git_branch != "") }
-            }
-            steps {
-                script {
-                    sh "mvn clean package -DskipTests"
                 }
             }
         }
