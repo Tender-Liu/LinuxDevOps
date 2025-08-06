@@ -357,173 +357,247 @@
 ### 节点前置准备工作
 - **内容目标：** 指导学员完成所有节点（3 台 Master + 2 台 Node）的环境配置，确保后续集群搭建顺利进行。以下步骤适用于 Ubuntu 系统（以 Ubuntu 24.04 Noble 为例），使用阿里云镜像源。
 - **团队分工：** 5 位同学分别负责 1 台设备（3 台 Master + 2 台 Node），每人执行相同的前置步骤，互相帮助，教师或助教巡回指导。
-- **详细步骤：**
-  1. **主机名与 IP 规划（10 分钟）：**
-     - 确保每台设备有唯一主机名和静态 IP，方便识别和管理。
-     - 示例规划：
-       - Master 1：`k8s-master1`，IP：`192.168.1.101`
-       - Master 2：`k8s-master2`，IP：`192.168.1.102`
-       - Master 3：`k8s-master3`，IP：`192.168.1.103`
-       - Node 1：`k8s-node1`，IP：`192.168.1.201`
-       - Node 2：`k8s-node2`，IP：`192.168.1.202`
-     - 命令：
-       ```bash
-       # 设置主机名（以 k8s-master1 为例）
-       hostnamectl set-hostname k8s-master1
-       # 编辑 /etc/hosts 文件，添加所有节点映射
-       cat >> /etc/hosts << EOF
-       192.168.1.101 k8s-master1
-       192.168.1.102 k8s-master2
-       192.168.1.103 k8s-master3
-       192.168.1.201 k8s-node1
-       192.168.1.202 k8s-node2
-       EOF
-       ```
-     - 验证：`ping k8s-master2` 确保能通过主机名通信。
-  2. **修改源为国内阿里源：**
-     - 使用阿里云镜像源加速软件包下载。
-     - 命令：
-       ```bash
-       # 操作文件
-       vim /etc/apt/sources.list
-       # 替换为以下内容（适用于 Ubuntu 24.04 Noble）
-       deb https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse
-       deb-src https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse
-       deb https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse
-       deb-src https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse
-       deb https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse
-       deb-src https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse
-       deb https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse
-       deb-src https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse
-       ```
-     - 如果系统使用 `/etc/apt/sources.list.d/ubuntu.sources`，则相应修改该文件。
-  3. **刷新 apt 安装源缓存：**
-     - 命令：
-       ```bash
-       apt update && apt list --upgradable
-       ```
-  4. **关闭防火墙：**
-     - 避免防火墙阻断 Kubernetes 组件通信。
-     - 命令：
-       ```bash
-       systemctl stop ufw
-       systemctl disable ufw
-       ```
-  5. **修改内核参数与禁用 Swap 分区：**
-     - Kubernetes 官方要求禁用 Swap 并配置网络参数。
-     - 命令：
-       ```bash
-       sudo swapoff -a
-       sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
-       cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-       overlay
-       br_netfilter
-       EOF
+#### **详细步骤：**
+##### 1. **主机名与 IP 规划（10 分钟）：**
+- 确保每台设备有唯一主机名和静态 IP，方便识别和管理。
+- 示例规划：
+- Master 1：`k8s-master1`，IP：`192.168.1.101`
+- Master 2：`k8s-master2`，IP：`192.168.1.102`
+- Master 3：`k8s-master3`，IP：`192.168.1.103`
+- Node 1：`k8s-node1`，IP：`192.168.1.201`
+- Node 2：`k8s-node2`，IP：`192.168.1.202`
+- 命令：
+```bash
+# 设置主机名（以 k8s-master1 为例）
+hostnamectl set-hostname k8s-master1
+# 编辑 /etc/hosts 文件，添加所有节点映射
+cat >> /etc/hosts << EOF
+192.168.1.101 k8s-master1
+192.168.1.102 k8s-master2
+192.168.1.103 k8s-master3
+192.168.1.201 k8s-node1
+192.168.1.202 k8s-node2
+EOF
+```
+- 验证：`ping k8s-master2` 确保能通过主机名通信。
 
-       sudo modprobe overlay
-       sudo modprobe br_netfilter
+##### 2. **修改源为国内阿里源：**
+- 使用阿里云镜像源加速软件包下载。
+- 命令：
+```bash
+# 操作文件
+vim /etc/apt/sources.list
+# 替换为以下内容（适用于 Ubuntu 24.04 Noble）
+deb https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse
+deb-src https://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse
+deb https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse
+deb-src https://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse
+deb https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse
+deb-src https://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse
+deb https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse
+deb-src https://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse
+```
+- 如果系统使用 `/etc/apt/sources.list.d/ubuntu.sources`，则相应修改该文件。
 
-       cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-       net.bridge.bridge-nf-call-iptables  = 1
-       net.bridge.bridge-nf-call-ip6tables = 1
-       net.ipv4.ip_forward                 = 1
-       EOF
+##### 3. **刷新 apt 安装源缓存：**
+- 命令：
+```bash
+apt update && apt list --upgradable
+```
 
-       sudo sysctl --system
-       ```
-     - 验证：`free -m` 查看 Swap 使用量为 0。
-  6. **安装依赖插件：**
-     - 安装常用工具和依赖。
-     - 命令：
-       ```bash
-       sudo apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release net-tools ntpdate chrony
-       ```
-  7. **时间同步服务：**
-     - 确保所有主机时间同步，Kubernetes 通信要求时间差异在纳秒级。
-     - 命令：
-       ```bash
-       # 编辑文件
-       vim /etc/chrony/chrony.conf
-       # 注释掉默认 NTP 服务器，添加阿里云和腾讯云 NTP 服务器
-       server ntp.aliyun.com iburst
-       server cn.pool.ntp.org iburst
-       server ntp1.aliyun.com iburst
-       server ntp2.aliyun.com iburst
-       server ntp.tencent.com iburst
-       ```
-       ```bash
-       # 重启 chrony 服务，并加入开机自启
-       systemctl restart chrony
-       systemctl enable chrony
-       # 检查时间同步状态
-       chronyc sources
-       ```
-     - 验证：通过 `chronyc sources` 输出确认时间同步正常（可引导学员将输出结果询问 AI 助手以理解含义）。
-  8. **安装容器服务 Containerd 与 Docker 服务：**
-     - Kubernetes 依赖容器运行时，这里以 Docker 和 Containerd 为例。
-     - 命令：
-       ```bash
-       # 添加阿里云官方 GPG 密钥
-       curl -fsSL http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg | sudo apt-key add -
-       # 写入阿里云 Docker 仓库地址
-       sudo sh -c 'echo "deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list'
-       # 更新源
-       sudo apt-get update
-       # 安装 Containerd 和 Docker 服务
-       sudo dpkg --configure -a
-       sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-       ```
-  9. **修改 Docker 配置与 Containerd 下载镜像使用国内源：**
-     - 配置 Docker 使用国内镜像源加速镜像下载。
-     - 命令：
-       ```bash
-       vim /etc/docker/daemon.json
-       # 添加以下内容
-       {
-           "registry-mirrors": [
-               "https://dockerproxy.com",
-               "https://docker.m.daocloud.io",
-               "https://cr.console.aliyun.com",
-               "https://ccr.ccs.tencentyun.com",
-               "https://hub-mirror.c.163.com",
-               "https://mirror.baidubce.com",
-               "https://docker.nju.edu.cn",
-               "https://docker.mirrors.sjtug.sjtu.edu.cn",
-               "https://github.com/ustclug/mirrorrequest",
-               "https://registry.docker-cn.com"
-           ],
-           "insecure-registries": ["harbor.labworlds.cc"]
-       }
-       # 保存后加载配置并重启 Docker
-       sudo systemctl daemon-reload
-       sudo systemctl restart docker
-       sudo systemctl enable docker
-       # 登录 Harbor 镜像仓库
-       docker login harbor.labworlds.cc
-       账号: admin
-       密码: admin123
-       ```
-     - 验证：`docker info` 查看镜像源是否生效。
-  10. **配置 kubelet、kubeadm、kubectl：**
-      - 配置 Kubernetes 组件安装源并安装。
-      - 命令：
-        ```bash
-        curl -s https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | sudo apt-key add -
+##### 4. **关闭防火墙：**
+- 避免防火墙阻断 Kubernetes 组件通信。
+- 命令：
+```bash
+systemctl stop ufw
+systemctl disable ufw
+```
 
-        sudo tee /etc/apt/sources.list.d/kubernetes.list <<EOF
-        deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
-        EOF
+##### 5. **修改内核参数与禁用 Swap 分区：**
+- Kubernetes 官方要求禁用 Swap 并配置网络参数。
+- 命令：
+```bash
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
-        sudo apt-get update
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
 
-        # 安装 Kubernetes 组件
-        sudo apt-get install -y kubelet kubeadm kubectl
+sudo modprobe overlay
+sudo modprobe br_netfilter
 
-        # 锁住版本，避免自动更新导致兼容性问题
-        sudo apt-mark hold kubelet kubeadm kubectl
-        ```
-      - 验证：`kubeadm version` 查看是否安装成功。
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+sudo sysctl --system
+```
+- 验证：`free -m` 查看 Swap 使用量为 0。
+##### 6. **安装依赖插件：**
+- 安装常用工具和依赖。
+- 命令：
+```bash
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release net-tools ntpdate chrony
+```
+
+##### 7. **时间同步服务：**
+- 确保所有主机时间同步，Kubernetes 通信要求时间差异在纳秒级。
+- 命令：
+```bash
+# 编辑文件
+vim /etc/chrony/chrony.conf
+# 注释掉默认 NTP 服务器，添加阿里云和腾讯云 NTP 服务器
+server ntp.aliyun.com iburst
+server cn.pool.ntp.org iburst
+server ntp1.aliyun.com iburst
+server ntp2.aliyun.com iburst
+server ntp.tencent.com iburst
+```
+```bash
+# 重启 chrony 服务，并加入开机自启
+systemctl restart chrony
+systemctl enable chrony
+# 检查时间同步状态
+chronyc sources
+```
+- 验证：通过 `chronyc sources` 输出确认时间同步正常（可引导学员将输出结果询问 AI 助手以理解含义）。
+
+##### 8. **安装容器服务 Containerd 与 Docker 服务：**
+- Kubernetes 依赖容器运行时，这里以 Docker 和 Containerd 为例。
+- 命令：
+```bash
+# 添加阿里云官方GPG密钥
+curl -fsSL http://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg | sudo apt-key add -
+# 写入阿里云Docker仓库地址
+sudo sh -c 'echo "deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list'
+# 更新源
+sudo apt-get update
+# 安装Containerd服务
+sudo dpkg --configure -a
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+##### 9. **修改 Docker 配置与 Containerd 下载镜像使用国内源：**
+- 9.1 创建或修改 crictl 配置文件
+    配置 `crictl` 工具的运行时和镜像端点：
+
+    ```bash
+    cat <<EOF | sudo tee /etc/crictl.yaml
+    runtime-endpoint: unix:///run/containerd/containerd.sock
+    image-endpoint: unix:///run/containerd/containerd.sock
+    timeout: 10
+    debug: false
+    EOF
+    ```
+
+- 9.2 Containerd 配置文件位置
+    Containerd 的主配置文件通常位于 `/etc/containerd/config.toml`。如果该文件不存在，可以通过以下命令生成默认配置：
+
+    ```bash
+    sudo containerd config default > /etc/containerd/config.toml
+    ```
+
+    使用文本编辑器打开配置文件进行编辑：
+
+    ```bash
+    sudo vim /etc/containerd/config.toml
+    ```
+
+- 9.3 修改配置镜像加速与私有仓库配置
+    在配置文件中找到 `[plugins."io.containerd.grpc.v1.cri".registry]` 部分（通常在第 162 行附近），并按以下内容修改或添加：
+
+    ```toml
+    [plugins."io.containerd.grpc.v1.cri".registry]
+    # 我在162行
+    config_path = "/etc/containerd/certs.d"
+
+    # mirrors 部分用于配置镜像源，加速公共镜像仓库（如 docker.io）的下载。
+    # 以下是为 docker.io 配置国内镜像源的示例。
+    # 我在170行
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+        endpoint = [
+          "https://dockerproxy.com",
+          "https://docker.m.daocloud.io",
+          "https://hub-mirror.c.163.com",
+          "https://mirror.baidubce.com",
+          "https://docker.nju.edu.cn",
+          "https://docker.mirrors.sjtug.sjtu.edu.cn",
+          "https://ccr.ccs.tencentyun.com"
+        ]
+        
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
+          # 可选：为其他公共镜像仓库（如 quay.io）配置镜像源
+          endpoint = ["https://dockerproxy.com", "https://hub-mirror.c.163.com"]
+    ```
+
+- 9.4 配置 `sandbox_image`
+    在配置文件中找到 `sandbox_image` 字段（通常在第 67 行附近），并修改为以下内容：
+
+    ```toml
+    # 我在67行
+    sandbox_image = "registry.aliyuncs.com/google_containers/pause:3.8"
+    ```
+
+- 9.5 保存主配置文件
+    编辑完成后，保存 `/etc/containerd/config.toml` 文件。
+
+- 9.6 配置 Harbor 仓库（单独文件）
+    为了支持私有 Harbor 仓库，推荐使用单独的配置文件，路径为 `/etc/containerd/certs.d/你的仓库域名/`。
+
+    1. **创建目录和文件**：
+    ```bash
+    sudo mkdir -p /etc/containerd/certs.d/harbor.labworlds.cc
+    sudo vim /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
+    ```
+
+    2. **写入 Harbor 配置内容**：
+    在 `hosts.toml` 文件中添加以下内容，适用于 HTTP 协议或需要跳过 TLS 验证的 Harbor 仓库：
+
+    ```toml
+    server = "http://harbor.labworlds.cc"
+    [host."http://harbor.labworlds.cc"]
+      capabilities = ["pull", "resolve", "push"]
+      skip_verify = true
+    ```
+
+    3. **设置文件权限**：
+    限制访问权限以保护认证信息：
+    ```bash
+    sudo chmod 600 /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
+    ```
+
+- 9.7 重启 Containerd 服务
+    使配置生效，需要重启 Containerd 服务：
+
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl restart containerd
+    sudo systemctl enable containerd
+    ```
+##### 10. **配置 kubelet、kubeadm、kubectl：**
+- 配置 Kubernetes 组件安装源并安装。
+- 命令：
+```bash
+curl -s https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | sudo apt-key add -
+
+sudo tee /etc/apt/sources.list.d/kubernetes.list <<EOF
+deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
+EOF
+
+sudo apt-get update
+
+# 安装 Kubernetes 组件
+sudo apt-get install -y kubelet kubeadm kubectl
+
+# 锁住版本，避免自动更新导致兼容性问题
+sudo apt-mark hold kubelet kubeadm kubectl
+```
+- 验证：`kubeadm version` 查看是否安装成功。
 - **互动与检查：** 每完成一步，鼓励同学互相检查，比如 ping 对方主机名、查看 Docker 是否运行，确保 5 台设备环境一致。教师或助教巡回解答问题。
 
 
