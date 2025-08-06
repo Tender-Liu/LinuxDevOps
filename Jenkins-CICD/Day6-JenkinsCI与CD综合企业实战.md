@@ -1345,13 +1345,20 @@ def getBuildTag() {
     return new Date().format('MMddHH') + "-${env.BUILD_ID}"
 }
 
+
 // 定义 Pipeline 参数，允许用户在运行时选择拉取代码的分支、标签等信息
 properties([
     parameters([
+        // 布尔参数：是否要渲染页面，默认值为 false，勾选为 true
         booleanParam(name: 'rendering', defaultValue: false, description: '是否要渲染页面'),
+        // 字符串参数：输入 Git 分支名称，默认值为 'master'，trim 去除首尾空格
         string(name: 'git_branch', defaultValue: 'master', description: '请输入代码分支', trim: true),
+        // 字符串参数：输入 Git 标签名称，默认值为空，trim 去除首尾空格
         string(name: 'git_tag', defaultValue: '', description: '请输入代码TAG', trim: true),
+        // 字符串参数：输入镜像地址，默认值为空，trim 去除首尾空格
         string(name: 'image', defaultValue: '', description: '请输入完整的镜像地址', trim: true),
+        booleanParam(name: 'upload_config', defaultValue: false, description: '是否要更新配置文件'),
+        // 字符串参数：输入 Git 标签名称，默认值为空，trim 去除首尾空格
         string(name: 'filepath', defaultValue: '/opt/admin3-server/application.yml', description: '请输入文件路径', trim: true),
         text(name: 'data', 
             defaultValue: """spring:
@@ -1367,7 +1374,7 @@ properties([
     name: admin3
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.110.167:3306/admin3?characterEncoding=utf8
+    url: jdbc:mysql://192.168.110.162:3306/admin3?characterEncoding=utf8
     username: admin
     password: admin123
   sql:
@@ -1387,8 +1394,11 @@ server:
     context-path: /admin3""", 
             description: '请输入文件内容：', trim: true
         ),
+        // 隐藏参数：项目名称，默认值为 'admin3-ui'，用户不可见也不可修改
         hidden(name: 'project_name', defaultValue: 'admin3-server', description: '隐藏参数不给修改'),
+        // harbor私库地址
         hidden(name: 'harbor_registry', defaultValue: 'harbor.labworlds.cc', description: '隐藏参数不给修改'),
+        // 扩展选择参数：多选主机 IP，支持勾选多个选项，用逗号分隔
         extendedChoice(
             name: 'hosts', 
             type: 'PT_CHECKBOX', 
@@ -1396,85 +1406,119 @@ server:
             description: '请选择主机',
             multiSelectDelimiter: ','
         ),
-        string(name: 'docker_run', defaultValue: 'docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml --restart=always', description: '请输入Docker运行命令', trim: true),
+        // 字符串参数：输入 Docker 运行命令，默认值已提供，trim 去除首尾空格
+        string(name: 'docker_run', defaultValue: 'docker run -d -p 8080:8080 -v /opt/admin3-server/application.yml:/app/application.yml', description: '请输入Docker运行命令', trim: true),
     ])
 ])
 
 // 定义 Pipeline 主结构
 pipeline {
+    // 指定运行节点：任务在特定 Agent 节点上执行，企业中常指定跳板机
     agent { node 'node-192.168.110.6-shiqi' }
+    // 设置 Pipeline 选项
     options {
+        // 保留最近 30 个构建记录，防止日志过多占用空间
         buildDiscarder(logRotator(numToKeepStr: '30'))
+        // 禁止并行构建，确保一次只运行一个构建
         disableConcurrentBuilds()  
+        // 启用 ANSI 颜色输出，日志显示更美观
         ansiColor('xterm')
     }
+    // 定义环境变量，在整个 Pipeline 中都可以使用
     environment {
+        // 自定义变量：获取构建标签（通常是时间戳或版本号），具体实现可由函数定义
         image_tag = getBuildTag()
+        // 自定义变量：初始化分支变量，稍后根据参数赋值
         branch = null
     }
+    // 定义 Pipeline 阶段
     stages {
         // 阶段 1：Git 克隆代码，只有当分支或标签参数不为空时才执行
         stage('Git Clone') {
             when {
+                // 条件表达式：如果 git_branch 或 git_tag 参数有一个不为空，则执行此阶段
                 expression { params.rendering == false && (params.git_branch != "" || params.git_tag != "") }
             }
             steps {
+                // 使用脚本块，允许更复杂的逻辑处理
                 script {
+                    // 判断逻辑：如果用户输入了标签（Tag），则拉取指定 Tag 的代码
                     if (params.git_tag != "") {
+                        // 使用 GitSCM 插件拉取代码，指定 Tag 引用
                         checkout([$class: 'GitSCM',
+                            // 指定 Tag 路径，格式为 refs/tags/标签名
                             branches: [[name: "refs/tags/${params.git_tag}"]],
+                            // 不生成子模块配置
                             doGenerateSubmoduleConfigurations: false,
+                            // 无额外扩展配置
                             extensions: [],
+                            // 指定 Git 远程仓库信息和凭据
                             userRemoteConfigs: [[
+                                // 使用之前配置的私钥凭据 ID
                                 credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca',
-                                url: 'git@gitee.com:Tender-Liu/admin3-server.git'
+                                // 仓库地址，指向 Gitee 上的 admin3-ui 项目
+                                url: 'git@gitee.com:Tender-Liu/admin3.git'
                             ]]
                         ])
+                        // 将 branch 变量赋值为选择的 Tag，便于后续使用
                         branch = params.git_tag
                     } else {
-                        git credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca', url: 'git@gitee.com:Tender-Liu/admin3-server.git', branch: "${params.git_branch}"
+                        git credentialsId: 'c4b7f929-0269-4967-b9e3-7d462db21aca', url: 'git@gitee.com:Tender-Liu/admin3.git', branch: "${params.git_branch}"
                         branch = params.git_branch
                     }
                 }
             }
         }
-        // 阶段 3：构建镜像
-        stage('Build Image') {
+        stage('Build Image'){
             when {
                 expression { params.rendering == false && (params.git_tag != "" || params.git_branch != "") }
             }
             steps {
-                script {
-                    def docker_image_name = "${params.harbor_registry}/${params.project_name}/${branch}:${image_tag}"
-                    sh "cd ./admin3-server && docker build -t ${docker_image_name} ."
-                    sh "docker push ${docker_image_name}"
-                    sh "docker rmi ${docker_image_name}"
+                script{
+                    // 企业镜像地址拼接
+                    // harbor.labworlds.cc/admin3-ui/master:liujun-v1.0
+                    def docker_imaeg_name = "${params.harbor_registry}/${params.project_name}/${branch}:${image_tag}"
+                    sh "cd admin3-server && docker build -t ${docker_imaeg_name} ."
+                    sh "docker push ${docker_imaeg_name}"
+                    sh "docker rmi ${docker_imaeg_name}"
                 }
             }
         }
-        // 阶段 4：上传配置文件到目标主机
-        stage('Upload ConfigFile') {
+        stage('Upload ConfigFile'){
             when {
-                expression { params.rendering == false }
+                expression { params.rendering == false && params.upload_config == true}
             }
             steps {
-                script {
+                script{
                     sh """
                         python3 /home/ubuntu/PyDockerDeploy/config_manager.py \
-                            --data "${params.data}" \
-                            --filepath "${params.filepath}" \
-                            --hosts "${params.hosts}"
+                        --data "${params.data}" \
+                        --filepath "${params.filepath}" \
+                        --hosts "${params.hosts}"
                     """
                 }
             }
         }
-        // 阶段 5：部署到目标主机
-        stage('Deploy') {
+        stage('Config Confirm'){
+            when {
+              expression { params.rendering == false && params.git_branch != "" || params.image != "" }
+            }
+            steps {
+                script {
+                    input(
+                        message: "请确认要发布吗?",
+                        ok: "Submit"
+                    )
+                }
+            }
+            
+        }
+        stage('Deploy'){
             when {
                 expression { params.rendering == false }
             }
             steps {
-                script {
+                script{
                     sh """
                         python3 /home/ubuntu/PyDockerDeploy/deployer.py \
                             -p "${params.project_name}" \
