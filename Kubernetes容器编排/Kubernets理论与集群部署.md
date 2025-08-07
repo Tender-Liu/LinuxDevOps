@@ -594,6 +594,9 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
     ```
  - 9.9 测试一下能不能拉去镜像
     ```bash
+    ctr -n k8s.io images pull registry.aliyuncs.com/google_containers/pause:3.8
+    ctr -n k8s.io images tag registry.aliyuncs.com/google_containers/pause:3.8 registry.k8s.io/pause:3.8
+
     # 输出显示镜像成功拉取，包括 manifest 和 layers 均显示 "done"，表明 HTTP 下载配置有效。
     sudo ctr image pull --user admin:admin123 --plain-http=true harbor.labworlds.cc/go-starter/dev:lbw-v1.0
 
