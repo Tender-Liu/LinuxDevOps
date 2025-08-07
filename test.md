@@ -1,116 +1,22 @@
-#### 创建或修改 crictl 配置文件
-cat <<EOF | sudo tee /etc/crictl.yaml
-runtime-endpoint: unix:///run/containerd/containerd.sock
-image-endpoint: unix:///run/containerd/containerd.sock
-timeout: 10
-debug: false
-EOF
+好的，我会根据您的需求修改教案，将负载均衡器从 Nginx 改为 HAProxy，并解释为什么选择 HAProxy 而不是 Nginx。以下是修改后的教案内容：
 
-#### 配置文件位置
-Containerd 的主配置文件通常位于 `/etc/containerd/config.toml`。如果文件不存在，可以通过以下命令生成默认配置：
-
-```bash
-sudo containerd config default > /etc/containerd/config.toml
-```
-
-使用文本编辑器打开配置文件：
-
-```bash
-sudo vim /etc/containerd/config.toml
-```
-
-### 修改配置镜像加速与私有仓库配置
-
-```toml
-[plugins."io.containerd.grpc.v1.cri".registry]
-  # 我在162行
-  config_path = "/etc/containerd/certs.d"
-
-  # mirrors 部分用于配置镜像源，加速公共镜像仓库（如 docker.io）的下载。
-  # 以下是为 docker.io 配置国内镜像源的示例。
-  # 我在170行
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-      endpoint = [
-        "https://dockerproxy.com",
-        "https://docker.m.daocloud.io",
-        "https://hub-mirror.c.163.com",
-        "https://mirror.baidubce.com",
-        "https://docker.nju.edu.cn",
-        "https://docker.mirrors.sjtug.sjtu.edu.cn",
-        "https://ccr.ccs.tencentyun.com"
-      ]
-    
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
-    # 可选：为其他公共镜像仓库（如 quay.io）配置镜像源
-      endpoint = ["https://dockerproxy.com", "https://hub-mirror.c.163.com"]
-```
-
-### 配置 `sandbox_image`
-```bash
-# 我在67行
-sandbox_image = "registry.aliyuncs.com/google_containers/pause:3.8"
-```
-
-#### 保存主配置文件
-
-#### 步骤 2：配置 Harbor 仓库（单独文件）
-为了支持私有 Harbor 仓库，推荐使用单独的配置文件，路径为 `/etc/containerd/certs.d/你的仓库域名/`。
-
-1. **创建目录和文件**：
-   ```bash
-   sudo mkdir -p /etc/containerd/certs.d/harbor.labworlds.cc
-   sudo vim /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
-   ```
-
-2. **写入 Harbor 配置内容**：
-   在 `hosts.toml` 文件中添加以下内容，适用于 HTTP 协议或需要跳过 TLS 验证的 Harbor 仓库：
-
-   ```toml
-   server = "http://harbor.labworlds.cc"
-   [host."http://harbor.labworlds.cc"]
-     capabilities = ["pull", "resolve", "push"]
-     skip_verify = true
-   ```
-
-3. **设置文件权限**：
-   限制访问权限以保护认证信息：
-   ```bash
-   sudo chmod 600 /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
-   ```
-
-#### 步骤 3：重启 Containerd 服务
-使配置生效：
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart containerd
-sudo systemctl enable containerd
-```
-
-#### 步骤 4：验证配置
-1. **检查镜像源配置**：
-   查看 Containerd 配置是否包含镜像源：
-   ```bash
-   crictl info | grep -A 10 registry
-   ```
-
-2. **测试拉取 Docker Hub 镜像**：
-   验证国内镜像源是否生效：
-   ```bash
-   crictl pull docker.io/library/busybox:latest
-   ```
-
-3. **测试拉取 Harbor 镜像**：
-   验证 Harbor 仓库配置是否正确：
-   ```bash
-   crictl pull harbor.labworlds.cc/go-starter/dev:lbw-v1.0
-   ```
-
-4. **查看日志（如果有问题）**：
-   如果拉取镜像失败，检查日志：
-   ```bash
-   journalctl -u containerd | grep -i harbor
-   ```
+---
 
 
+
+### **注意事项：**
+- **单点故障风险：** 本方案直接使用 HAProxy 服务器的 IP 作为 `control-plane-endpoint`，如果 HAProxy 服务器宕机，控制平面将不可用。这在学习或测试环境中是可以接受的，但在生产环境中，建议使用 VIP（如 Keepalived）或多节点 HAProxy 部署。
+- **IP 和端口调整：** 请根据实际环境调整 HAProxy 服务器的 IP 地址和 Master 节点的 IP 地址。
+- **健康检查：** HAProxy 的 `check` 选项会定期检测后端 Master 节点的可用性，确保请求不会转发到不可用的节点。
+- **配置文件备份：** 在修改 `/etc/haproxy/haproxy.cfg` 前，建议备份原始配置文件，以防配置错误导致服务不可用。
+
+### **后续步骤：**
+- 在执行 `kubeadm init` 时，确保 `--control-plane-endpoint` 参数设置为 HAProxy 服务器的 IP 和端口，例如：
+  ```bash
+  sudo kubeadm init --control-plane-endpoint 192.168.110.167:6443
+  ```
+- 完成初始化后，使用 `kubectl` 工具测试控制平面是否可访问。
+
+---
+
+希望这份修改后的教案符合您的需求！如果有其他问题或需要进一步调整，请随时告诉我。
