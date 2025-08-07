@@ -540,7 +540,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
         sudo chmod 600 /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
         ```
 
-    2. ** Docker Hub 加速器**：
+    2. **Docker Hub 加速器**：
         ```bash
         # 创建目录和文件
         sudo mkdir -p /etc/containerd/certs.d/docker.io/
@@ -556,7 +556,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
             capabilities = ["pull", "resolve"]
         ```
 
-    3. ** 阿里云 K8S 镜像源**：
+    3. **阿里云 K8S 镜像源**：
         ```bash
         # 创建目录和文件
         sudo mkdir -p /etc/containerd/certs.d/registry.k8s.io/
@@ -570,7 +570,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
             capabilities = ["pull", "resolve"]
         ```
     
-    4. ** Quay.io 加速器**：
+    4. **Quay.io 加速器**：
         ```bash
         # 创建目录和文件
         sudo mkdir -p /etc/containerd/certs.d/quay.io/
