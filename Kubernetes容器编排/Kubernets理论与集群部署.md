@@ -481,7 +481,7 @@ sudo apt-get update
 sudo dpkg --configure -a
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
-##### 9. **修改 Docker 配置与 Containerd 下载镜像使用国内源：**
+##### 9. **修改 Containerd 下载镜像使用国内源：**
 - 9.1 创建或修改 crictl 配置文件
     配置 `crictl` 工具的运行时和镜像端点：
 
@@ -507,69 +507,82 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
     sudo vim /etc/containerd/config.toml
     ```
 
-- 9.3 修改配置镜像加速与私有仓库配置
+- 9.3 containerd 推荐新写法（certs.d 目录 ）配置模板，适用于 containerd v1.5 及以后版本
     在配置文件中找到 `[plugins."io.containerd.grpc.v1.cri".registry]` 部分（通常在第 162 行附近），并按以下内容修改或添加：
-
-    ```toml
-    [plugins."io.containerd.grpc.v1.cri".registry]
-    # 我在162行
-    config_path = "/etc/containerd/certs.d"
-
-    # mirrors 部分用于配置镜像源，加速公共镜像仓库（如 docker.io）的下载。
-    # 以下是为 docker.io 配置国内镜像源的示例。
-    # 我在170行
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-        endpoint = [
-          "https://dockerproxy.com",
-          "https://docker.m.daocloud.io",
-          "https://hub-mirror.c.163.com",
-          "https://mirror.baidubce.com",
-          "https://docker.nju.edu.cn",
-          "https://docker.mirrors.sjtug.sjtu.edu.cn",
-          "https://ccr.ccs.tencentyun.com"
-        ]
-        
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
-          # 可选：为其他公共镜像仓库（如 quay.io）配置镜像源
-          endpoint = ["https://dockerproxy.com", "https://hub-mirror.c.163.com"]
-    ```
-
-- 9.4 配置 `sandbox_image`
-    在配置文件中找到 `sandbox_image` 字段（通常在第 67 行附近），并修改为以下内容：
 
     ```toml
     # 我在67行
     sandbox_image = "registry.aliyuncs.com/google_containers/pause:3.8"
+    [plugins."io.containerd.grpc.v1.cri".registry]
+    # 我在162行
+    config_path = "/etc/containerd/certs.d"
+    
     ```
 
-- 9.5 保存主配置文件
+- 9.4 保存主配置文件
     编辑完成后，保存 `/etc/containerd/config.toml` 文件。
 
-- 9.6 配置 Harbor 仓库（单独文件）
-    为了支持私有 Harbor 仓库，推荐使用单独的配置文件，路径为 `/etc/containerd/certs.d/你的仓库域名/`。
+- 9.6 配置 Harbor 仓库与所有加速器
+    1. **私有 Harbor 仓库**：
+        ```bash
+        # 创建目录和文件
+        sudo mkdir -p /etc/containerd/certs.d/harbor.labworlds.cc
+        sudo vim /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
+        # 写入 Harbor 配置内容
+        server = "http://harbor.labworlds.cc"
+        [host."http://harbor.labworlds.cc"]
+          capabilities = ["pull", "resolve", "push"]
+          skip_verify = true
+        ```
+        
+        ```bash
+        # 限制访问权限以保护认证信息
+        sudo chmod 600 /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
+        ```
 
-    1. **创建目录和文件**：
-    ```bash
-    sudo mkdir -p /etc/containerd/certs.d/harbor.labworlds.cc
-    sudo vim /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
-    ```
+    2. ** Docker Hub 加速器**：
+        ```bash
+        # 创建目录和文件
+        sudo mkdir -p /etc/containerd/certs.d/docker.io/
+        sudo vim /etc/containerd/certs.d/docker.io/hosts.toml
+        # 写入 Docker Hub 加速器 配置内容
+        server = "https://docker.io"
 
-    2. **写入 Harbor 配置内容**：
-    在 `hosts.toml` 文件中添加以下内容，适用于 HTTP 协议或需要跳过 TLS 验证的 Harbor 仓库：
+          [host."https://docker.mirrors.ustc.edu.cn"]
+            capabilities = ["pull", "resolve"]
+          [host."https://hub-mirror.c.163.com"]
+            capabilities = ["pull", "resolve"]
+          [host."https://docker.io"]
+            capabilities = ["pull", "resolve"]
+        ```
 
-    ```toml
-    server = "http://harbor.labworlds.cc"
-    [host."http://harbor.labworlds.cc"]
-      capabilities = ["pull", "resolve", "push"]
-      skip_verify = true
-    ```
+    3. ** 阿里云 K8S 镜像源**：
+        ```bash
+        # 创建目录和文件
+        sudo mkdir -p /etc/containerd/certs.d/registry.k8s.io/
+        sudo vim /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+        # 写入 阿里云 K8S 镜像源 配置内容
+        server = "https://registry.k8s.io"
 
-    3. **设置文件权限**：
-    限制访问权限以保护认证信息：
-    ```bash
-    sudo chmod 600 /etc/containerd/certs.d/harbor.labworlds.cc/hosts.toml
-    ```
+          [host."https://registry.aliyuncs.com/google_containers"]
+            capabilities = ["pull", "resolve"]
+          [host."https://registry.k8s.io"]
+            capabilities = ["pull", "resolve"]
+        ```
+    
+    4. ** Quay.io 加速器**：
+        ```bash
+        # 创建目录和文件
+        sudo mkdir -p /etc/containerd/certs.d/quay.io/
+        sudo vim /etc/containerd/certs.d/quay.io/hosts.toml
+        # 写入 Quay.io 加速器 配置内容
+        server = "https://quay.io"
+
+          [host."https://quay.mirrors.ustc.edu.cn"]
+            capabilities = ["pull", "resolve"]
+          [host."https://quay.io"]
+            capabilities = ["pull", "resolve"]
+        ```
 
 - 9.7 重启 Containerd 服务
     使配置生效，需要重启 Containerd 服务：
