@@ -219,7 +219,7 @@ Pod 通常属于某个 Namespace。如果你在创建 Pod 时没有指定 Namesp
 
 ### 练习步骤
 
-#####步骤 1：打开 VMware 准备 Harbor 镜像
+#### 步骤 1：打开 VMware 准备 Harbor 镜像
 
 我们首先需要在 VMware 环境中准备 Harbor 镜像相关工作。请按照以下步骤操作：
 
@@ -1961,3 +1961,504 @@ Pod 作为 Kubernetes 的基本单位，虽然简单易用，但存在一些局�
 - **StatefulSet**：适用于有状态应用，提供稳定的网络标识和存储。
 
 通过这些控制器，Kubernetes 能够更好地管理应用的生命周期和稳定性，弥补 Pod 自身的不足。
+
+
+
+## 项目实战: Light-Year-Admin-Template 发布 HTTPS 配置
+
+### 需求分析
+
+#### 主要目标：
+1. **Docker镜像构建与发布**：基于 `Light-Year-Admin-Template` 项目构建 Docker 镜像，上传到 Harbor 仓库，并在 Kubernetes (K8S) 中部署为 Pod。
+2. **HTTP 部署**：在 K8S 中部署 Pod，支持 HTTP 访问（端口 80），并通过 Kuboard 界面验证访问。
+3. **HTTPS 配置**：生成自签名证书，配置 Nginx 支持 HTTPS（端口 443），并重新部署 Pod，验证 HTTP 和 HTTPS 均可访问。
+4. **其他要求**：
+   - 使用 ConfigMap 挂载 Nginx 配置文件。
+   - 配置健康检查（Liveness 和 Readiness）。
+   - 设置资源限制。
+   - 使用 Secret 拉取 Harbor 镜像。
+
+#### 环境与工具：
+- VMware 虚拟机。
+- Docker 用于构建和推送镜像。
+- Kubernetes (K8S) 用于部署 Pod。
+- Kuboard 界面用于管理和验证访问。
+
+### 实现步骤
+
+#### 第一部分：Docker 镜像构建与推送
+1. 登录 VMware 虚拟机。
+2. 克隆代码仓库并构建 Docker 镜像。
+3. 测试镜像是否正常运行。
+4. 推送镜像到 Harbor 仓库。
+
+#### 第二部分：K8S Pod 部署（HTTP）
+1. 创建 Namespace。
+2. 编写 ConfigMap 文件，用于挂载 Nginx 配置文件。
+3. 编写 Pod 配置文件，包含健康检查、资源限制、镜像拉取 Secret 等。
+4. 通过 Kuboard 部署 Pod，并验证 HTTP 访问。
+
+#### 第三部分：HTTPS 配置与重新部署
+1. 在虚拟机中生成自签名证书。
+2. 创建 Secret 文件存储证书。
+3. 更新 ConfigMap 中的 Nginx 配置，增加 HTTPS 支持。
+4. 删除旧 Pod，重新部署新配置。
+5. 通过 Kuboard 验证 HTTP 和 HTTPS 访问。
+
+
+### 详细实现步骤与代码
+
+#### 第一部分：Docker 镜像构建与推送
+
+1. **登录 VMware 虚拟机**  
+   使用 SSH 或其他工具登录到虚拟机，确保 Docker 环境已配置好。
+
+2. **克隆代码并构建镜像**  
+   执行以下命令：
+   ```bash
+   git clone https://gitee.com/Tender-Liu/Light-Year-Admin-Template.git
+   cd Light-Year-Admin-Template
+   docker build -t harbor.labworlds.cc/light-year-admin-template/master:08061743-shiqi .
+   ```
+
+3. **测试镜像**  
+   运行容器并通过浏览器访问虚拟机的 IP 地址（端口 80）确认是否正常：
+   ```bash
+   docker run --rm -p 80:80 harbor.labworlds.cc/light-year-admin-template/master:08061743-shiqi
+   ```
+
+4. **推送镜像到 Harbor 仓库**  
+   如果测试无问题，推送镜像：
+   ```bash
+   docker push harbor.labworlds.cc/light-year-admin-template/master:08061743-shiqi
+   ```
+
+#### 第二部分：K8S Pod 部署（HTTP）
+
+1. **创建 Namespace**  
+   假设您的名字拼音为 `shiqi`，创建 Namespace 文件 `namespace-shiqi.yml`：
+   ```yaml
+   apiVersion: v1
+   kind: Namespace
+   metadata:
+     name: shiqi
+   ```
+
+   应用该配置：
+   ```bash
+   kubectl apply -f namespace-shiqi.yml
+   ```
+
+2. **创建 ConfigMap（Nginx 配置文件）**  
+   文件名：`configmap-nginx-conf.yml`，内容如下（仅包含 HTTP 配置）：
+   ```yaml
+   apiVersion: v1
+   kind: ConfigMap
+   metadata:
+     name: configmap-nginx-conf
+     namespace: shiqi
+   data:
+     nginx.conf: |
+       user  nginx;
+       worker_processes  auto;
+
+       error_log  /var/log/nginx/error.log warn;
+       pid        /var/run/nginx.pid;
+
+       events {
+           worker_connections  1024;
+           multi_accept on;
+           use epoll;
+       }
+
+       http {
+           include       /etc/nginx/mime.types;
+           default_type  application/octet-stream;
+
+           log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time", "upstream_addr":"$upstream_addr"}';
+
+           access_log /var/log/nginx/access.log json_combined;
+
+           sendfile        on;
+           tcp_nopush      on;
+           tcp_nodelay     on;
+           keepalive_timeout  65;
+           types_hash_max_size 2048;
+
+           gzip off;
+
+           server {
+               listen       80;
+               server_name  localhost;
+
+               root /app;
+               index index.html index.htm index;
+
+               location = /index.html {
+                   add_header Cache-Control "no-store, no-cache, must-revalidate";
+                   add_header Pragma "no-cache";
+                   expires -1;
+               }
+
+               location ~ /\. {
+                   deny all;
+               }
+
+               location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc|mp4|webm|ogg|mp3|wav|zip|tar|gz|rar|bz2|7z)$ {
+                   expires 30d;
+                   access_log off;
+                   add_header Cache-Control "public";
+               }
+
+               location ~* \.(?:html|htm)$ {
+                   expires 1h;
+                   add_header Cache-Control "public";
+               }
+           }
+       }
+   ```
+
+   应用 ConfigMap：
+   ```bash
+   kubectl apply -f configmap-nginx-conf.yml
+   ```
+
+3. **编写 Pod 配置文件**  
+   文件名：`pod-light-year-admin-template.yml`，内容如下：
+   ```yaml
+   apiVersion: v1
+   kind: Pod
+   metadata:
+     name: pod-light-year-admin-template
+     namespace: shiqi
+   spec:
+     containers:
+     - name: light-year-admin-template
+       image: harbor.labworlds.cc/light-year-admin-template/master:08061743-shiqi
+       ports:
+       - containerPort: 80
+         name: http
+       resources:
+         requests:
+           cpu: "100m"
+           memory: "64Mi"
+         limits:
+           cpu: "200m"
+           memory: "128Mi"
+       livenessProbe:
+         httpGet:
+           path: /
+           port: 80
+         initialDelaySeconds: 15
+         periodSeconds: 10
+       readinessProbe:
+         httpGet:
+           path: /
+           port: 80
+         initialDelaySeconds: 5
+         periodSeconds: 5
+       volumeMounts:
+       - name: volumes-nginx-conf
+         mountPath: /etc/nginx/nginx.conf
+         subPath: nginx.conf
+     volumes:
+     - name: volumes-nginx-conf
+       configMap:
+         name: configmap-nginx-conf
+     imagePullSecrets:
+     - name: secret-harbor-login
+   ```
+
+   应用 Pod 配置：
+   ```bash
+   kubectl apply -f pod-light-year-admin-template.yml
+   ```
+
+4. **验证 HTTP 访问**  
+   使用 Kuboard 界面，通过 KuboardProxy 访问 Pod 的 HTTP 服务，确认页面是否正常显示。
+
+
+#### 第三部分：HTTPS 配置与重新部署
+
+1. **生成自签名证书**  
+  在虚拟机中执行以下命令生成证书：
+  ```bash
+  mkdir /root/touch.shiqi.com
+  cd /root/touch.shiqi.com
+  sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /root/touch.shiqi.com/private.key \
+    -out /root/touch.shiqi.com/certificate.crt \
+    -subj "/CN=touch.shiqi.com"
+  ```
+
+2. **创建 Secret 存储证书**  
+  文件名：`secret-touch-shiqi-com.yml`，内容如下：
+  ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: secret-touch-shiqi-com
+    namespace: shiqi
+  type: kubernetes.io/tls
+  stringData:
+    tls.crt: |
+      -----BEGIN CERTIFICATE-----
+      MIIDFTCCAf2gAwIBAgIUferDznOsJaj65kRWlJ8Ok2bOmC0wDQYJKoZIhvcNAQEL
+      BQAwGjEYMBYGA1UEAwwPdG91Y2guc2hpcWkuY29tMB4XDTI1MDgwOTE0MzQxMFoX
+      DTI2MDgwOTE0MzQxMFowGjEYMBYGA1UEAwwPdG91Y2guc2hpcWkuY29tMIIBIjAN
+      BgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7bw6PyeT7nJuHs2TUhRpcm5EFjzE
+      Ge3JXCCpV6j86j1oIT8/XRGqF9mLZV0fzkK4jCaV+QspjXqSceolMh1LMu+V+wf8
+      ldZ2ojELI1OLqRXiWc5ndsZHY3ePThI3jl80qEuYpdtUIrIkmCYhuzTAlA6X43ZK
+      gMnSgs9C+chyTGQ/bxKV9FefLFF/aYKTuGhJqePBIMcSF/qEu2OO55vP0uYkHp9q
+      bTdpp6273KnY350IcZx7k2rGF2yv53qCryx5P5AtZm8HhJ/7gd3aoeMNkozdAzln
+      upkIdNH1hF8xHE8CWIMRvhQXkXSvlqwdZe3dHNQ2AMQhnYpkoOC0h3yEVwIDAQAB
+      o1MwUTAdBgNVHQ4EFgQUbF3Utr8qeZLVZnA58mKXK1QVbIMwHwYDVR0jBBgwFoAU
+      bF3Utr8qeZLVZnA58mKXK1QVbIMwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0B
+      AQsFAAOCAQEAMZODMHkxQDaxFclCXAM34xWvif5x98Kvi1cf7eBBb0Spq8f+uI7A
+      lIEFSQ46HWnkXQwEsjeADjN2sfpgy7dZz1G8d9Go+b9jt/A1PMk9Ytwl0zT7qxht
+      KtTkeSCh/WVmaKV+XqKapFaMEIHT7xLxV0RkChLFJlKK+Z6G4G82j/SG90H2nn37
+      obveK6fiL8Wj4bLqgw+MLzgGnzXcwRXrIhrP+hCRC78yUCI8iB8go6be7tgq20D5
+      zDkZRO6Pddl/hKbbrqYkwrb94MIQzvWv6ac9obmeQEd2LstxCyi93Zu+2JDvTPev
+      qutojX4+k9VQ8U2fzybzynHcWRkHEt0ZDw==
+      -----END CERTIFICATE-----
+    tls.key: |
+      -----BEGIN PRIVATE KEY-----
+      MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDtvDo/J5Pucm4e
+      zZNSFGlybkQWPMQZ7clcIKlXqPzqPWghPz9dEaoX2YtlXR/OQriMJpX5CymNepJx
+      6iUyHUsy75X7B/yV1naiMQsjU4upFeJZzmd2xkdjd49OEjeOXzSoS5il21QisiSY
+      JiG7NMCUDpfjdkqAydKCz0L5yHJMZD9vEpX0V58sUX9pgpO4aEmp48EgxxIX+oS7
+      Y47nm8/S5iQen2ptN2mnrbvcqdjfnQhxnHuTasYXbK/neoKvLHk/kC1mbweEn/uB
+      3dqh4w2SjN0DOWe6mQh00fWEXzEcTwJYgxG+FBeRdK+WrB1l7d0c1DYAxCGdimSg
+      4LSHfIRXAgMBAAECggEAdC0QP82dBqEH/GiUzj8oWqHVBxLx+APSa4GQj8SGuAeD
+      LAAm/FnGB/qpGsNb6CWF3wN6NaaFS1yzVRTJ0YgsN/uKDQ9VmXmhJtiVq1FIBjyq
+      DR4HRK1XtJ14O/w+Bwayim3K7n5UytHIfUvhHwWD+LZ69k7X0MEP7RnRDpSsenRv
+      x34Xp6QW5c6NxQaIIITMbzf3jkN88odG9IQKqVX4/oHDOwzE8FjrQKLv142x33eQ
+      b/arBAahxEYlQb6pgZ7AtnBsfWITVusguiHTopdi4/IoD1oCnsYr2RQr6lRXNYGU
+      VwxYRtaRCRfKDS5DsVL7dA7LAJfZxNkxxmd/WP1GpQKBgQD3NjP2yb+gakXkkCdJ
+      LYyiCmdzNv+ZUHTzaVoZtxVXQZRGQjo0eqrXtA02O/uSjMM/lO1oEzmYkZx6kg8l
+      JvcnT3vChAijgxCNfW1Eohv14MeTIJImuFcE/tLpLesFlljxvHau5pUePkpT0Bq3
+      36zTH5JunvQ0cdRavV3yOadGawKBgQD2L8g8L71Q4PniCJEtZezaWEgEd9pqF2bc
+      eM0FvB3Z2OYBjYhcmThgAzh57/qSdZQWTDXvyOcXw/ZpllefqsL31buEBWcHQUSM
+      9CIDSxREz3YxrmyM/+bHtFQZCgfxfhju6JBEK3Kd/sbZBjBRZ4Wo9Az0P/UZy9Oo
+      OIa0qdb8xQKBgAJCbZEo4OZ/cioXozRJBUsJ204zR3zIPnlnEhrAEKLeh5No0Y1f
+      PaaBD8naHH+HZ9Vx8AWOf21Ej3CTWy4UwBeM422wtT+BWCpi5hfFf4nsxwYyOwO9
+      lZYHGjhlYguIB0IWXeNVWjGPkjBX65aYpcS8OiNmsoa0L6OwrWYkXsIHAoGAWtW0
+      huiCbLYl3Q2WK28BHmsWX3etghmSXWTBGQ2Y4glSjF4hYzExiNOHYg52oNV7R2Ll
+      P80b3zvxznGncQU7nOAiqQqpQhcF6RAnAJoSJ3V4wcn+yWOeTi8uHHMEDUmef4AV
+      wuFZEAyyZ98NsuuEeJtbsD9s+xCmztnUchJ8fZUCgYEAw8Uj2a56b7LpuFT8gJwr
+      NQSTBIy1iAPUB3/i2Rd8y8zYMIaR0PsMIISqfGON8Bq9dlkS3aSozz2+YhqGvu6V
+      sgvLRO+maBMnuJXGENojMLWQvc1VsoBm43LCTk+RsxWvXJcmTHjOu5EphCyOonB5
+      ZfSGDmQSu1t6A+8EqUxYm2M=
+      -----END PRIVATE KEY-----
+  ```
+
+   查看证书内容
+   ```bash
+   cat /root/touch.shiqi.com/certificate.crt 
+   cat /root/touch.shiqi.com/private.key
+   ```
+
+   将编码后的内容填入 `certificate.crt` 和 `private.key` 字段，然后应用 Secret：
+   ```bash
+   kubectl apply -f secret-touch-shiqi-com.yml
+   ```
+
+3. **更新 ConfigMap（增加 HTTPS 配置）**  
+    更新 `configmap-nginx-conf.yml`，内容如下（增加 HTTPS 配置）：
+    ```yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: configmap-nginx-conf
+      namespace: shiqi
+    data:
+      nginx.conf: |
+        user  nginx;
+        worker_processes  auto;
+
+        error_log  /var/log/nginx/error.log warn;
+        pid        /var/run/nginx.pid;
+
+        events {
+            worker_connections  1024;
+            multi_accept on;
+            use epoll;
+        }
+
+        http {
+            include       /etc/nginx/mime.types;
+            default_type  application/octet-stream;
+
+            log_format json_combined escape=json '{"time_local":"$time_local", "remote_addr":"$remote_addr", "host":"$host", "request":"$request", "status":"$status", "body_bytes_sent":"$body_bytes_sent", "http_referer":"$http_referer", "http_user_agent":"$http_user_agent", "http_x_forwarded_for":"$http_x_forwarded_for", "request_time":"$request_time", "upstream_response_time":"$upstream_response_time", "upstream_addr":"$upstream_addr"}';
+
+            access_log /var/log/nginx/access.log json_combined;
+
+            sendfile        on;
+            tcp_nopush      on;
+            tcp_nodelay     on;
+            keepalive_timeout  65;
+            types_hash_max_size 2048;
+
+            gzip off;
+
+            server {
+                listen       80;
+                server_name  localhost;
+
+                root /app;
+                index index.html index.htm index;
+
+                location = /index.html {
+                    add_header Cache-Control "no-store, no-cache, must-revalidate";
+                    add_header Pragma "no-cache";
+                    expires -1;
+                }
+
+                location ~ /\. {
+                    deny all;
+                }
+
+                location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc|mp4|webm|ogg|mp3|wav|zip|tar|gz|rar|bz2|7z)$ {
+                    expires 30d;
+                    access_log off;
+                    add_header Cache-Control "public";
+                }
+
+                location ~* \.(?:html|htm)$ {
+                    expires 1h;
+                    add_header Cache-Control "public";
+                }
+            }
+
+            server {
+                listen 443 ssl;
+                server_name localhost;
+                
+                ssl_certificate /etc/nginx/ssl/certificate.crt;
+                ssl_certificate_key /etc/nginx/ssl/private.key;
+                
+                ssl_protocols TLSv1.2 TLSv1.3;
+                ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+                ssl_prefer_server_ciphers on;
+                ssl_session_cache shared:SSL:10m;
+                ssl_session_timeout 10m;
+                ssl_stapling on;
+                ssl_stapling_verify on;
+                
+                root /app;
+                index index.html;
+                
+                location = /index.html {
+                    add_header Cache-Control "no-store, no-cache, must-revalidate";
+                    add_header Pragma "no-cache";
+                    expires -1;
+                }
+
+                location ~ /\. {
+                    deny all;
+                }
+
+                location ~* \.(?:ico|gif|jpg|jpeg|png|svg|webp|css|js|woff|woff2|ttf|otf|eot|ttc|mp4|webm|ogg|mp3|wav|zip|tar|gz|rar|bz2|7z)$ {
+                    expires 30d;
+                    access_log off;
+                    add_header Cache-Control "public";
+                }
+
+                location ~* \.(?:html|htm)$ {
+                    expires 1h;
+                    add_header Cache-Control "public";
+                }
+            }
+        }
+    ```
+
+    应用更新后的 ConfigMap：
+    ```bash
+    kubectl apply -f configmap-nginx-conf.yml
+    ```
+
+4. **更新 Pod 配置（增加 HTTPS 端口和证书挂载）**  
+    更新 `pod-light-year-admin-template.yml`，内容如下：
+    ```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-light-year-admin-template
+      namespace: shiqi
+    spec:
+      containers:
+      - name: light-year-admin-template
+        image: harbor.labworlds.cc/light-year-admin-template/master:08061743-shiqi
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: volumes-nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: volumes-touch-shiqi-com
+          mountPath: /etc/nginx/ssl/certificate.crt
+          subPath: tls.crt
+        - name: volumes-touch-shiqi-com
+          mountPath: /etc/nginx/ssl/private.key
+          subPath: tls.key
+      volumes:
+      - name: volumes-nginx-conf
+        configMap:
+          name: configmap-nginx-conf
+      - name: volumes-touch-shiqi-com
+        secret:
+          secretName: secret-touch-shiqi-com
+      imagePullSecrets:
+      - name: secret-harbor-login
+    ```
+
+5. **删除旧 Pod 并重新部署**  
+    删除旧 Pod：
+    ```bash
+    kubectl delete -f pod-light-year-admin-template.yml
+    ```
+
+    重新应用 Pod 配置：
+    ```bash
+    kubectl apply -f pod-light-year-admin-template.yml
+    ```
+
+6. **验证 HTTP 和 HTTPS 访问**  
+    使用 Kuboard 界面，通过 KuboardProxy 分别访问 HTTP（端口 80）和 HTTPS（端口 443），确认两者均可正常访问。由于是自签名证书，浏览器可能会提示证书不安全，需手动信任。
+
+
+### 总结与思路
+
+1. **HTTP 部署思路**：
+    - 首先构建并测试 Docker 镜像，确保其可用性。
+    - 在 K8S 中通过 ConfigMap 挂载 Nginx 配置，仅启用 HTTP 服务。
+    - 配置 Pod 的健康检查、资源限制和镜像拉取 Secret。
+    - 使用 Kuboard 验证 HTTP 访问。
+
+2. **HTTPS 配置思路**：
+    - 生成自签名证书并通过 Secret 存储到 K8S 中。
+    - 更新 Nginx 配置，增加 HTTPS 服务（端口 443）及证书路径。
+    - 更新 Pod 配置，增加 HTTPS 端口和证书挂载。
+    - 重新部署 Pod 并验证 HTTP 和 HTTPS 访问。
