@@ -657,28 +657,9 @@ YAML 文件准备好后，使用 `kubectl` 命令将 Pod 部署到 Kubernetes �
   5. 删除完成后，刷新页面确认 Pod 已从列表中消失。
   **小贴士**：Kuboard 界面删除操作简单直观，但同样需要注意是否由控制器管理 Pod。
 
-#### 7. 重启 Pod
-
+#### 7. 重启 Pod - 只有未来学习了Deployment才行
 Kubernetes 没有直接的重启 Pod 命令，但可以通过删除 Pod 让控制器（如 Deployment）自动重建，或者手动触发重启。
 
-- **命令行操作（使用 `kubectl`）**：
-  如果你的 Pod 直接创建（而非通过 Deployment 等控制器），可以通过删除 Pod 后重新创建来实现重启：
-  ```bash
-  kubectl delete pod pod-stars-emmision -n your-pinyin-name
-  kubectl apply -f pod-stars-emmision.yml
-  ```
-  如果 Pod 由 Deployment 管理，可以通过以下命令触发滚动重启（后续课程会详细讲解 Deployment）：
-  ```bash
-  kubectl rollout restart deployment <deployment-name> -n your-pinyin-name
-  ```
-  **小贴士**：直接删除 Pod 是一种简单重启方式，但建议使用控制器管理 Pod 以实现自动化。
-
-- **Kuboard 界面操作**：
-  1. 在 Kuboard 界面中，选择你的 Namespace（例如 `your-pinyin-name`）。
-  2. 点击左侧导航栏中的“工作负载（Workloads）”或“Pod”选项，进入 Pod 列表页面。
-  3. 在列表中找到你的 Pod（例如 `pod-stars-emmision`），点击右侧操作按钮。
-  4. 如果 Pod 由 Deployment 管理，可能有“重启（Restart）”或“滚动更新”选项；否则，可以选择“删除（Delete）”，然后重新创建 Pod。
-  **小贴士**：Kuboard 界面的重启功能依赖于资源类型，如果是单独的 Pod，需要手动删除并重新创建。
 
 #### 8. 健康检查（通过配置实现）
 
@@ -710,3 +691,1273 @@ Kubernetes 没有直接的重启 Pod 命令，但可以通过删除 Pod 让控�
 - **Kuboard 界面**：直观易用，适合初学者快速上手，降低了学习难度，但某些高级功能可能不如命令行灵活。
 
 建议同学们在学习初期结合两种方式操作，先通过 Kuboard 界面熟悉资源管理流程，再逐步掌握 `kubectl` 命令，提升效率和深度理解。
+
+## 第四部分：健康检查机制——livenessProbe、readinessProbe 和 startupProbe
+
+### 健康检查机制概述
+
+在 Kubernetes 中，健康检查（Health Check）是用来确保容器正常运行的“体检工具”。Kubernetes 会通过不同的“检查方式”来判断容器是否健康，并决定是否需要重启容器或调整流量分配。简单来说，健康检查就像给容器做定期体检，发现问题就及时处理，避免影响服务。
+
+Kubernetes 提供了三种检查方式，我们可以把它们想象成三种不同的“体检项目”：
+- **livenessProbe（活性探测）**：检查容器是否“活着”。如果检查失败，Kubernetes 会认为容器“生病了”，会重启它来尝试恢复。
+- **readinessProbe（就绪探测）**：检查容器是否“准备好工作”。如果检查失败，Kubernetes 不会把用户请求发到这个容器，直到它“恢复健康”。
+- **startupProbe（启动探测）**：检查容器是否“启动完成”。专门针对启动慢的应用，确保容器有足够时间准备好，不会因为还没启动完就被误判为不健康。
+
+**为什么要用健康检查？**
+想象一下，如果你的容器崩溃了，或者还没准备好就接收用户请求，结果会怎样？健康检查就是帮你避免这些问题，让服务更稳定。
+
+### 健康检查原理详解（简单版）
+
+我们用生活中的例子来解释这三种检查的原理和作用：
+
+1. **livenessProbe（活性探测）**
+   - **原理**：就像医生定期检查病人的心跳，如果心跳停止（检查失败），医生会尝试“抢救”（重启容器）。Kubernetes 会根据检查结果决定是否需要重启容器。
+   - **作用**：确保容器不会“卡死”或“崩溃”，如果有问题就重启它。
+   - **例子**：检查一个 Web 服务是否还能响应请求，如果不响应就重启。
+
+2. **readinessProbe（就绪探测）**
+   - **原理**：就像检查一个员工是否准备好上班，如果员工还在“喝咖啡”（检查失败），老板不会给他分配任务。Kubernetes 不会把流量发到还没准备好的容器。
+   - **作用**：确保用户请求只发到准备好的容器，避免出错或延迟。
+   - **例子**：检查应用是否连接上数据库，只有连接好了才接收请求。
+
+3. **startupProbe（启动探测）**
+   - **原理**：就像检查一个新员工是否完成了入职培训，如果还没完成（检查失败），老板会给他更多时间，不会急着安排工作。Kubernetes 会等容器启动完成再进行其他检查。
+   - **作用**：给启动慢的应用更多时间，避免被误判为不健康。
+   - **例子**：检查一个需要加载大文件的应用是否启动完成。
+
+**三种检查的关系（Mermaid 流程图）**：
+以下是一个简单的流程图，展示三种探测如何配合工作：
+
+```mermaid
+graph TD
+    A[容器启动] --> B{startupProbe 检查}
+    B -->|失败| C[等待重试, 延迟其他检查]
+    B -->|成功| D{livenessProbe 检查}
+    D -->|失败| E[重启容器]
+    D -->|成功| F{readinessProbe 检查}
+    F -->|失败| G[不分配流量]
+    F -->|成功| H[分配流量]
+```
+
+**解释**：容器启动后，先用 `startupProbe` 检查是否启动完成；完成后用 `livenessProbe` 检查是否存活，如果存活再用 `readinessProbe` 检查是否可以接收流量。三者分工明确，确保容器从启动到运行都处于最佳状态。
+
+### 健康检查语法与配置参数
+
+健康检查是在 Pod 的 YAML 文件中配置的，写在容器（`containers`）下面。我们用最简单的方式解释语法和参数。
+
+#### 基本语法结构
+
+健康检查写在 `livenessProbe`、`readinessProbe` 或 `startupProbe` 字段下，支持三种检查方式：HTTP、TCP 和命令（Exec）。下面是一个简单的例子：
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-pod
+  namespace: your-pinyin-name
+spec:
+  containers:
+  - name: example-container
+    image: nginx:1.14.2
+    livenessProbe:  # 活性探测：检查是否存活
+      httpGet:      # 用 HTTP 请求检查
+        path: /     # 检查路径
+        port: 80    # 检查端口
+      initialDelaySeconds: 15  # 启动后等多久开始检查
+      periodSeconds: 10        # 多久检查一次
+      timeoutSeconds: 1        # 检查超时时间
+      successThreshold: 1      # 成功几次算健康
+      failureThreshold: 3      # 失败几次算不健康
+```
+
+#### 通用配置参数（详细解释）
+
+不管用哪种检查方式，下面这些参数都会用到，决定了检查的“节奏”和“规则”：
+- **`initialDelaySeconds`**：容器启动后等待多久才开始第一次检查（单位：秒）。比如设为 15，意思是容器启动 15 秒后才开始检查，避免容器还没准备好就被检查。默认是 0。
+- **`periodSeconds`**：检查的频率（单位：秒）。比如设为 10，意思是每 10 秒检查一次。默认是 10。
+- **`timeoutSeconds`**：每次检查的超时时间（单位：秒）。比如设为 1，意思是如果 1 秒内没返回结果，就算检查失败。默认是 1。
+- **`successThreshold`**：连续成功几次才算“健康”或“就绪”。比如设为 1，意思是只要成功 1 次就通过。默认是 1。
+- **`failureThreshold`**：连续失败几次才算“不健康”或“未就绪”。比如设为 3，意思是失败 3 次后 Kubernetes 会采取行动（重启或移除流量）。默认是 3。
+
+**小贴士**：这些参数要根据你的应用特点调整。比如启动慢的应用，可以把 `initialDelaySeconds` 设长一点；`failureThreshold` 在 `startupProbe` 中可以设大一点，给更多时间。
+
+#### 实践练习：基于 pod-stars-emmision 的健康检查配置
+
+以下练习会逐步修改 `pod-stars-emmision.yml`，覆盖 HTTP、TCP、命令探测以及参数调整，每次修改后都会提供观察方法。
+
+##### 练习 1：HTTP 探测（调整 livenessProbe 参数）
+**目标**：修改 `livenessProbe` 参数，观察参数变化对检查的影响。
+1. 修改 `pod-stars-emmision.yml`，将 `livenessProbe` 的参数调整为更短的延迟和频率：
+   ```yaml
+   livenessProbe:
+     httpGet:
+       path: /
+       port: 80
+     initialDelaySeconds: 5  # 缩短首次检查延迟
+     periodSeconds: 5        # 缩短检查频率
+     timeoutSeconds: 1
+     successThreshold: 1
+     failureThreshold: 3
+   ```
+2. 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+3. **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看 `livenessProbe` 检查是否更快触发，是否有失败记录。
+4. **思考**：如果 `initialDelaySeconds` 设为 0，会发生什么？尝试修改并观察。
+
+##### 练习 2：TCP 探测（替换 readinessProbe）
+**目标**：将 `readinessProbe` 改为 TCP 探测，检查端口是否可用。
+1. 修改 `pod-stars-emmision.yml`，将 `readinessProbe` 改为 TCP 探测：
+   ```yaml
+   readinessProbe:
+     tcpSocket:
+       port: 80
+     initialDelaySeconds: 5
+     periodSeconds: 5
+     timeoutSeconds: 1
+     successThreshold: 1
+     failureThreshold: 3
+   ```
+2. 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+3. **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看 `readinessProbe` 是否成功。如果失败，可能是端口配置错误。
+4. **思考**：如果把端口改为不存在的（如 8080），会怎样？尝试修改并观察事件变化。
+
+##### 练习 3：命令探测（新增 startupProbe）
+**目标**：添加 `startupProbe`，用命令探测检查进程是否存在。
+1. 修改 `pod-stars-emmision.yml`，添加 `startupProbe`，检查是否存在特定进程（假设检查 `nginx` 进程，如果镜像不是 nginx，可改为其他命令）：
+   ```yaml
+   startupProbe:
+     exec:
+       command:
+       - sh
+       - -c
+       - ps aux | grep nginx || ps aux | grep stars  # 检查 nginx 或 stars 相关进程
+     initialDelaySeconds: 10
+     periodSeconds: 5
+     timeoutSeconds: 2
+     successThreshold: 1
+     failureThreshold: 30  # 给足够时间启动
+   ```
+2. 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+3. **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看 `startupProbe` 是否成功。如果失败，可能是命令不适合你的镜像，尝试调整命令。
+4. **思考**：如果你的应用启动需要 2 分钟，怎么调整 `failureThreshold` 和 `initialDelaySeconds`？
+
+
+#### 探测方式（三种方式+简单练习）
+
+Kubernetes 支持三种检查方式，下面分别介绍，并附上简单的练习 YAML 文件，让你动手试试。
+
+##### 1. **HTTP 探测（`httpGet`）**
+- **作用**：通过 HTTP 请求检查某个路径，如果返回状态码是 200-399，就算成功。
+- **适用**：Web 应用，比如检查 `/health` 路径是否正常。
+- **参数**：
+    - `path`：请求的路径，比如 `/health`。
+    - `port`：请求的端口，比如 `80`。
+
+- 修改 `pod-stars-emmision.yml`，同时配置三种探测：
+   ```yaml
+   livenessProbe:
+     httpGet:
+       path: /
+       port: 80
+     initialDelaySeconds: 15
+     periodSeconds: 10
+     timeoutSeconds: 2
+     successThreshold: 1
+     failureThreshold: 3
+   readinessProbe:
+     tcpSocket:
+       port: 80
+     initialDelaySeconds: 5
+     periodSeconds: 5
+     timeoutSeconds: 1
+     successThreshold: 1
+     failureThreshold: 3
+   startupProbe:
+     exec:
+       command:
+       - sh
+       - -c
+       - ps aux | grep nginx || ps aux | grep stars
+     initialDelaySeconds: 10
+     periodSeconds: 5
+     timeoutSeconds: 2
+     successThreshold: 1
+     failureThreshold: 30
+   ```
+- 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl get pods -n your-pinyin-name
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+- **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看三种探测的检查结果，注意 `startupProbe` 是否先完成，`livenessProbe` 和 `readinessProbe` 是否随后生效。
+- **思考**：如果 `startupProbe` 失败，会影响其他探测吗？观察事件日志分析原因。
+
+##### 2. **TCP 探测（`tcpSocket`）**
+- **作用**：检查某个端口是否能连接上，如果能连接就算成功。
+- **适用**：非 HTTP 服务，比如数据库端口。
+- **参数**：
+- `port`：检查的端口，比如 `80`。
+- 修改 `pod-stars-emmision.yml`，将 `readinessProbe` 改为 TCP 探测：
+   ```yaml
+   readinessProbe:
+     tcpSocket:
+       port: 80
+     initialDelaySeconds: 5
+     periodSeconds: 5
+     timeoutSeconds: 1
+     successThreshold: 1
+     failureThreshold: 3
+   ```
+- 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+- **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看 `readinessProbe` 是否成功。如果失败，可能是端口配置错误。
+- **思考**：如果把端口改为不存在的（如 8080），会怎样？尝试修改并观察事件变化。
+
+##### 3. **命令探测（`exec`）**
+
+- **作用**：在容器里跑一个命令，如果命令返回 0，就算成功。
+- **适用**：自定义检查，比如检查某个进程是否存在。
+- **参数**：
+- `command`：要执行的命令，比如 `["ps", "aux"]`。
+- **练习**：检查 nginx 进程是否存在。
+- 修改 `pod-stars-emmision.yml`，添加 `startupProbe`，检查是否存在特定进程（假设检查 `nginx` 进程，如果镜像不是 nginx，可改为其他命令）：
+   ```yaml
+   startupProbe:
+     exec:
+       command:
+       - sh
+       - -c
+       - ps aux | grep nginx || ps aux | grep stars  # 检查 nginx 或 stars 相关进程
+     initialDelaySeconds: 10
+     periodSeconds: 5
+     timeoutSeconds: 2
+     successThreshold: 1
+     failureThreshold: 30  # 给足够时间启动
+   ```
+- 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+- **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看 `startupProbe` 是否成功。如果失败，可能是命令不适合你的镜像，尝试调整命令。
+- **思考**：如果你的应用启动需要 2 分钟，怎么调整 `failureThreshold` 和 `initialDelaySeconds`？
+
+
+#### 综合实践：三种探测一起用
+
+下面是一个完整的例子，把三种探测都用上，模拟一个 Web 应用。创建文件 `pod-all-probes.yml`：
+**目标**：结合 HTTP、TCP 和命令探测，观察三种探测的协同效果。
+1. 修改 `pod-stars-emmision.yml`，同时配置三种探测：
+   ```yaml
+   livenessProbe:
+     httpGet:
+       path: /
+       port: 80
+     initialDelaySeconds: 15
+     periodSeconds: 10
+     timeoutSeconds: 2
+     successThreshold: 1
+     failureThreshold: 3
+   readinessProbe:
+     tcpSocket:
+       port: 80
+     initialDelaySeconds: 5
+     periodSeconds: 5
+     timeoutSeconds: 1
+     successThreshold: 1
+     failureThreshold: 3
+   startupProbe:
+     exec:
+       command:
+       - sh
+       - -c
+       - ps aux | grep nginx || ps aux | grep stars
+     initialDelaySeconds: 10
+     periodSeconds: 5
+     timeoutSeconds: 2
+     successThreshold: 1
+     failureThreshold: 30
+   ```
+2. 重新部署并观察：
+   ```bash
+   kubectl apply -f pod-stars-emmision.yml
+   kubectl get pods -n your-pinyin-name
+   kubectl describe pod pod-stars-emmision -n your-pinyin-name
+   ```
+3. **Kuboard 观察**：在 Kuboard 的 Pod 详情页“事件（Events）”中，查看三种探测的检查结果，注意 `startupProbe` 是否先完成，`livenessProbe` 和 `readinessProbe` 是否随后生效。
+4. **思考**：如果 `startupProbe` 失败，会影响其他探测吗？观察事件日志分析原因。
+
+#### 常见问题与解决方法
+
+- **容器频繁重启**：可能是 `livenessProbe` 的 `initialDelaySeconds` 太短或 `failureThreshold` 太小，增加这两个值试试。
+- **流量未到达**：可能是 `readinessProbe` 失败，检查路径或端口是否正确。
+- **启动探测失败**：确保 `startupProbe` 的命令或参数适合你的镜像，增加 `failureThreshold` 给更多时间。
+
+**Kuboard 界面查看**：
+登录 Kuboard，选择你的 Namespace，找到 `pod-all-probes`，点击进入详情页，在“事件（Events）”里查看检查结果。
+
+#### 常见问题与小技巧
+
+- **容器老是重启**：可能是 `livenessProbe` 检查太严格，把 `initialDelaySeconds` 设长点，`failureThreshold` 设大点。
+- **流量不来**：可能是 `readinessProbe` 失败，检查路径和端口对不对。
+- **启动慢被误判**：加个 `startupProbe`，给更多启动时间。
+- **小技巧**：检查路径尽量用应用的健康接口（比如 `/health`），返回准确状态。
+
+#### 总结
+
+健康检查是 Kubernetes 确保容器正常运行的“体检工具”。通过 `livenessProbe` 检查容器是否存活，`readinessProbe` 检查是否可以接收流量，`startupProbe` 检查是否启动完成，三者配合让服务更稳定。配置时要根据应用特点调整检查参数，比如启动时间、频率等。
+
+
+## 第五部分：ConfigMap 和 Secret——管理配置和敏感信息
+
+### 1. ConfigMap 和 Secret 概述
+
+#### 1.1 什么是 ConfigMap 和 Secret？
+在 Kubernetes 中，应用的配置信息（如数据库地址、端口号）和敏感信息（如密码、密钥）不适合直接写在镜像或 Pod 定义中，因为这样不灵活也不安全。Kubernetes 提供了两种资源来解决这个问题：
+- **ConfigMap**：用来存储非敏感的配置数据，比如应用的配置文件、环境变量等。想象它是一个“配置文件的收纳盒”，可以把配置信息集中管理，方便修改和复用。
+- **Secret**：用来存储敏感信息，比如密码、API 密钥、证书等。想象它是一个“保险箱”，专门保护重要数据，避免泄露。
+
+#### 1.2 为什么需要 ConfigMap 和 Secret？
+- **解耦配置与代码**：如果把配置直接写在镜像里，每次改配置就要重新构建镜像，太麻烦。ConfigMap 和 Secret 让配置和代码分开，修改配置只需更新资源，不用动镜像。
+- **安全性**：敏感信息（如密码）直接写在 Pod YAML 文件里容易泄露，Secret 提供了加密存储（Base64 编码，默认情况下），并可以通过权限控制限制访问。
+- **复用性**：一个 ConfigMap 或 Secret 可以被多个 Pod 使用，方便统一管理配置。
+- **灵活性**：支持多种方式加载配置，比如环境变量、文件挂载等，适应不同应用需求。
+
+#### 1.3 ConfigMap 和 Secret 的区别与使用场景
+- **ConfigMap 场景**：
+  - 存储应用的配置文件，比如 Nginx 的 `nginx.conf`。
+  - 设置环境变量，比如数据库连接地址 `DB_HOST=localhost`。
+  - 统一管理多个 Pod 的公共配置，比如日志级别 `LOG_LEVEL=debug`。
+- **Secret 场景**：
+  - 存储数据库密码，比如 `DB_PASSWORD=admin123`。
+  - 保存 API 密钥或令牌，比如 `API_KEY=xyz123`。
+  - 提供 TLS 证书文件，用于 HTTPS 加密通信。
+
+- **ConfigMap 和 Secret 的区别与使用场景**
+
+  | 特性              | ConfigMap                       | Secret                          |
+  |-------------------|---------------------------------|---------------------------------|
+  | 存储内容          | 非敏感配置数据（如配置文件、环境变量） | 敏感信息（如密码、密钥、证书） |
+  | 编码方式          | 明文存储                       | Base64 编码存储                |
+  | 加密支持          | 不加密                         | 可配置加密（视集群配置）       |
+  | 使用场景          | 应用程序配置、参数设置         | 数据库凭据、API 密钥、TLS 证书 |
+
+#### 1.4 YAML 语法对齐说明（初学者必读）
+
+在编写 Kubernetes 的 YAML 配置文件时，**缩进和对齐**非常重要，因为 YAML 是一种对缩进敏感的格式。以下是初学者需要注意的几点：
+
+- **缩进层级：** 通常使用 2 个空格作为一级缩进（不要使用 Tab 键，因为 Tab 键在 YAML 中不被支持）。
+- **对齐原则：** 同一层级的字段必须保持相同的缩进。例如，在 `spec` 下定义的 `containers` 和 `imagePullSecrets` 应该对齐；在 `containers` 下定义的 `name`、`image` 等字段也应该对齐。
+- **嵌套结构：** 子字段比父字段多缩进一级。例如，`env` 是 `containers` 的子字段，所以 `env` 比 `containers` 多缩进 2 个空格。
+- **示例对齐说明：** 在以下练习中，我会用注释标注对齐关系，确保您能看懂每个字段的位置。
+
+如果缩进不对，Kubernetes 将无法解析 YAML 文件，导致应用失败。因此，编写时请仔细检查缩进，或者使用支持 YAML 语法高亮的编辑器（如 VSCode）来辅助编写。
+
+**小贴士**：ConfigMap 适合存普通配置，Secret 适合存敏感数据。如果不确定用哪个，记住“涉及密码或密钥就用 Secret”。
+
+### 2. ConfigMap 和 Secret 的创建与引入/挂载教学
+
+ConfigMap 和 Secret 是 Kubernetes 中用于管理配置和敏感信息的两种资源。以下将分别对 ConfigMap 的两种用法（环境变量配置和文件配置）以及 Secret 的三种用法（环境变量配置、Harbor 登录配置和 HTTPS 证书配置）进行详细教学，每种用法都会包含创建方法（统一使用 YAML 和命令行方式）和引入/挂载到 Pod 的方式。
+
+**注意**：文件命名规范要求外部文件名与内部 `metadata.name` 保持一致，例如 ConfigMap 的名称是 `configmap-app-env`，则文件名应为 `configmap-app-env.yml`。
+
+#### 2.1 ConfigMap - 环境变量配置（env 配置）
+
+- **用途**：将配置数据以环境变量的形式注入到 Pod 中，适合简单的键值对配置。
+- **创建方法 - 语法说明**：
+  ConfigMap 可以通过 YAML 文件定义，基本结构如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: ConfigMap  # 资源类型，这里是 ConfigMap
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: configmap-app-env  # ConfigMap 的名称，与文件名保持一致
+  data:  # 配置数据以键值对形式存储
+    key1: value1  # 键值对形式，环境变量名和值
+    key2: value2
+  ```
+
+- **创建方法 - 具体示例**：
+  创建一个名为 `configmap-app-env.yml` 的文件，内容如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: ConfigMap  # 资源类型，这里是 ConfigMap
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: configmap-app-env  # ConfigMap 的名称，与文件名保持一致
+  data:  # 配置数据以键值对形式存储
+    DB_HOST: mysql-service
+    DB_PORT: "3306"
+    LOG_LEVEL: info
+  ```
+  使用以下命令应用该文件：
+  ```bash
+  kubectl apply -f configmap-app-env.yml
+  ```
+
+- **引入到 Pod - 语法说明**：
+  在 Pod 的 YAML 文件中，可以使用 `envFrom` 引用整个 ConfigMap 中的所有键值对作为环境变量，基本结构如下：
+  ```yaml
+  envFrom:  # 定义环境变量，从 ConfigMap 中引入所有键值对
+  - configMapRef:
+      name: configmap-app-env  # ConfigMap 名称
+  ```
+  **关于 `configMapKeyRef` 的说明**：除了 `envFrom` 一次性引入所有环境变量外，也可以使用 `configMapKeyRef` 单独引用 ConfigMap 中的某个键值对，语法如下：
+  ```yaml
+  env:  # 定义环境变量，从 ConfigMap 中引入
+  - name: DB_HOST  # 环境变量名
+    valueFrom:  # 使用 valueFrom 引用外部资源
+      configMapKeyRef:
+        name: configmap-app-env  # ConfigMap 名称
+        key: DB_HOST  # ConfigMap 中的键
+  ```
+  由于 `configMapKeyRef` 需要逐个指定键值对，操作较为繁琐，因此本教程主要推荐使用 `--from-env-file` 和 `envFrom` 的方式一次性导入所有环境变量。
+
+- **引入到 Pod - 具体示例**：
+  引用位置在 Pod 的 `spec.containers.envFrom` 字段中，完整 Pod 配置如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+    - name: stars-emmision  # 容器的名称
+      image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+      ports:  # 指定容器暴露的端口
+      - containerPort: 80  # 容器内部使用的端口号，这里是 80
+      envFrom:  # 定义环境变量，从 ConfigMap 中引入所有键值对
+      - configMapRef:
+          name: configmap-app-env  # ConfigMap 名称
+      livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+      readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+    - name: secret-harbor-login  # 引用之前创建的 Secret 名称
+  ```
+
+- **查看信息 - 具体示例**：
+  1. 列出命名空间中的所有 ConfigMap：
+     ```bash
+     kubectl get configmaps -n your-pinyin-name
+     ```
+  2. 查看 `configmap-app-env` 的详细信息：
+     ```bash
+     kubectl describe configmap configmap-app-env -n your-pinyin-name
+     ```
+  3. 查看 `configmap-app-env` 的内容：
+     ```bash
+     kubectl get configmap configmap-app-env -o yaml -n your-pinyin-name
+     ```
+
+#### 2.2 ConfigMap - 文件配置（文件挂载）
+
+- **用途**：将配置数据以文件的形式挂载到 Pod 中，适合复杂的配置文件内容。
+- **创建方法 - 语法说明**：
+  ConfigMap 可以通过 YAML 文件定义，基本结构如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: ConfigMap  # 资源类型，这里是 ConfigMap
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: configmap-app-file  # ConfigMap 的名称，与文件名保持一致
+  data:  # 配置数据以键值对形式存储
+    filename: |  # 使用 | 表示多行文本，模拟一个配置文件
+      content line 1
+      content line 2
+  ```
+  使用 `kubectl apply -f` 命令应用 YAML 文件创建 ConfigMap。
+
+- **创建方法 - 具体示例**：
+  创建一个名为 `configmap-app-file.yml` 的文件，内容如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: ConfigMap  # 资源类型，这里是 ConfigMap
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: configmap-app-file  # ConfigMap 的名称，与文件名保持一致
+  data:  # 配置数据以键值对形式存储
+    config.txt: |  # 使用 | 表示多行文本，模拟一个配置文件
+      server {
+        host: localhost
+        port: 8080
+      }
+  ```
+  使用以下命令应用该文件：
+  ```bash
+  kubectl apply -f configmap-app-file.yml
+  ```
+
+- **挂载到 Pod - 语法说明**：
+  在 Pod 的 YAML 文件中，使用 `volumes` 和 `volumeMounts` 挂载 ConfigMap，基本结构如下：
+  ```yaml
+  volumeMounts:  # 定义挂载点
+  - name: volume-configmap-app-file
+    mountPath: /etc/config  # 挂载路径，容器内可访问的目录
+  volumes:  # 定义卷，引用 ConfigMap
+  - name: volume-configmap-app-file
+    configMap:
+      name: configmap-app-file  # ConfigMap 名称
+  ```
+
+- **挂载到 Pod - 具体示例**：
+  引用位置在 Pod 的 `spec.containers.volumeMounts` 和 `spec.volumes` 字段中，完整 Pod 配置如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+    - name: stars-emmision  # 容器的名称
+      image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+      ports:  # 指定容器暴露的端口
+      - containerPort: 80  # 容器内部使用的端口号，这里是 80
+      volumeMounts:  # 定义挂载点，将 ConfigMap 挂载为文件
+      - name: volume-configmap-app-file  # 挂载 ConfigMap 文件配置
+        mountPath: /etc/config
+      livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+      readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+    volumes:  # 定义卷，引用 ConfigMap
+    - name: volume-configmap-app-file  # 卷名称，与 container 中的 volumeMounts 对应
+      configMap:
+        name: configmap-app-file  # ConfigMap 名称
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+    - name: secret-harbor-login  # 引用之前创建的 Secret 名称
+  ```
+
+- **查看信息 - 具体示例**：
+  1. 列出命名空间中的所有 ConfigMap：
+     ```bash
+     kubectl get configmaps -n your-pinyin-name
+     ```
+  2. 查看 `configmap-app-file` 的详细信息：
+     ```bash
+     kubectl describe configmap configmap-app-file -n your-pinyin-name
+     ```
+  3. 查看 `configmap-app-file` 的内容：
+     ```bash
+     kubectl get configmap configmap-app-file -o yaml -n your-pinyin-name
+     ```
+
+#### 2.3 Secret - 环境变量配置（env 配置）
+
+- **用途**：将敏感数据以环境变量的形式注入到 Pod 中，适合简单的密码或密钥。
+- **创建方法 - 语法说明**：
+  Secret 可以通过 YAML 文件定义，使用 `stringData` 字段以明文方式输入数据，Kubernetes 会自动转换为 Base64 编码。基本结构如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Secret  # 资源类型，这里是 Secret
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: secret-app-env  # Secret 的名称，与文件名保持一致
+  type: Opaque  # Secret 类型，Opaque 表示通用类型
+  stringData:  # 使用 stringData 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64
+    key1: value1
+    key2: value2
+  ```
+  或者使用命令行方式通过 `--from-env-file` 创建 Secret，适合从环境变量文件快速导入配置。
+
+- **创建方法 - 具体示例**：
+  创建一个名为 `secret-app-env.yml` 的文件，内容如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Secret  # 资源类型，这里是 Secret
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: secret-app-env  # Secret 的名称，与文件名保持一致
+  type: Opaque  # Secret 类型，Opaque 表示通用类型
+  stringData:  # 使用 stringData 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64
+    DB_PASSWORD: admin123
+    API_KEY: xyz789
+  ```
+  使用以下命令应用该文件：
+  ```bash
+  kubectl apply -f secret-app-env.yml
+  ```
+
+- **引入到 Pod - 语法说明**：
+  在 Pod 的 YAML 文件中，使用 `envFrom` 引用 Secret 中的所有键值对作为环境变量，基本结构如下：
+  ```yaml
+  envFrom:  # 定义环境变量，从 Secret 中引入所有键值对
+  - secretRef:
+      name: secret-app-env  # Secret 名称
+  ```
+
+- **引入到 Pod - 具体示例**：
+  引用位置在 Pod 的 `spec.containers.envFrom` 字段中，完整 Pod 配置如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+    - name: stars-emmision  # 容器的名称
+      image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+      ports:  # 指定容器暴露的端口
+      - containerPort: 80  # 容器内部使用的端口号，这里是 80
+      envFrom:  # 定义环境变量，从 Secret 中引入所有键值对
+      - secretRef:
+          name: secret-app-env  # Secret 名称
+      livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+      readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+    - name: secret-harbor-login  # 引用之前创建的 Secret 名称
+  ```
+
+- **查看信息 - 具体示例**：
+  1. 列出命名空间中的所有 Secret：
+     ```bash
+     kubectl get secrets -n your-pinyin-name
+     ```
+  2. 查看 `secret-app-env` 的详细信息：
+     ```bash
+     kubectl describe secret secret-app-env -n your-pinyin-name
+     ```
+  3. 查看 `secret-app-env` 的内容（Base64 编码）：
+     ```bash
+     kubectl get secret secret-app-env -o yaml -n your-pinyin-name
+     ```
+  4. 解码 `DB_PASSWORD` 以查看明文：
+     ```bash
+     kubectl get secret secret-app-env -o jsonpath='{.data.DB_PASSWORD}' -n your-pinyin-name | base64 -d
+
+
+#### 2.4 Secret - Harbor 登录配置（镜像拉取）
+
+- **用途**：用于存储镜像仓库的登录凭据，以便 Pod 拉取私有镜像。
+- **创建方法 - 语法说明**：
+  Secret 可以通过 YAML 文件定义，用于 Docker 镜像仓库登录的 Secret 类型为 `kubernetes.io/dockerconfigjson`，基本结构如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Secret  # 资源类型，这里是 Secret
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: secret-harbor-login  # Secret 的名称，与文件名保持一致
+  type: kubernetes.io/dockerconfigjson  # Secret 类型，用于镜像仓库登录
+  stringData:  # 使用 stringData 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64
+    .dockerconfigjson: |  # Docker 配置 JSON 格式，包含镜像仓库登录信息
+      {
+        "auths": {
+          "harbor.labworlds.cc": {
+            "username": "your-username",
+            "password": "your-password",
+            "email": "your-email@example.com",
+            "auth": "base64-encoded-auth-string"  # 可选，Kubernetes 会自动生成
+          }
+        }
+      }
+  ```
+  使用 `kubectl apply -f` 命令应用 YAML 文件创建 Secret。
+
+- **创建方法 - 具体示例**：
+  创建一个名为 `secret-harbor-login.yml` 的文件，内容如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Secret  # 资源类型，这里是 Secret
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: secret-harbor-login  # Secret 的名称，与文件名保持一致
+  type: kubernetes.io/dockerconfigjson  # Secret 类型，用于镜像仓库登录
+  stringData:  # 使用 stringData 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64
+    .dockerconfigjson: |  # Docker 配置 JSON 格式，包含镜像仓库登录信息
+      {
+        "auths": {
+          "harbor.labworlds.cc": {
+            "username": "your-username",  # 替换为你的 Harbor 用户名
+            "password": "your-password",  # 替换为你的 Harbor 密码
+          }
+        }
+      }
+  ```
+  使用以下命令应用该文件：
+  ```bash
+  kubectl apply -f secret-harbor-login.yml
+  ```
+
+- **引入到 Pod - 语法说明**：
+  在 Pod 的 YAML 文件中，使用 `imagePullSecrets` 引用 Secret，基本结构如下：
+  ```yaml
+  imagePullSecrets:  # 指定用于拉取镜像的 Secret
+  - name: secret-harbor-login  # 引用之前创建的 Secret 名称
+  ```
+
+- **引入到 Pod - 具体示例**：
+  引用位置在 Pod 的 `spec.imagePullSecrets` 字段中，完整 Pod 配置如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+    - name: stars-emmision  # 容器的名称
+      image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+      ports:  # 指定容器暴露的端口
+      - containerPort: 80  # 容器内部使用的端口号，这里是 80
+      livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+      readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+    - name: secret-harbor-login  # 引用之前创建的 Secret 名称
+  ```
+
+- **查看信息 - 具体示例**：
+  1. 列出命名空间中的所有 Secret：
+     ```bash
+     kubectl get secrets -n your-pinyin-name
+     ```
+  2. 查看 `secret-harbor-login` 的详细信息：
+     ```bash
+     kubectl describe secret secret-harbor-login -n your-pinyin-name
+     ```
+  3. 查看 `secret-harbor-login` 的内容（Base64 编码）：
+     ```bash
+     kubectl get secret secret-harbor-login -o yaml -n your-pinyin-name
+     ```
+
+#### 2.5 Secret - HTTPS 证书配置（证书挂载）
+
+- **用途**：将 HTTPS 证书以文件形式挂载到 Pod 中，适合需要 TLS 加密的场景。
+- **创建方法 - 语法说明**：
+  Secret 可以通过 YAML 文件定义，用于 TLS 证书的 Secret 类型为 `kubernetes.io/tls`，基本结构如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Secret  # 资源类型，这里是 Secret
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: secret-domain  # Secret 的名称，与文件名保持一致
+  type: kubernetes.io/tls  # Secret 类型，专门用于 TLS 证书
+  stringData:  # 使用 stringData 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64
+    tls.crt: |  # 证书文件内容
+      certificate content
+    tls.key: |  # 私钥文件内容
+      private key content
+  ```
+  使用 `kubectl apply -f` 命令应用 YAML 文件创建 Secret。
+
+- **创建方法 - 具体示例**：
+  创建一个名为 `secret-domain.yml` 的文件，内容如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Secret  # 资源类型，这里是 Secret
+  metadata:
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+    name: secret-domain  # Secret 的名称，与文件名保持一致
+  type: kubernetes.io/tls  # Secret 类型，专门用于 TLS 证书
+  stringData:  # 使用 stringData 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64
+    tls.crt: |  # 证书文件内容（示例，实际替换为真实证书）
+      -----BEGIN CERTIFICATE-----
+      MIID... (证书内容)
+      -----END CERTIFICATE-----
+    tls.key: |  # 私钥文件内容（示例，实际替换为真实私钥）
+      -----BEGIN PRIVATE KEY-----
+      MIIE... (私钥内容)
+      -----END PRIVATE KEY-----
+  ```
+  使用以下命令应用该文件：
+  ```bash
+  kubectl apply -f secret-domain.yml
+  ```
+
+- **挂载到 Pod - 语法说明**：
+  在 Pod 的 YAML 文件中，使用 `volumes` 和 `volumeMounts` 挂载 Secret，基本结构如下：
+  ```yaml
+  volumeMounts:  # 定义挂载点
+  - name: volume-secret-domain
+    mountPath: /etc/ssl  # 挂载路径，容器内可访问的目录
+  volumes:  # 定义卷，引用 Secret
+  - name: volume-secret-domain
+    secret:
+      secretName: secret-domain  # Secret 名称
+  ```
+
+- **挂载到 Pod - 具体示例**：
+  引用位置在 Pod 的 `spec.containers.volumeMounts` 和 `spec.volumes` 字段中，完整 Pod 配置如下：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+    - name: stars-emmision  # 容器的名称
+      image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+      ports:  # 指定容器暴露的端口
+      - containerPort: 80  # 容器内部使用的端口号，这里是 80
+      volumeMounts:  # 定义挂载点，将 Secret 挂载为文件
+      - name: volume-secret-domain  # 挂载 Secret HTTPS 证书
+        mountPath: /etc/ssl
+      livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+      readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+    volumes:  # 定义卷，引用 Secret
+    - name: volume-secret-domain  # 卷名称，与 container 中的 volumeMounts 对应
+      secret:
+        secretName: secret-domain  # Secret 名称
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+    - name: secret-harbor-login  # 引用之前创建的 Secret 名称
+  ```
+- **查看信息 - 具体示例**：
+  1. 列出命名空间中的所有 Secret：
+     ```bash
+     kubectl get secrets -n your-pinyin-name
+     ```
+  2. 查看 `secret-domain` 的详细信息：
+     ```bash
+     kubectl describe secret secret-domain -n your-pinyin-name
+     ```
+  3. 查看 `secret-domain` 的内容（Base64 编码）：
+     ```bash
+     kubectl get secret secret-domain -o yaml -n your-pinyin-name
+
+
+### 3. 总结表格：ConfigMap 和 Secret 常用命令
+
+以下是 ConfigMap 和 Secret 的常用命令总结表格，方便日后快速参考：
+
+| **资源类型**          | **操作**                          | **命令**                                                                                     | **示例（假设命名空间为 `your-pinyin-name`）**                                      |
+|-----------------------|----------------------------------|---------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| **ConfigMap**         | 列出所有 ConfigMap              | `kubectl get configmaps -n <namespace>`                                                    | `kubectl get configmaps -n your-pinyin-name`                              |
+|                       | 查看详细信息                    | `kubectl describe configmap <configmap-name> -n <namespace>`                               | `kubectl describe configmap configmap-app-env -n your-pinyin-name`       |
+|                       | 查看内容（YAML 格式）           | `kubectl get configmap <configmap-name> -o yaml -n <namespace>`                            | `kubectl get configmap configmap-app-env -o yaml -n your-pinyin-name`    |
+| **Secret**            | 列出所有 Secret                 | `kubectl get secrets -n <namespace>`                                                       | `kubectl get secrets -n your-pinyin-name`                                 |
+|                       | 查看详细信息                    | `kubectl describe secret <secret-name> -n <namespace>`                                     | `kubectl describe secret secret-app-env -n your-pinyin-name`             |
+|                       | 查看内容（YAML 格式，Base64）   | `kubectl get secret <secret-name> -o yaml -n <namespace>`                                  | `kubectl get secret secret-app-env -o yaml -n your-pinyin-name`          |
+|                       | 解码数据查看明文                | `kubectl get secret <secret-name> -o jsonpath='{.data.<key>}' -n <namespace> | base64 -d` | `kubectl get secret secret-app-env -o jsonpath='{.data.DB_PASSWORD}' -n your-pinyin-name | base64 -d` |
+| **Pod**               | 列出所有 Pod                    | `kubectl get pods -n <namespace>`                                                          | `kubectl get pods -n your-pinyin-name`                                    |
+|                       | 查看详细信息                    | `kubectl describe pod <pod-name> -n <namespace>`                                           | `kubectl describe pod pod-stars-emmision -n your-pinyin-name`            |
+|                       | 查看日志                        | `kubectl logs <pod-name> -n <namespace>`                                                   | `kubectl logs pod-stars-emmision -n your-pinyin-name`                    |
+|                       | 进入容器                        | `kubectl exec -it <pod-name> -n <namespace> -- /bin/bash` 或 `/bin/sh`                     | `kubectl exec -it pod-stars-emmision -n your-pinyin-name -- /bin/bash`   |
+
+### 4. 综合练习：将 5 种配置全部挂载到 Pod 并验证
+
+以下是一个完整的 Pod 配置示例，将上述 5 种配置（2 种 ConfigMap 和 3 种 Secret）全部引入或挂载到一个 Pod 中，并说明如何进入容器验证以及使用 Kuboard 查看资源。
+
+- **Pod YAML 配置示例**：
+  创建一个名为 `pod-stars-emmision.yml` 的文件，内容如下（文件名与 `metadata.name` 保持一致）：
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+    - name: stars-emmision  # 容器的名称
+      image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+      ports:  # 指定容器暴露的端口
+      - containerPort: 80  # 容器内部使用的端口号，这里是 80
+      envFrom:  # 定义环境变量，从 ConfigMap 和 Secret 中引入所有键值对
+      - configMapRef:
+          name: configmap-app-env  # ConfigMap 名称，来自 configmap-app-env.yml
+      - secretRef:
+          name: secret-app-env  # Secret 名称，来自 secret-app-env.yml
+      volumeMounts:  # 定义挂载点，将 ConfigMap 和 Secret 挂载为文件
+      - name: volume-configmap-app-file  # 挂载 ConfigMap 文件配置，来自 configmap-app-file.yml
+        mountPath: /etc/config
+      - name: volume-secret-domain  # 挂载 Secret HTTPS 证书，来自 secret-domain.yml
+        mountPath: /etc/ssl
+      livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+      readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+        httpGet:  # 使用 HTTP GET 请求进行探测
+          path: /  # 请求的路径，这里是根路径
+          port: 80  # 请求的端口，这里是 80
+        initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+        periodSeconds: 10  # 每 10 秒进行一次探测
+    volumes:  # 定义卷，引用 ConfigMap 和 Secret
+    - name: volume-configmap-app-file  # 卷名称，与 container 中的 volumeMounts 对应，来自 configmap-app-file.yml
+      configMap:
+        name: configmap-app-file  # ConfigMap 名称
+    - name: volume-secret-domain  # 卷名称，与 container 中的 volumeMounts 对应，来自 secret-domain.yml
+      secret:
+        secretName: secret-domain  # Secret 名称
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+    - name: secret-harbor-login  # 引用之前创建的 Secret 名称，来自 secret-harbor-login.yml
+  ```
+  使用命令应用该文件：
+  ```bash
+  kubectl apply -f pod-stars-emmision.yml
+  ```
+
+- **进入容器验证配置是否生效**：
+  1. 获取 Pod 名称和状态，确保 Pod 运行正常：
+     ```bash
+     kubectl get pods -n your-pinyin-name
+     ```
+  2. 进入 Pod 的容器：
+     ```bash
+     kubectl exec -it pod-stars-emmision -n your-pinyin-name -- /bin/bash
+     ```
+     如果镜像不支持 `/bin/bash`，可以尝试 `/bin/sh`：
+     ```bash
+     kubectl exec -it pod-stars-emmision -n your-pinyin-name -- /bin/sh
+     ```
+  3. 验证环境变量是否注入：
+     检查 `DB_HOST` 和 `DB_PASSWORD` 是否存在：
+     ```bash
+     echo $DB_HOST  # 应输出 mysql-service，来自 configmap-app-env.yml
+     echo $DB_PASSWORD  # 应输出 admin123，来自 secret-app-env.yml
+     ```
+     如果输出对应值，说明环境变量引入成功。
+  4. 验证文件挂载是否生效：
+     检查 ConfigMap 文件配置：
+     ```bash
+     ls /etc/config  # 应看到 config.txt 文件，来自 configmap-app-file.yml
+     cat /etc/config/config.txt  # 应输出配置文件内容
+     ```
+     检查 Secret HTTPS 证书：
+     ```bash
+     ls /etc/ssl  # 应看到 tls.crt 和 tls.key 文件，来自 secret-domain.yml
+     cat /etc/ssl/tls.crt  # 应输出证书内容
+     cat /etc/ssl/tls.key  # 应输出私钥内容
+     ```
+     如果能看到对应文件内容，说明挂载成功。
+  5. 退出容器：
+     ```bash
+     exit
+     ```
+
+- **使用 Kuboard 查看资源**：
+  1. 登录 Kuboard 界面（假设你已安装 Kuboard，通常通过浏览器访问集群的 Kuboard 服务地址）。
+  2. 在左侧导航栏选择你的 Namespace（例如 `your-pinyin-name`）。
+  3. 查看 Pod：
+     - 进入“工作负载” -> “Pod”，找到 `pod-stars-emmision`，点击查看详情，确认 Pod 状态为 Running。
+  4. 查看 ConfigMap：
+     - 进入“配置” -> “ConfigMap”，找到 `configmap-app-env` 和 `configmap-app-file`，点击查看数据内容。
+  5. 查看 Secret：
+     - 进入“配置” -> “Secret”，找到 `secret-app-env`、`secret-harbor-login` 和 `secret-domain`，点击查看数据（注意 Secret 数据会以掩码形式显示，需解码查看明文）。
+  6. 确认 Pod 配置：
+     - 在 Pod 详情页中，查看“环境变量”和“挂载点”，确认是否引用了对应的 ConfigMap 和 Secret。
+
+### 4. 总结与注意事项
+
+- **文件命名规范**：外部文件名必须与内部 `metadata.name` 保持一致，例如 ConfigMap 名称是 `configmap-app-env`，则文件名为 `configmap-app-env.yml`。
+- **YAML 缩进检查**：编写 YAML 文件时务必注意缩进，建议使用支持语法高亮的编辑器（如 VSCode）辅助编写。
+- **Secret 明文编写**：Secret 可以使用 `stringData` 字段以明文方式定义数据，Kubernetes 会自动编码为 Base64。
+- **Secret 安全性**：Secret 默认仅 Base64 编码，不等于加密，敏感数据需结合集群加密机制或权限控制保护。
+- **验证配置**：创建 Pod 后，务必进入容器验证环境变量和文件挂载是否生效；同时可借助 Kuboard 等可视化工具查看资源状态。
+- **环境变量导入方式**：本教程推荐使用 `--from-env-file` 创建 ConfigMap 和 Secret，并通过 `envFrom` 一次性引入所有环境变量，简化操作流程。
+
+**小贴士**：ConfigMap 和 Secret 是 Kubernetes 配置管理的核心工具，掌握它们的创建和使用方式，能大大提升应用的灵活性和安全性。通过本练习，逐步熟悉各种配置的引入和挂载方式，确保在实际场景中能够灵活应用。
+
+
+## 第六部分 Pod 资源限制与配置示例
+
+### 1. Pod 资源限制的理论介绍
+在 Kubernetes 中，为 Pod 设置资源限制是确保集群资源合理分配和应用稳定运行的重要手段。资源限制主要通过 `requests` 和 `limits` 两个字段来定义，分别表示容器运行所需的最低资源量和最大资源量。合理设置这些参数可以防止某个 Pod 占用过多资源，同时保证关键应用获得足够的资源支持。关于资源限制的详细理论介绍，请参考前文内容，这里不再赘述。
+
+### 2. 为什么要使用 `requests` 和 `limits` 以及两者的含义
+- **为什么要使用 `requests` 和 `limits`**：
+  - **资源公平分配**：通过设置 `requests` 和 `limits`，可以确保集群资源合理分配，避免某个 Pod 占用过多资源导致其他 Pod 无法正常运行。
+  - **应用稳定性**：合理设置资源限制可以防止容器因资源不足而崩溃，或因资源过剩而浪费。
+  - **集群稳定性**：资源限制有助于保护集群整体稳定性，避免某个 Pod 的异常行为（如内存泄漏）影响其他 Pod 或节点。
+- **`requests` 的含义**：资源请求，表示容器运行所需的最低资源量（CPU 和内存）。Kubernetes 在调度 Pod 时，会根据 `requests` 值选择合适的节点，确保节点有足够的资源满足 Pod 的最低需求。如果集群资源不足，Pod 将处于 `Pending` 状态。
+- **`limits` 的含义**：资源限制，表示容器可以使用的最大资源量（CPU 和内存）。当容器尝试使用超出 `limits` 定义的资源时，Kubernetes 会采取限制措施，例如对 CPU 进行节流（throttling），或在内存超限时终止容器（OOMKilled）。
+
+
+### 3. Pod 资源限制语法
+在 Kubernetes 中，Pod 的资源限制通过 `spec.containers[].resources` 字段定义，主要包含 `requests` 和 `limits` 两个子字段，用于指定容器运行所需的最低资源量和最大资源量。以下是资源限制的 YAML 语法结构：
+
+```yaml
+spec:
+  containers:
+  - name: <容器名称>
+    image: <镜像名称>
+    resources:
+      requests:  # 资源请求，表示容器运行所需的最低资源量
+        cpu: "<CPU 核心数或毫核数>"  # 例如 "0.2" 或 "200m"
+        memory: "<内存大小>"  # 例如 "256Mi" 或 "1Gi"
+      limits:  # 资源限制，表示容器可使用的最大资源量
+        cpu: "<CPU 核心数或毫核数>"  # 例如 "0.5" 或 "500m"
+        memory: "<内存大小>"  # 例如 "512Mi" 或 "2Gi"
+```
+
+- **CPU 单位**：可以是小数（如 `0.5` 表示半个核心）或毫核（如 `500m` 表示 0.5 核心）。
+- **内存单位**：支持 `Mi`（兆字节）、`Gi`（吉字节）等单位，例如 `512Mi` 表示 512 兆字节。
+
+
+### 2. 练习 Pod YAML 文件
+以下是一个完整的 Pod YAML 配置示例，包含了资源限制、探针配置以及镜像拉取秘钥等内容，供学员参考和学习。此示例严格遵循企业命名规范，并添加了详细注释以便理解：
+
+- 创建一个名为 `pod-stars-emmision.yml` 的文件，内容如下（文件名与 `metadata.name` 保持一致）：
+
+  ```yaml
+  apiVersion: v1  # 指定 Kubernetes API 的版本
+  kind: Pod  # 资源类型，这里是 Pod
+  metadata:
+    name: pod-stars-emmision  # Pod 的名称，符合企业标准，文件名应为 pod-stars-emmision.yml
+    namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
+  spec:
+    containers:  # 定义 Pod 中的容器
+      - name: stars-emmision  # 容器的名称，与应用名保持一致
+        image: harbor.labworlds.cc/stars-emmision/master:08061743-shiqi  # 替换为你的镜像标签
+        ports:  # 指定容器暴露的端口
+          - containerPort: 80  # 容器内部使用的端口号，这里是 80
+        resources:  # 定义容器的资源限制
+          requests:  # 资源请求，表示容器运行所需的最低资源量
+            cpu: "0.2"  # 最低需要 0.2 个 CPU 核心
+            memory: "256Mi"  # 最低需要 256Mi 内存
+          limits:  # 资源限制，表示容器可使用的最大资源量
+            cpu: "0.5"  # 最多可以使用 0.5 个 CPU 核心
+            memory: "512Mi"  # 最多可以使用 512Mi 内存
+        livenessProbe:  # 活性探测配置，用于检查容器是否正常运行
+          httpGet:  # 使用 HTTP GET 请求进行探测
+            path: /  # 请求的路径，这里是根路径
+            port: 80  # 请求的端口，这里是 80
+          initialDelaySeconds: 30  # 在容器启动后，等待 30 秒再进行第一次探测
+          periodSeconds: 10  # 每 10 秒进行一次探测
+        readinessProbe:  # 就绪探测配置，用于检查容器是否可以接收流量
+          httpGet:  # 使用 HTTP GET 请求进行探测
+            path: /  # 请求的路径，这里是根路径
+            port: 80  # 请求的端口，这里是 80
+          initialDelaySeconds: 5  # 在容器启动后，等待 5 秒再进行第一次探测
+          periodSeconds: 10  # 每 10 秒进行一次探测
+    imagePullSecrets:  # 指定用于拉取镜像的 Secret
+      - name: secret-harbor-login  # 引用之前创建的 Secret 名称，用于私有镜像仓库登录
+  ```
+
+- 使用以下命令应用该文件：
+  ```bash
+  kubectl apply -f pod-stars-emmision.yml
+  ```
+
+- 查看pod-stars-emmision的状态
+  ```bash
+  kubectl get pod pod-stars-emmision -n your-pinyin-name
+  ```
+
+- 查看pod-stars-emmision的详情
+  ```bash
+  kubectl describe pod pod-stars-emmision -n your-pinyin-name
+  ```
+
+### 4. Mermaid 图表示 Pod 资源限制结构
+由于当前环境不支持直接渲染 Mermaid 图表，我以代码形式提供 Pod 资源限制的层级结构图，学员可使用支持 Mermaid 的工具（如 Markdown 编辑器）查看：
+
+```mermaid
+graph TD
+    Pod --> Spec
+    Spec --> Containers
+    Containers --> Container1[Container 1]
+    Container1 --> Resources
+    Resources --> Requests
+    Resources --> Limits
+    Requests --> CPU_Requests[CPU]
+    Requests --> Memory_Requests[Memory]
+    Limits --> CPU_Limits[CPU]
+    Limits --> Memory_Limits[Memory]
+    Container1 --> LivenessProbe
+    Container1 --> ReadinessProbe
+    Container1 --> Ports
+    Spec --> ImagePullSecrets
+```
+
+此图展示了 Pod 中与资源限制相关的层级结构，包括 `requests` 和 `limits` 的 CPU 和内存配置，以及探针和镜像拉取秘钥等相关字段。
+
+
+## 第七部分 Pod YAML 结构与规范
+
+### 1. 完整 Pod 结构与理论介绍
+Pod 是 Kubernetes 中最小的可调度单位，代表一个或多个容器的集合，这些容器共享网络、存储和生命周期。Pod 的设计目的是运行一个单一的应用程序实例，通常一个 Pod 包含一个主容器，偶尔也可能包含辅助容器（例如日志收集或代理服务）。Pod 的配置通过 YAML 文件定义，YAML 文件以键值对的形式描述 Pod 的属性和行为，具有严格的语法要求（缩进一致，通常为 2 个空格，不允许使用制表符）。
+
+#### 理论介绍
+Pod 的 YAML 文件主要由以下几个核心部分组成：
+- **apiVersion**：指定 Kubernetes API 的版本，例如 `v1`，用于定义 Pod。
+- **kind**：指定资源类型，这里为 `Pod`。
+- **metadata**：包含 Pod 的元数据，例如名称（name）、命名空间（namespace）、标签（labels）、注解（annotations）等，用于标识和管理 Pod。
+- **spec**：定义 Pod 的具体配置，是 YAML 文件的核心部分，包含容器（containers）、镜像（image）、端口（ports）、资源限制（resources）、环境变量（env）、挂载（volumes）、重启策略（restartPolicy）等。
+- **status**：Pod 的运行状态信息，通常由 Kubernetes 自动生成，不需要在 YAML 文件中手动定义。
+
+Pod 的生命周期由 Kubernetes 管理，从创建、运行到销毁，Pod 内的所有容器作为一个整体被调度到同一节点上，共享 IP 地址和端口空间。Pod 的设计简单而灵活，但也因此存在局限性（后文会提及）。
+
+以下是一个完整的 Pod YAML 示例，包含常见配置字段：
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-my-app
+  namespace: default
+  labels:
+    app: my-app
+  annotations:
+    description: "This is a sample pod"
+spec:
+  restartPolicy: Always
+  containers:
+  - name: my-container
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    env:
+    - name: ENV_VAR
+      value: "value1"
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: "512Mi"
+      requests:
+        cpu: "0.2"
+        memory: "256Mi"
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 80
+      initialDelaySeconds: 15
+      periodSeconds: 10
+    volumeMounts:
+    - name: temp-data
+      mountPath: /tmp/data
+  volumes:
+  - name: temp-data
+    emptyDir: {}
+```
+
+### 2. Pod 结构图或表格
+为了帮助学员更好地理解如何编写一个 Pod YAML 文件，我以表格形式展示其关键字段和说明，方便快速掌握结构：
+
+| 字段路径                              | 示例值                          | 说明                                      |
+|---------------------------------------|---------------------------------|-------------------------------------------|
+| `apiVersion`                          | `v1`                           | 指定 API 版本                            |
+| `kind`                                | `Pod`                          | 资源类型为 Pod                           |
+| `metadata.name`                       | `pod-my-app`                   | Pod 的名称，需符合命名规范               |
+| `metadata.namespace`                  | `default`                      | Pod 所在的命名空间                       |
+| `metadata.labels`                     | `app: my-app`                  | Pod 的标签，用于筛选和管理               |
+| `metadata.annotations`                | `description: "Sample pod"`    | Pod 的注解，用于添加额外描述信息         |
+| `spec.restartPolicy`                  | `Always`                       | 重启策略（Always, OnFailure, Never）     |
+| `spec.containers[].name`              | `my-container`                 | 容器名称                                 |
+| `spec.containers[].image`             | `nginx:1.14.2`                | 容器使用的镜像及其标签                   |
+| `spec.containers[].ports[].containerPort` | `80`                       | 容器暴露的端口                           |
+| `spec.containers[].env[].name`        | `ENV_VAR`                      | 环境变量名称                             |
+| `spec.containers[].env[].value`       | `value1`                       | 环境变量值                               |
+| `spec.containers[].resources.limits`  | `cpu: "0.5", memory: "512Mi"`  | 容器资源限制（CPU 和内存）               |
+| `spec.containers[].resources.requests`| `cpu: "0.2", memory: "256Mi"`  | 容器资源请求（最低需求）                 |
+| `spec.containers[].livenessProbe`     | `httpGet: {path: /health, port: 80}` | 存活探针，检查容器是否健康       |
+| `spec.containers[].volumeMounts[].name`| `temp-data`                   | 引用卷的名称                             |
+| `spec.containers[].volumeMounts[].mountPath`| `/tmp/data`             | 容器内的挂载路径                         |
+| `spec.volumes[].name`                 | `temp-data`                    | 卷的名称                                 |
+| `spec.volumes[].emptyDir`             | `{}`                           | 定义一个临时目录卷，Pod 销毁后数据丢失   |
+
+如果需要更直观的结构图，可以使用 Mermaid 流程图来表示 Pod 的层级结构（由于当前环境不支持直接渲染 Mermaid，我以代码形式提供，学员可使用支持 Mermaid 的工具查看）：
+```mermaid
+graph TD
+    Pod --> Metadata
+    Pod --> Spec
+    Metadata --> Name
+    Metadata --> Namespace
+    Metadata --> Labels
+    Metadata --> Annotations
+    Spec --> RestartPolicy
+    Spec --> Containers
+    Spec --> Volumes
+    Containers --> Container1[Container 1]
+    Container1 --> Image
+    Container1 --> Ports
+    Container1 --> Env
+    Container1 --> Resources
+    Container1 --> Probes
+    Container1 --> VolumeMounts
+    Resources --> Limits
+    Resources --> Requests
+    Volumes --> Volume1[Volume 1]
+    Volume1 --> EmptyDir
+```
+
+### 3. 命名定义规范
+在 Kubernetes 中，YAML 文件的命名和文件中定义的资源名称必须严格保持一致，以提高可读性和管理效率。具体规范如下：
+- YAML 文件名应采用 `类型-应用名.yml` 的格式，例如：
+  - 创建 Pod 配置时，文件名为 `pod-my-app.yml`，其中 `pod` 表示资源类型，`my-app` 是应用名。
+  - 创建 ConfigMap 配置时，文件名为 `configmap-my-app.yml`，其中 `configmap` 表示资源类型，`my-app` 是应用名。
+- YAML 文件中 `metadata.name` 字段的值必须与文件名中的完整名称一致，例如：
+  - 文件名为 `pod-my-app.yml`，则 `metadata.name` 必须是 `pod-my-app`。
+  - 文件名为 `configmap-my-app.yml`，则 `metadata.name` 必须是 `configmap-my-app`。
+- 文件扩展名统一使用 `.yml`，团队内需保持一致。
+
+这一规范确保了文件系统中的资源文件与 Kubernetes 集群中的资源对象一一对应，便于管理和排查问题。所有资源类型（Pod、ConfigMap、Deployment 等）均需遵循此命名规则，方便查看和管理，这是团队协作和运维的最佳实践。
+
+### 4. Pod 的缺陷及未来部署方式
+Pod 作为 Kubernetes 的基本单位，虽然简单易用，但存在一些局限性，导致在生产环境中通常不直接使用 Pod，而是通过更高级的控制器来管理。Pod 的主要缺陷包括：
+- **缺乏自我修复能力**：Pod 不会自动重启或重新调度，节点宕机或 Pod 崩溃时需要手动干预。
+- **无法滚动更新**：Pod 不支持镜像更新或配置变更后的滚动更新，无法实现零停机部署。
+- **不适合有状态应用**：Pod 不具备状态管理能力，无法保证数据持久性或 Pod 身份的唯一性。
+- **资源管理有限**：Pod 无法定义副本数量，无法动态扩展或缩容。
+
+因此，在实际生产环境中，建议使用以下控制器替代直接管理 Pod：
+- **Deployment**：适用于无状态应用，支持滚动更新、回滚、副本管理。
+- **DaemonSet**：适用于需要在每个节点上运行一个 Pod 的场景，例如日志收集。
+- **StatefulSet**：适用于有状态应用，提供稳定的网络标识和存储。
+
+通过这些控制器，Kubernetes 能够更好地管理应用的生命周期和稳定性，弥补 Pod 自身的不足。
