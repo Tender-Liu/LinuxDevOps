@@ -1,4 +1,4 @@
-# 第1天：Pod 与配置管理（ConfigMap 和 Secret）
+# Kubernetes Pod 与 配置管理（ConfigMap 和 Secret）
 
 ## 目标
 - 掌握 Pod 的基本操作，包括创建、生命周期管理、资源限制和健康检查。
