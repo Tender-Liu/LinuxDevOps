@@ -783,7 +783,7 @@ Kuboard 是一个图形化界面，就像 Windows 桌面，比命令行更直观
    - 在 Deployment 或 Pod 页面，有 CPU 和内存使用图表，确保没有超出限制（就像检查电脑内存是否不够用）。
 
 
-## 教案：Kubernetes Service 原理与实现
+## Kubernetes Service 原理与实现
 
 
 ### 一、引言：从 Pod 的问题到 Service 的必要性
@@ -846,17 +846,229 @@ Service 不仅仅是解决 Pod IP 变化的问题，它还支持不同的访问�
 通过这些类型，Service 能满足从内部通信到外部访问的多种需求，就像 Nginx 的 upstream 可以灵活配置内部转发或外部代理。
 
 
-### 四、Service 流量转发与 kube-proxy 的关系（面试重点）
+### 四、Service 语法介绍
+
+#### **Service 基本 YAML 语法详解**
+- 展示一个通用的 Service YAML 结构，并详细解释每个字段：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: my-service
+      namespace: default
+    spec:
+      selector:
+        app: my-app  # 匹配 Pod 的标签
+      ports:
+      - port: 8080     # Service 暴露的端口
+        targetPort: 8080  # 转发到 Pod 容器内的端口
+        protocol: TCP   # 协议类型
+        name: http      # 端口名称，可选
+      type: ClusterIP   # Service 类型
+    ```
+- 关键字段解释：
+    - `apiVersion` 和 `kind`：指定 Kubernetes API 版本和资源类型，Service 固定为 `v1` 和 `Service`。
+    - `metadata.name`：Service 的名称，集群内唯一，用于 DNS 解析（如 `my-service.default.svc.cluster.local`）。
+    - `metadata.namespace`：Service 所在的命名空间，与目标 Deployment 一致。
+    - `spec.selector`：通过标签匹配 Pod，确保 Service 能找到正确的 Pod 组。标签需与目标 Pod 的标签一致。
+    - `spec.ports`：定义端口映射，支持多个端口。
+        - `port`：Service 接收请求的端口，客户端访问这个端口。
+        - `targetPort`：流量转发到 Pod 的容器端口，与 Pod 内应用监听的端口一致。
+        - `protocol`：协议类型，通常为 TCP 或 UDP。
+        - `name`：端口名称，可选，用于区分多个端口。
+    - `spec.type`：决定 Service 的访问方式，默认是 ClusterIP，支持 ClusterIP、NodePort、LoadBalancer、ExternalName。
+- 通俗比喻：Service 就像一个“电话总机”，`selector` 是查找目标分机的“电话簿”，`ports` 是“拨号规则”，`type` 决定这个总机是“内部使用”还是“对外开放”。
+
+
+#### **ClusterIP（默认类型）**
+- 作用：提供集群内部访问的虚拟 IP，仅在集群内部可用。
+- 使用场景：Pod 之间的通信，例如前端 Pod 调用后端 API。
+- 通俗比喻：就像公司内部的电话系统，只能在公司内拨打。
+- **练习 1：编写 ClusterIP 类型 Service YAML**
+  - 文件名：`service-light-year-admin-template-clusterip.yml`
+  - 内容：
+      ```yaml
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: service-light-year-admin-template-clusterip
+        namespace: shiqi
+      spec:
+        selector:
+          app: pod-light-year-admin-template  # 假设 Pod 标签为 app: pod-light-year-admin-template
+        ports:
+        - port: 80
+          targetPort: 80
+          protocol: TCP
+          name: http
+        type: ClusterIP
+      ```
+- **执行与查看**：
+    - 应用配置：
+        ```bash
+        kubectl apply -f service-light-year-admin-template-clusterip.yml
+        ```
+    - 查看 Service（命令行）：
+        ```bash
+        kubectl get service -n shiqi
+        ```
+    - 说明：确认 Service 创建成功，观察其 ClusterIP（如 `10.96.x.x`），这是一个虚拟 IP，用于集群内部访问。
+    - 查看详细信息（命令行）：
+        ```bash
+        kubectl describe service service-light-year-admin-template-clusterip -n shiqi
+        ```
+    - 说明：检查 `Endpoints` 字段，确认 Service 关联到了 `deployment-light-year-admin-template` 的 Pod IP 和端口。
+    - **通过 Kuboard 查看**：
+        - 打开 Kuboard 界面，登录后进入 `shiqi` 命名空间。
+        - 在左侧菜单选择“应用程序”的“服务（Services）”，找到 `service-light-year-admin-template-clusterip`。
+        - 点击进入详情页，查看 Service 的基本信息（如 ClusterIP、类型）、端口配置以及关联的 Endpoints（后端 Pod 列表）。
+        - 说明：Kuboard 提供图形化界面，直观展示 Service 状态，Endpoints 列表显示了流量转发的目标 Pod。
+        - 点击Serive中间的TCP代理按钮，通过 KuboardProxy 访问一下页面
+
+#### **NodePort**
+- 作用：在每个节点上分配一个端口（默认范围 30000-32767），通过 `节点IP:NodePort` 访问 Service。
+- 使用场景：临时外部访问，用于测试或调试。
+- 通俗比喻：就像在公司大楼开了一个侧门，外部人员可以通过这个门临时进入。
+- **练习 2：编写 NodePort 类型 Service YAML**
+  - 文件名：`service-light-year-admin-template-nodeport.yml`
+  - 内容：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-light-year-admin-template-nodeport
+      namespace: shiqi
+    spec:
+      selector:
+        app: pod-light-year-admin-template  # 假设 Pod 标签为 app: pod-light-year-admin-template
+      ports:
+      - port: 80
+        targetPort: 80
+        nodePort: 30080  # 指定端口号，可选, 号外号外，我一般都不写，让他自己分配
+        protocol: TCP
+        name: http
+      type: NodePort
+    ```
+  - **执行与查看**：
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-light-year-admin-template-nodeport.yml
+      ```
+    - 查看 Service（命令行）：
+      ```bash
+      kubectl get service -n shiqi
+      ```
+    - 说明：确认 Service 创建成功，观察其类型为 NodePort，且端口为 `30080`（或系统分配的端口）。
+    - 查看详细信息（命令行）：
+      ```bash
+      kubectl describe service service-light-year-admin-template-nodeport -n shiqi
+      ```
+    - 说明：检查 `Endpoints` 字段，确认 Service 关联到了正确的 Pod。
+    - **通过 Kuboard 查看**：
+      - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+      - 找到 `service-light-year-admin-template-nodeport`，点击进入详情页。
+      - 查看 Service 类型（NodePort）、端口信息（包括 nodePort 值）以及关联的 Endpoints。
+      - 说明：Kuboard 直观显示 NodePort 的端口号，方便确认外部访问方式。
+      - Service详情界面中，请查看nodeport端口, 随意使用一个nodeip:nodeport访问一下页面
+
+
+#### **LoadBalancer(等教学阿里云的时候用的)**
+- 作用：集成云提供商的负载均衡器，分配一个外部 IP，供外部访问。
+- 使用场景：生产环境，暴露服务给外部用户（需要云提供商支持）。
+- 通俗比喻：就像在公司前门雇佣一个专业接待员，处理大量访客。
+- **练习 3：编写 LoadBalancer 类型 Service YAML**
+  - 文件名：`service-light-year-admin-template-loadbalancer.yml`
+  - 内容：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-light-year-admin-template-loadbalancer
+      namespace: shiqi
+    spec:
+      selector:
+        app: pod-light-year-admin-template  # 假设 Pod 标签为 app: pod-light-year-admin-template
+      ports:
+      - port: 80
+        targetPort: 80
+        protocol: TCP
+        name: http
+      type: LoadBalancer
+    ```
+  - **执行与查看**：
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-light-year-admin-template-loadbalancer.yml
+      ```
+    - 查看 Service（命令行）：
+      ```bash
+      kubectl get service -n shiqi
+      ```
+    - 说明：确认 Service 创建成功，若在支持 LoadBalancer 的云环境中，观察是否分配了外部 IP（可能显示 `<pending>`，需等待）。
+    - 查看详细信息（命令行）：
+      ```bash
+      kubectl describe service service-light-year-admin-template-loadbalancer -n shiqi
+      ```
+    - 说明：检查状态，了解 LoadBalancer 是否正常工作。
+    - **通过 Kuboard 查看**：
+      - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+      - 找到 `service-light-year-admin-template-loadbalancer`，点击进入详情页。
+      - 查看 Service 类型（LoadBalancer）和外部 IP 状态（可能显示 Pending）。
+      - 说明：Kuboard 会显示 LoadBalancer 的分配状态，方便跟踪外部 IP 是否就绪。
+
+#### **ExternalName（给你们看的不要去做, 了解即可）**
+- 作用：不创建 ClusterIP，而是通过 DNS 记录将服务映射到外部域名，流量直接转发到外部服务。
+- 使用场景：访问集群外部的服务，例如外部数据库或第三方 API。
+- 通俗比喻：就像公司不自己提供某个服务，而是告诉你“去隔壁公司找他们的服务”。
+- **练习 4：编写 ExternalName 类型 Service YAML**
+  - 文件名：`service-external-example.yml`
+  - 内容：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: external-db-service
+      namespace: shiqi
+    spec:
+      type: ExternalName
+      externalName: db.example.com  # 外部域名
+    ```
+  - **执行与查看**：
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-external-example.yml
+      ```
+    - 查看 Service（命令行）：
+      ```bash
+      kubectl get service -n shiqi
+      ```
+    - 说明：确认 Service 创建成功，观察其类型为 ExternalName，ClusterIP 字段为空。
+    - 查看详细信息（命令行）：
+      ```bash
+      kubectl describe service external-db-service -n shiqi
+      ```
+    - 说明：检查配置，确认 `externalName` 字段指向了外部域名 `db.example.com`。
+    - **通过 Kuboard 查看**：
+      - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+      - 找到 `external-db-service`，点击进入详情页。
+      - 查看 Service 类型（ExternalName）和 `externalName` 字段值（`db.example.com`）。
+      - 说明：Kuboard 清晰显示 ExternalName 的目标域名，方便确认配置是否正确。
+  - **ExternalName 示例解释**：
+    - 假设你的应用需要连接一个外部数据库（如 MySQL），域名是 `db.example.com`。
+    - 通过创建 `external-db-service`，你的 Pod 可以直接使用 `external-db-service` 作为域名访问外部数据库，Kubernetes 会通过 DNS 将其解析到 `db.example.com`。
+    - 好处：如果外部数据库地址变更，只需更新 Service 配置，应用无需调整。
+
+### 五、Service 流量转发与 kube-proxy 的关系（面试重点）
 
 在面试中，经常会被问到 Kubernetes 的流量走向，尤其是 Service 如何将请求转发到 Pod。下面我们详细讲解 Service 流量转发与 `kube-proxy` 的关系，并通过 Mermaid 图直观展示流量走向。
 
-#### 4.1 什么是 kube-proxy？
+#### 5.1 什么是 kube-proxy？
 `kube-proxy` 是 Kubernetes 集群中的一个核心组件，运行在每个节点上，负责处理 Service 的网络转发规则。它是 Service 功能的实际执行者，确保请求能够从 Service 的 ClusterIP 准确转发到后端的 Pod IP。
 
 **通俗比喻**：
 如果把 Service 比作一个“前台接待员”，负责接收客户请求，那么 `kube-proxy` 就是“后台调度员”，真正负责把请求转交给合适的工作人员（Pod）。没有 `kube-proxy`，Service 就只是一个空壳，无法实现流量转发。
 
-#### 4.2 kube-proxy 的工作原理
+#### 5.2 kube-proxy 的工作原理
 `kube-proxy` 的主要工作方式有以下几种（具体取决于配置和版本）：
 1. **iptables 模式（常用）**：
    - `kube-proxy` 在每个节点上维护一组 iptables 规则，这些规则将 Service 的 ClusterIP 和端口映射到后端 Pod 的 IP 和端口。
@@ -873,16 +1085,16 @@ Service 不仅仅是解决 Pod IP 变化的问题，它还支持不同的访问�
 - iptables 模式就像一个“交通警察”，在路口设置指示牌（规则），告诉车辆（流量）该往哪走。
 - IPVS 模式就像一个“智能导航系统”，不仅能指示方向，还能根据路况（负载）选择最佳路径。
 
-#### 4.3 kube-proxy 如何实现负载均衡？
+#### 5.3 kube-proxy 如何实现负载均衡？
 `kube-proxy` 在转发流量时，会根据 Service 的 Endpoints（后端 Pod 列表）进行负载均衡：
 - 默认策略是轮询（Round-Robin），将请求依次分发到每个 Pod。
 - 在 IPVS 模式下，可以配置更复杂的策略，例如基于权重的分发或最少连接优先。
 - 当 Pod 增加或减少时，Kubernetes 会动态更新 Endpoints，`kube-proxy` 会同步更新转发规则，确保流量始终转发到可用的 Pod。
 
-#### 4.4 ClusterIP 为什么无法 ping 通？
+#### 5.4 ClusterIP 为什么无法 ping 通？
 很多同学可能好奇，为什么 Service 的 ClusterIP 无法 ping 通？这是因为 ClusterIP 是一个虚拟 IP，由 `kube-proxy` 通过 iptables 或 IPVS 规则实现，并不是一个真实的网络接口。它的作用仅限于流量转发，无法响应 ICMP 包（ping 命令使用的协议）。但在集群内部，可以通过 DNS 名称或 ClusterIP 直接访问 Service。
 
-#### 4.5 流量走向：Service 到 Pod 的完整路径（面试重点）
+#### 5.5 流量走向：Service 到 Pod 的完整路径（面试重点）
 在面试中，经常会被问到“Kubernetes 中一个请求的流量走向是什么？”下面通过文字和 Mermaid 图详细说明从客户端到 Pod 的流量路径。
 
 **流量走向步骤**：
@@ -916,13 +1128,13 @@ graph TD
 - **步骤 2**：`kube-proxy` 捕获请求，根据 iptables 或 IPVS 规则进行负载均衡，选择目标 Pod。
 - **步骤 3**：流量通过集群网络（由 CNI 插件支持）转发到目标 Pod。
 
-#### 4.6 kube-proxy 与 Service 类型的关系
+#### 5.6 kube-proxy 与 Service 类型的关系
 `kube-proxy` 不仅支持 ClusterIP 类型的 Service，还支持 NodePort 和 LoadBalancer 类型：
 - **NodePort**：`kube-proxy` 在节点上监听指定的端口（例如 30000-32767 范围内的端口），将流量转发到 Service 的后端 Pod。
 - **LoadBalancer**：`kube-proxy` 配合云提供商的负载均衡器，将外部流量转发到 Service。虽然外部 IP 由云提供商分配，但内部转发仍然依赖 `kube-proxy`。
 
 
-### 五、Kubernetes 网络与初始化配置的关系
+### 五、Kubernetes 网络与初始化配置的关系（有兴趣了解）
 
 在学习 Service 和 `kube-proxy` 的流量转发时，我们需要了解 Kubernetes 网络的底层支持。还记得我们在初始化 Kubernetes 集群时执行的以下命令吗？
 ```bash
@@ -973,15 +1185,200 @@ Service 是 Kubernetes 网络模型的重要组成部分。之前我们学习 Po
 #### 6.5 与初始化配置的呼应
 还记得我们在初始化 Kubernetes 集群时配置的 `overlay` 和 `br_netfilter` 模块吗？这些配置为 Service 和 `kube-proxy` 的流量转发提供了底层支持。Kubernetes 的网络模型是一个完整的体系，从底层的内核模块到上层的 Service 抽象，每一层都紧密相关。
 
-### 七、总结与预告
+好的，我将为您编写一个关于 `admin3-ui` 和 `admin3-server` 的课后作业需求，内容包括创建 ClusterIP 和 NodePort 类型的 Service，并通过命令行和 Kuboard 进行观察，同时验证访问功能。以下是完整的作业需求、实现步骤和 YAML 文件内容。
 
-#### 7.1 总结
-- **Service 的必要性**：解决 Pod IP 动态变化的问题，提供稳定的访问入口。
-- **与 Nginx 的类比**：Service 就像 Nginx 的 upstream，支持负载均衡和动态转发。
-- **kube-proxy 的作用**：Service 的流量转发核心组件，通过 iptables 或 IPVS 规则实现转发和负载均衡。
-- **流量走向（面试重点）**：从客户端到 Service（ClusterIP），再由 `kube-proxy` 转发到 Pod，依赖 CNI 网络实现跨节点通信。
-- **初始化配置的关系**：`overlay` 和 `br_netfilter` 模块为 Kubernetes 网络提供底层支持，确保 Service 转发正常工作。
-- **与之前内容的呼应**：Service 依赖标签和选择器，与 Pod 和 Deployment 的学习紧密相关。
 
-#### 7.2 预告：实践与语法
-在接下来的课程中，我们会通过具体的语法和示例，动手创建 Service，结合之前部署的前端和后端应用，观察 Service 如何转发流量、实现负载均衡。我们还会深入探讨如何排查 Service 转发问题，以及如何优化 `kube-proxy` 的性能。
+### Kubernetes Service 课后作业：为 `admin3-ui` 和 `admin3-server` 创建和管理 Service
+
+#### 作业需求
+为了巩固对 Kubernetes Service 的理解，您需要为已部署的两个应用 `admin3-ui` 和 `admin3-server` 创建不同类型的 Service，并通过命令行和 Kuboard 进行观察和验证。具体任务如下：
+1. 为 `admin3-ui` 和 `admin3-server` 分别创建 **ClusterIP** 和 **NodePort** 类型的 Service。
+2. 使用 `kubectl` 命令观察 Service 的创建状态和详细信息。
+3. 使用 Kuboard 图形化界面查看 Service 的状态和配置。
+4. 对于 ClusterIP 类型 Service，使用 Kuboard 的 Service 页面中的 **TCP 代理按钮**（KuboardProxy）访问页面，验证是否能正常加载。
+5. 对于 NodePort 类型 Service，通过随机选择的节点 IP 和 NodePort 端口访问页面，验证是否能正常加载。
+
+#### 步骤 1：创建 ClusterIP 类型 Service
+1. **为 `admin3-ui` 创建 ClusterIP 类型 Service**
+    - 文件名：`service-admin3-ui-clusterip.yml`
+    - 内容：
+      ```yaml
+      答案在下面，我建议你自己写
+      ```
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-admin3-ui-clusterip.yml
+      ```
+
+2. **为 `admin3-server` 创建 ClusterIP 类型 Service**
+    - 文件名：`service-admin3-server-clusterip.yml`
+    - 内容：
+      ```yaml
+      答案在下面，我建议你自己写
+      ```
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-admin3-server-clusterip.yml
+     ```
+
+3. **通过命令行查看 ClusterIP 类型 Service**
+    - 查看 Service 列表：
+      ```bash
+      kubectl get service -n shiqi
+      ```
+      说明：确认两个 Service 创建成功，观察其类型为 ClusterIP，并记录分配的 ClusterIP 地址。
+    - 查看详细信息：
+      ```bash
+      kubectl describe service service-admin3-ui-clusterip -n shiqi
+      kubectl describe service service-admin3-server-clusterip -n shiqi
+      ```
+      说明：检查 `Endpoints` 字段，确认 Service 关联到了正确的 Pod。
+
+4. **通过 Kuboard 查看 ClusterIP 类型 Service**
+   - 打开 Kuboard 界面，登录后进入 `shiqi` 命名空间。
+   - 在左侧菜单选择“服务（Services）”，找到 `service-admin3-ui-clusterip` 和 `service-admin3-server-clusterip`。
+   - 点击进入每个 Service 的详情页，查看基本信息（如 ClusterIP、类型）、端口配置以及关联的 Endpoints（后端 Pod 列表）。
+   - 说明：Kuboard 提供图形化界面，直观展示 Service 状态，Endpoints 列表显示了流量转发的目标 Pod。
+
+5. **通过 Kuboard 的 TCP 代理按钮（KuboardProxy）访问 ClusterIP Service**
+   - 在 Kuboard 界面中，进入 `service-admin3-ui-clusterip` 的详情页。
+   - 找到页面中的“TCP 代理”按钮（通常显示为“访问”或“代理”按钮，具体名称可能因 Kuboard 版本而异），点击后会通过 KuboardProxy 打开一个新页面。
+   - 确认页面是否正常加载，验证 `admin3-ui` 的前端界面是否可访问。
+   - 对 `service-admin3-server-clusterip` 重复类似操作，检查 API 是否响应（可能需要通过浏览器开发者工具查看接口调用，或使用其他工具如 Postman 测试）。
+   - 说明：KuboardProxy 允许通过浏览器直接访问 ClusterIP 类型 Service，无需额外配置外部访问，适合快速验证。
+
+#### 步骤 2：创建 NodePort 类型 Service
+1. **为 `admin3-ui` 创建 NodePort 类型 Service**
+    - 文件名：`service-admin3-ui-nodeport.yml`
+    - 内容：
+      ```yaml
+      答案在下面，我建议你自己写
+      ```
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-admin3-ui-nodeport.yml
+      ```
+
+2. **为 `admin3-server` 创建 NodePort 类型 Service**
+    - 文件名：`service-admin3-server-nodeport.yml`
+    - 内容：
+      ```yaml
+      答案在下面，我建议你自己写
+      ```
+    - 应用配置：
+      ```bash
+      kubectl apply -f service-admin3-server-nodeport.yml
+      ```
+
+3. **通过命令行查看 NodePort 类型 Service**
+   - 查看 Service 列表：
+     ```bash
+     kubectl get service -n shiqi
+     ```
+     说明：确认两个 Service 创建成功，观察其类型为 NodePort，并记录分配的 NodePort 端口（如 `30080` 和 `30081`，或系统分配的其他端口）。
+   - 查看详细信息：
+     ```bash
+     kubectl describe service service-admin3-ui-nodeport -n shiqi
+     kubectl describe service service-admin3-server-nodeport -n shiqi
+     ```
+     说明：检查 `Endpoints` 字段，确认 Service 关联到了正确的 Pod，注意 NodePort 字段显示外部访问端口。
+
+4. **通过 Kuboard 查看 NodePort 类型 Service**
+   - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+   - 找到 `service-admin3-ui-nodeport` 和 `service-admin3-server-nodeport`，点击进入详情页。
+   - 查看 Service 类型（NodePort）、端口信息（包括 nodePort 值）以及关联的 Endpoints。
+   - 说明：Kuboard 直观显示 NodePort 的端口号，方便确认外部访问方式。
+
+5. **通过 NodePort 访问页面**
+   - **获取节点 IP**：首先获取 Kubernetes 集群中任一节点的 IP 地址：
+     ```bash
+     kubectl get nodes -o wide
+     ```
+     说明：查看 `INTERNAL-IP` 字段，选择任一节点的 IP 地址（例如 `192.168.1.100`）。
+   - **访问 `admin3-ui`**：在浏览器中输入 `节点IP:NodePort`，例如 `192.168.1.100:30080`，确认 `admin3-ui` 的前端页面是否正常加载。
+   - **访问 `admin3-server`**：在浏览器中输入 `节点IP:NodePort`，例如 `192.168.1.100:30081`，确认是否能访问 API 服务（可能需要通过浏览器开发者工具查看接口响应，或使用工具如 Postman 测试）。
+   - 说明：NodePort 允许通过节点 IP 和指定端口从外部访问服务，适合临时测试。如果端口未指定，系统会随机分配一个端口（范围 30000-32767），需通过 `kubectl get service` 确认实际端口。
+
+#### YAML 文件答案
+以下是作业中使用的完整 YAML 文件内容，供参考和直接使用：
+
+1. **ClusterIP 类型 Service for `admin3-ui`** (`service-admin3-ui-clusterip.yml`)：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-admin3-ui-clusterip
+      namespace: shiqi
+    spec:
+      selector:
+        app: admin3-ui
+      ports:
+      - port: 80
+        targetPort: 80
+        protocol: TCP
+        name: http
+      type: ClusterIP
+    ```
+
+2. **ClusterIP 类型 Service for `admin3-server`** (`service-admin3-server-clusterip.yml`)：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-admin3-server-clusterip
+      namespace: shiqi
+    spec:
+      selector:
+        app: admin3-server
+      ports:
+      - port: 8080
+        targetPort: 8080
+        protocol: TCP
+        name: http
+      type: ClusterIP
+    ```
+
+3. **NodePort 类型 Service for `admin3-ui`** (`service-admin3-ui-nodeport.yml`)：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-admin3-ui-nodeport
+      namespace: shiqi
+    spec:
+      selector:
+        app: admin3-ui
+      ports:
+      - port: 80
+        targetPort: 80
+        nodePort: 30080
+        protocol: TCP
+        name: http
+      type: NodePort
+    ```
+
+4. **NodePort 类型 Service for `admin3-server`** (`service-admin3-server-nodeport.yml`)：
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-admin3-server-nodeport
+      namespace: shiqi
+    spec:
+      selector:
+        app: admin3-server
+      ports:
+      - port: 8080
+        targetPort: 8080
+        nodePort: 30081
+        protocol: TCP
+        name: http
+      type: NodePort
+    ```
+
+## 注意事项
+- **标签匹配**：确保 YAML 文件中的 `selector` 字段与 `admin3-ui` 和 `admin3-server` 的 Pod 标签一致。如果标签不同，请根据实际情况调整（可以通过 `kubectl describe pod -n shiqi` 查看 Pod 标签）。
+- **端口号**：NodePort 的 `nodePort` 字段指定了固定端口（如 `30080` 和 `30081`），如果端口冲突或未指定，系统会随机分配一个端口，需通过 `kubectl get service` 确认。
+- **网络限制**：通过 NodePort 访问时，确保您的网络环境允许访问节点 IP 和指定端口，可能需要调整防火墙规则或集群网络策略。
+- **KuboardProxy 功能**：Kuboard 的 TCP 代理功能依赖于 Kuboard 的版本和配置，如果界面中未找到“TCP 代理”按钮，可咨询管理员或参考 Kuboard 文档。
+

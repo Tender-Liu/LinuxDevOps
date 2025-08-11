@@ -1,279 +1,356 @@
-## 作业 Admin3前后端项目部署 （最佳企业的项目部署）
+好的，我将根据您的要求，在教案的第二部分和第三部分中加入使用 Kuboard 查看 Service 相关信息的步骤。Kuboard 是一个 Kubernetes 管理界面，可以直观地展示资源状态，方便学员通过图形化界面验证和学习。以下是修改后的教案内容，理论部分保持不变，仅调整语法介绍和实践验证部分，加入 Kuboard 的查看步骤。
 
-### 2. 部署介绍
-**部署** 是将开发好的代码和程序放到服务器上运行的过程，使得用户可以通过网络访问到这个系统。我们使用 Kubernetes（简称 K8s）作为容器编排工具来管理我们的应用。Kubernetes 是一个强大的系统，可以帮助我们自动管理应用的运行、扩展和故障恢复。
+---
 
-- **部署工具**：我们使用 Docker 将应用打包成镜像（就像一个轻量级的虚拟机），然后通过 Kubernetes 的 Deployment 资源在服务器上运行这些镜像。
-- **部署目标**：
-  - 将前端和后端分别打包成 Docker 镜像，上传到 Harbor 镜像仓库（一个存储 Docker 镜像的地方）。
-  - 在 Kubernetes 集群中部署前端和后端，确保它们可以正常运行并相互通信。
-  - 配置资源限制、更新策略和健康检查，确保系统稳定运行。
-- **部署顺序**：按照您的要求，我们会先完成前端的部署和测试，确保前端可以正常访问，再进行后端的部署和测试。
-- **Deployment 要求**：
-  1. **命名规范**：所有资源必须按照规范命名，例如 Deployment、Pod、ConfigMap 等名称需清晰反映其作用和所属项目。
-  2. **前端资源限制**：
-     - 最小：CPU 50m，内存 64Mi
-     - 最大：CPU 100m，内存 128Mi
-  3. **后端资源限制**：
-     - 最小：CPU 100m，内存 256Mi
-     - 最大：CPU 200m，内存 256Mi
-  4. **更新策略**：前端和后端均采用滚动更新策略，可以使用数字（如 maxSurge: 1）或百分比（如 maxSurge: 25%）。
-  5. **后端 ConfigMap**：合理创建 `configmap-admin3-server.yml`，用于存储后端配置文件（如 `application.yml`），并挂载到后端容器中。
+# Kubernetes Service 原理与实现完整教案
 
+## 学习目标
+- 理解 Kubernetes Service 的必要性和基本原理，解决 Pod IP 动态变化的问题。
+- 掌握 Service 的 YAML 语法，熟悉不同类型（ClusterIP、NodePort、LoadBalancer、ExternalName）的使用场景。
+- 通过实践操作，学会为 `deployment-light-year-admin-template` 创建 Service，并验证流量转发和负载均衡功能。
+- 使用 Kuboard 图形化界面查看和验证 Service 资源状态。
 
-### 实现步骤列表（面向小白用户）
+## 教学设计思路
+- **分段讲解**：将内容分为“原理与实现”、“语法介绍”、“实践与练习”三部分，每部分控制在 15-20 分钟，避免长时间理论讲解导致学员犯困。
+- **理论与实践结合**：在讲解原理和语法时，穿插实际案例，并在最后安排基于 `deployment-light-year-admin-template` 的练习。
+- **互动与休息**：每段讲解后安排互动或短暂休息，保持学员注意力。
+- **Kuboard 辅助**：通过 Kuboard 界面直观查看 Service 资源，提升学习体验。
 
-#### 前言：什么是 Kubernetes 和 Docker？
-- **Docker**：想象 Docker 是一个打包工具，它把你的程序和程序运行所需的所有东西（比如依赖库、配置文件等）打包成一个“镜像”，就像一个便携的盒子。这个盒子可以在任何支持 Docker 的服务器上运行。
-- **Kubernetes (K8s)**：Kubernetes 是一个“管家”，它负责管理很多 Docker 容器（从镜像运行出来的程序实例），确保它们正常运行、自动重启故障容器、分配资源等。我们通过写配置文件（比如 Deployment）告诉 Kubernetes 如何运行和管理我们的程序。
+---
 
-#### 步骤列表：前端部署（先完成并测试）
-1. **拉取前端源码**
-   - **命令**：`git clone https://gitee.com/Tender-Liu/admin3.git`
-   - **解释**：使用 `git clone` 命令从 Gitee（一个代码托管平台）下载 Admin3 项目的源码到本地服务器。这就像从网上下载一个压缩包，只不过这里是代码。
-2. **修改前端配置文件**
-   - **命令**：
-     ```bash
-     cd admin3/admin3-ui
-     # 编辑 .env 文件，确保 VITE_BASE_URI 设置为指定域名
-     echo "VITE_BASE_URI=https://shiqi.admin.labworlds.cc:1443/admin3" > .env
+## 第一部分：Service 原理与实现（15-20 分钟）
+（内容保持不变，略过此部分，详见之前回复）
+
+### 互动与休息（5 分钟）
+- 提问：大家有没有遇到过因为 IP 变化导致服务访问失败的情况？可以分享一下。
+- 短暂休息：让学员放松，准备进入语法部分。
+
+---
+
+## 第二部分：Service 语法介绍（15-20 分钟）
+
+### 目标
+- 掌握 Service 的基本 YAML 语法。
+- 理解不同类型（ClusterIP、NodePort、LoadBalancer、ExternalName）的配置方式和使用场景。
+- 通过逐步练习，熟悉 Service YAML 的编写。
+- 使用 Kuboard 查看 Service 资源状态。
+
+### 内容
+1. **Service 基本 YAML 语法详解（8 分钟）**
+   - 展示一个通用的 Service YAML 结构，并详细解释每个字段：
+     ```yaml
+     apiVersion: v1
+     kind: Service
+     metadata:
+       name: my-service
+       namespace: default
+     spec:
+       selector:
+         app: my-app  # 匹配 Pod 的标签
+       ports:
+       - port: 80     # Service 暴露的端口
+         targetPort: 8080  # 转发到 Pod 容器内的端口
+         protocol: TCP   # 协议类型
+         name: http      # 端口名称，可选
+       type: ClusterIP   # Service 类型
      ```
-   - **解释**：进入前端代码目录，修改 `.env` 文件（环境配置文件），设置前端请求后端的域名和路径。就像告诉前端程序“你的后台服务在这个地址，去找它吧”。
-3. **构建前端 Docker 镜像**
-   - **命令**：`docker build -t harbor.labworlds.cc/admin3-ui/master:081003-shiqi .`
-   - **解释**：在当前目录下执行 `docker build` 命令，将前端代码打包成一个 Docker 镜像。`-t` 参数是给镜像起一个名字，包含了仓库地址、项目名、分支和版本号（类似一个标签）。这就像把程序装进一个盒子并贴上标签。
-4. **推送前端镜像到 Harbor**
-   - **命令**：`docker push harbor.labworlds.cc/admin3-ui/master:081003-shiqi`
-   - **解释**：将本地构建好的镜像上传到 Harbor 镜像仓库（一个存储镜像的云端仓库）。这就像把盒子送到一个公共仓库，供其他人或服务器使用。
-5. **部署前端到 Kubernetes**
-   - **操作**：将之前整理好的 `deployment-admin3-ui.yml` 文件应用到 Kubernetes 集群。
-   - **命令**：`kubectl apply -f deployment-admin3-ui.yml`
-   - **解释**：`kubectl apply` 命令会读取配置文件，告诉 Kubernetes 按照文件内容创建资源。`Deployment` 是 Kubernetes 中的一种资源类型，它会启动一个或多个 Pod（容器实例）运行你的程序。配置文件中指定了镜像、资源限制、端口等信息。
-6. **测试前端是否正常访问**
-   - **操作**：通过浏览器访问前端地址 `https://shiqi.admin.labworlds.cc:1443/admin3`，检查页面是否可以正常加载。
-   - **命令**（检查 Pod 状态）：`kubectl get pod -n shiqi`
-   - **解释**：Pod 是 Kubernetes 中运行容器的最小单位，检查 Pod 状态可以确认前端容器是否正常运行。如果状态显示为 `Running`，说明容器启动成功。如果页面无法访问，可能需要检查日志：`kubectl logs -l app=pod-admin3-ui -n shiqi`。
-   - **重要**：只有前端测试通过后（页面能正常打开），我们才会进入后端部署步骤。如果测试失败，需要排查问题（如镜像是否正确、配置文件是否有误等）。
+   - 关键字段解释：
+     - `apiVersion` 和 `kind`：指定 Kubernetes API 版本和资源类型，Service 固定为 `v1` 和 `Service`。
+     - `metadata.name`：Service 的名称，集群内唯一，用于 DNS 解析（如 `my-service.default.svc.cluster.local`）。
+     - `metadata.namespace`：Service 所在的命名空间，与目标 Deployment 一致。
+     - `spec.selector`：通过标签匹配 Pod，确保 Service 能找到正确的 Pod 组。标签需与目标 Pod 的标签一致。
+     - `spec.ports`：定义端口映射，支持多个端口。
+       - `port`：Service 接收请求的端口，客户端访问这个端口。
+       - `targetPort`：流量转发到 Pod 的容器端口，与 Pod 内应用监听的端口一致。
+       - `protocol`：协议类型，通常为 TCP 或 UDP。
+       - `name`：端口名称，可选，用于区分多个端口。
+     - `spec.type`：决定 Service 的访问方式，默认是 ClusterIP，支持 ClusterIP、NodePort、LoadBalancer、ExternalName。
+   - 通俗比喻：Service 就像一个“电话总机”，`selector` 是查找目标分机的“电话簿”，`ports` 是“拨号规则”，`type` 决定这个总机是“内部使用”还是“对外开放”。
 
-#### 步骤列表：后端部署（前端测试通过后进行）
-7. **拉取后端源码**
-   - **命令**：`git clone https://gitee.com/Tender-Liu/admin3.git`
-   - **解释**：与前端类似，从 Gitee 下载后端代码。
-8. **构建后端 Docker 镜像**
-   - **命令**：
+2. **Service 类型配置详解与练习（12 分钟）**
+   - **ClusterIP（默认类型）（3 分钟）**
+     - 作用：提供集群内部访问的虚拟 IP，仅在集群内部可用。
+     - 使用场景：Pod 之间的通信，例如前端 Pod 调用后端 API。
+     - 通俗比喻：就像公司内部的电话系统，只能在公司内拨打。
+     - **练习 1：编写 ClusterIP 类型 Service YAML**
+       - 文件名：`service-light-year-admin-template-clusterip.yml`
+       - 内容：
+         ```yaml
+         apiVersion: v1
+         kind: Service
+         metadata:
+           name: service-light-year-admin-template-clusterip
+           namespace: shiqi
+         spec:
+           selector:
+             app: pod-light-year-admin-template  # 假设 Pod 标签为 app: pod-light-year-admin-template
+           ports:
+           - port: 80
+             targetPort: 80
+             protocol: TCP
+             name: http
+           type: ClusterIP
+         ```
+       - **执行与查看**：
+         - 应用配置：
+           ```bash
+           kubectl apply -f service-light-year-admin-template-clusterip.yml
+           ```
+         - 查看 Service（命令行）：
+           ```bash
+           kubectl get service -n shiqi
+           ```
+         - 说明：确认 Service 创建成功，观察其 ClusterIP（如 `10.96.x.x`），这是一个虚拟 IP，用于集群内部访问。
+         - 查看详细信息（命令行）：
+           ```bash
+           kubectl describe service service-light-year-admin-template-clusterip -n shiqi
+           ```
+         - 说明：检查 `Endpoints` 字段，确认 Service 关联到了 `deployment-light-year-admin-template` 的 Pod IP 和端口。
+         - **通过 Kuboard 查看**：
+           - 打开 Kuboard 界面，登录后进入 `shiqi` 命名空间。
+           - 在左侧菜单选择“服务（Services）”，找到 `service-light-year-admin-template-clusterip`。
+           - 点击进入详情页，查看 Service 的基本信息（如 ClusterIP、类型）、端口配置以及关联的 Endpoints（后端 Pod 列表）。
+           - 说明：Kuboard 提供图形化界面，直观展示 Service 状态，Endpoints 列表显示了流量转发的目标 Pod。
+   - **NodePort（3 分钟）**
+     - 作用：在每个节点上分配一个端口（默认范围 30000-32767），通过 `节点IP:NodePort` 访问 Service。
+     - 使用场景：临时外部访问，用于测试或调试。
+     - 通俗比喻：就像在公司大楼开了一个侧门，外部人员可以通过这个门临时进入。
+     - **练习 2：编写 NodePort 类型 Service YAML**
+       - 文件名：`service-light-year-admin-template-nodeport.yml`
+       - 内容：
+         ```yaml
+         apiVersion: v1
+         kind: Service
+         metadata:
+           name: service-light-year-admin-template-nodeport
+           namespace: shiqi
+         spec:
+           selector:
+             app: pod-light-year-admin-template  # 假设 Pod 标签为 app: pod-light-year-admin-template
+           ports:
+           - port: 80
+             targetPort: 80
+             nodePort: 30080  # 指定端口号，可选
+             protocol: TCP
+             name: http
+           type: NodePort
+         ```
+       - **执行与查看**：
+         - 应用配置：
+           ```bash
+           kubectl apply -f service-light-year-admin-template-nodeport.yml
+           ```
+         - 查看 Service（命令行）：
+           ```bash
+           kubectl get service -n shiqi
+           ```
+         - 说明：确认 Service 创建成功，观察其类型为 NodePort，且端口为 `30080`（或系统分配的端口）。
+         - 查看详细信息（命令行）：
+           ```bash
+           kubectl describe service service-light-year-admin-template-nodeport -n shiqi
+           ```
+         - 说明：检查 `Endpoints` 字段，确认 Service 关联到了正确的 Pod。
+         - **通过 Kuboard 查看**：
+           - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+           - 找到 `service-light-year-admin-template-nodeport`，点击进入详情页。
+           - 查看 Service 类型（NodePort）、端口信息（包括 nodePort 值）以及关联的 Endpoints。
+           - 说明：Kuboard 直观显示 NodePort 的端口号，方便确认外部访问方式。
+   - **LoadBalancer（3 分钟）**
+     - 作用：集成云提供商的负载均衡器，分配一个外部 IP，供外部访问。
+     - 使用场景：生产环境，暴露服务给外部用户（需要云提供商支持）。
+     - 通俗比喻：就像在公司前门雇佣一个专业接待员，处理大量访客。
+     - **练习 3：编写 LoadBalancer 类型 Service YAML**
+       - 文件名：`service-light-year-admin-template-loadbalancer.yml`
+       - 内容：
+         ```yaml
+         apiVersion: v1
+         kind: Service
+         metadata:
+           name: service-light-year-admin-template-loadbalancer
+           namespace: shiqi
+         spec:
+           selector:
+             app: pod-light-year-admin-template  # 假设 Pod 标签为 app: pod-light-year-admin-template
+           ports:
+           - port: 80
+             targetPort: 80
+             protocol: TCP
+             name: http
+           type: LoadBalancer
+         ```
+       - **执行与查看**：
+         - 应用配置：
+           ```bash
+           kubectl apply -f service-light-year-admin-template-loadbalancer.yml
+           ```
+         - 查看 Service（命令行）：
+           ```bash
+           kubectl get service -n shiqi
+           ```
+         - 说明：确认 Service 创建成功，若在支持 LoadBalancer 的云环境中，观察是否分配了外部 IP（可能显示 `<pending>`，需等待）。
+         - 查看详细信息（命令行）：
+           ```bash
+           kubectl describe service service-light-year-admin-template-loadbalancer -n shiqi
+           ```
+         - 说明：检查状态，了解 LoadBalancer 是否正常工作。
+         - **通过 Kuboard 查看**：
+           - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+           - 找到 `service-light-year-admin-template-loadbalancer`，点击进入详情页。
+           - 查看 Service 类型（LoadBalancer）和外部 IP 状态（可能显示 Pending）。
+           - 说明：Kuboard 会显示 LoadBalancer 的分配状态，方便跟踪外部 IP 是否就绪。
+   - **ExternalName（3 分钟）**
+     - 作用：不创建 ClusterIP，而是通过 DNS 记录将服务映射到外部域名，流量直接转发到外部服务。
+     - 使用场景：访问集群外部的服务，例如外部数据库或第三方 API。
+     - 通俗比喻：就像公司不自己提供某个服务，而是告诉你“去隔壁公司找他们的服务”。
+     - **练习 4：编写 ExternalName 类型 Service YAML**
+       - 文件名：`service-external-example.yml`
+       - 内容：
+         ```yaml
+         apiVersion: v1
+         kind: Service
+         metadata:
+           name: external-db-service
+           namespace: shiqi
+         spec:
+           type: ExternalName
+           externalName: db.example.com  # 外部域名
+         ```
+       - **执行与查看**：
+         - 应用配置：
+           ```bash
+           kubectl apply -f service-external-example.yml
+           ```
+         - 查看 Service（命令行）：
+           ```bash
+           kubectl get service -n shiqi
+           ```
+         - 说明：确认 Service 创建成功，观察其类型为 ExternalName，ClusterIP 字段为空。
+         - 查看详细信息（命令行）：
+           ```bash
+           kubectl describe service external-db-service -n shiqi
+           ```
+         - 说明：检查配置，确认 `externalName` 字段指向了外部域名 `db.example.com`。
+         - **通过 Kuboard 查看**：
+           - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+           - 找到 `external-db-service`，点击进入详情页。
+           - 查看 Service 类型（ExternalName）和 `externalName` 字段值（`db.example.com`）。
+           - 说明：Kuboard 清晰显示 ExternalName 的目标域名，方便确认配置是否正确。
+       - **ExternalName 示例解释**：
+         - 假设你的应用需要连接一个外部数据库（如 MySQL），域名是 `db.example.com`。
+         - 通过创建 `external-db-service`，你的 Pod 可以直接使用 `external-db-service` 作为域名访问外部数据库，Kubernetes 会通过 DNS 将其解析到 `db.example.com`。
+         - 好处：如果外部数据库地址变更，只需更新 Service 配置，应用无需调整。
+
+### 互动与休息（5 分钟）
+- 提问：大家觉得哪种 Service 类型最适合 `deployment-light-year-admin-template` 的内部访问？如果要临时测试页面，应该用哪种类型？在 Kuboard 上查看 Service 和用命令行查看有什么不同？
+- 短暂休息：让学员放松，准备进入实践部分。
+
+---
+
+## 第三部分：Service 实践与验证（20-25 分钟）
+
+### 目标
+- 通过实际操作，理解 Service 如何转发流量和实现负载均衡。
+- 基于已创建的 Service，验证 `deployment-light-year-admin-template` 的访问功能。
+- 使用 Kuboard 界面进一步确认 Service 状态和流量转发效果。
+
+### 内容
+1. **验证 ClusterIP 类型 Service（8 分钟）**
+   - **操作 1：确认 Service 和 Pod 的关系**
+     - 命令行查看：
+       ```bash
+       kubectl describe service service-light-year-admin-template-clusterip -n shiqi
+       ```
+     - 观察点：查看 `Endpoints` 字段，确认 Service 关联到了 `deployment-light-year-admin-template` 的 Pod IP 和端口。
+     - 说明：Endpoints 列出所有匹配 selector 的 Pod，Service 会将流量转发到这些 Pod。
+     - **通过 Kuboard 查看**：
+       - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+       - 找到 `service-light-year-admin-template-clusterip`，点击进入详情页。
+       - 查看 Endpoints 列表，确认与 `deployment-light-year-admin-template` 的 Pod 对应。
+       - 说明：Kuboard 的图形化界面直观展示 Service 与 Pod 的关联，方便验证 selector 是否正确。
+   - **操作 2：测试 ClusterIP 内部访问**
+     - 使用一个临时 Pod 模拟内部访问：
+       ```bash
+       kubectl run --rm -i --restart=Never curl-client --image=curlimages/curl --namespace=shiqi -- sh
+       ```
+     - 在容器内测试访问 `service-light-year-admin-template-clusterip`：
+       ```bash
+       curl http://service-light-year-admin-template-clusterip:80
+       ```
+     - 说明：Service 名称可以直接用作域名，Kubernetes 的 DNS 会解析到 ClusterIP，确认页面或响应是否正常返回。
+   - **互动**：提问：通过 Service 名称访问和直接用 Pod IP 访问有什么不同？为什么 Service 更可靠？
+
+2. **验证 NodePort 类型 Service（8 分钟）**
+   - **操作 1：确认 Service 端口**
+     - 命令行查看：
+       ```bash
+       kubectl get service service-light-year-admin-template-nodeport -n shiqi
+       ```
+     - 观察点：确认 NodePort 是否为 `30080`（或系统分配的端口）。
+     - **通过 Kuboard 查看**：
+       - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“服务（Services）”。
+       - 找到 `service-light-year-admin-template-nodeport`，查看端口信息。
+       - 说明：Kuboard 会明确显示 NodePort 的值（如 `30080`），方便确认外部访问端口。
+   - **操作 2：测试 NodePort 外部访问**
+     - 在浏览器中输入 `节点IP:30080`（需确认节点 IP 和端口可达），检查 `deployment-light-year-admin-template` 的页面是否正常加载。
+     - 说明：NodePort 开放了外部访问，适合测试页面，确认是否能看到预期内容。
+   - **互动**：提问：NodePort 类型的 Service 适合哪些场景？与 ClusterIP 相比有什么优缺点？
+
+3. **观察负载均衡（可选，4 分钟）**
+   - 如果 `deployment-light-year-admin-template` 有多个副本（如 replicas: 2），重复访问 Service，观察流量是否分发到不同 Pod：
+     - 在临时 Pod 中执行：
+       ```bash
+       curl http://service-light-year-admin-template-clusterip:80
+       curl http://service-light-year-admin-template-clusterip:80
+       ```
+     - 或者查看 Pod 日志，确认请求被不同 Pod 处理：
+       ```bash
+       kubectl logs -l app=pod-light-year-admin-template -n shiqi
+       ```
+     - **通过 Kuboard 查看 Pod 状态**：
+       - 在 Kuboard 界面中，进入 `shiqi` 命名空间，选择“工作负载（Workloads）” -> “Pod”。
+       - 找到 `deployment-light-year-admin-template` 相关的 Pod，点击进入查看日志。
+       - 说明：Kuboard 提供 Pod 日志查看功能，方便确认流量是否分发到不同 Pod。
+     - 说明：Service 默认使用轮询策略分发流量，类似于 Nginx 的负载均衡。
+   - **互动**：提问：负载均衡对应用有什么好处？如何确认流量是否真的分发到了不同 Pod？
+
+4. **总结与互动（5 分钟）**
+   - 提问：通过今天的练习，大家觉得 Service 如何解决了 Pod IP 动态变化的问题？哪种类型最适合你的应用场景？使用 Kuboard 查看 Service 状态是否比命令行更直观？
+   - 总结：Service 为 `deployment-light-year-admin-template` 提供了稳定入口，ClusterIP 适合内部通信，NodePort 适合外部测试，LoadBalancer 和 ExternalName 则适用于更复杂场景。Kuboard 提供图形化界面，方便直观查看和验证资源状态。
+
+---
+
+## 课后作业
+1. **扩展练习：负载均衡验证**
+   - 将 `deployment-light-year-admin-template` 的副本数增加到 3：
      ```bash
-     cd admin3/admin3-server
-     docker build -t harbor.labworlds.cc/admin3-server/master:081003-shiqi .
+     kubectl edit deployment deployment-light-year-admin-template -n shiqi
+     # 修改 spec.replicas 为 3
      ```
-   - **解释**：进入后端代码目录，构建后端镜像。注意镜像名称已更正为 `admin3-server`，以区分前端和后端。
-9. **推送后端镜像到 Harbor**
-   - **命令**：`docker push harbor.labworlds.cc/admin3-server/master:081003-shiqi`
-   - **解释**：将后端镜像上传到 Harbor 仓库。
-10. **创建后端 ConfigMap**
-    - **操作**：将之前整理好的 `configmap-admin3-server.yml` 文件应用到 Kubernetes。
-    - **命令**：`kubectl apply -f configmap-admin3-server.yml`
-    - **解释**：ConfigMap 是一种 Kubernetes 资源，用于存储配置数据（比如后端的数据库连接信息）。我们通过 ConfigMap 将 `application.yml` 文件内容挂载到后端容器中，供程序读取。
-11. **部署后端到 Kubernetes**
-    - **操作**：将之前整理好的 `deployment-admin3-server.yml` 文件应用到 Kubernetes。
-    - **命令**：`kubectl apply -f deployment-admin3-server.yml`
-    - **解释**：与前端类似，通过 Deployment 启动后端容器。配置文件中指定了镜像、资源限制、端口、ConfigMap 挂载等信息。
-12. **测试后端是否正常运行**
-    - **操作**：检查后端 Pod 状态，并通过前端页面测试是否能正常调用后端接口。
-    - **命令**：
-      ```bash
-      kubectl get pod -n shiqi
-      kubectl logs -l app=pod-admin3-server -n shiqi
-      ```
-    - **解释**：确认后端 Pod 状态为 `Running`，并通过日志检查是否有错误。如果前端页面可以正常登录或加载数据，说明后端接口调用成功。
+   - 使用 `curl` 多次访问 `service-light-year-admin-template-clusterip:80`，观察流量是否均匀分发到不同 Pod。
+   - 查看 Pod 日志，记录每个 Pod 接收到的请求次数：
+     ```bash
+     kubectl logs -l app=pod-light-year-admin-template -n shiqi
+     ```
+   - **通过 Kuboard 查看**：在 Kuboard 中进入每个 Pod 的详情页，查看日志，确认流量分发情况。
+2. **ExternalName 实践**
+   - 修改 `service-external-example.yml`，指向另一个外部服务域名（如 `api.example.com`），重新应用并检查：
+     ```bash
+     kubectl apply -f service-external-example.yml
+     kubectl get service -n shiqi
+     ```
+   - **通过 Kuboard 查看**：在 Kuboard 中进入 `external-db-service` 的详情页，确认 `externalName` 是否更新为新域名。
+   - 思考：如果你的应用需要调用外部 API，这种 Service 配置有什么好处？
+3. **阅读材料**
+   - 阅读 Kubernetes 官方文档中关于 Service 的部分，重点了解 `kube-proxy` 的作用和流量转发原理。
+   - 写下对 ClusterIP 无法 ping 通的原因的理解（提示：ClusterIP 是虚拟 IP，仅用于转发）。
 
+---
 
-### 前端和后端配置文件（已整理）
-#### 前端 Deployment 配置 (`deployment-admin3-ui.yml`)
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: deployment-admin3-ui
-  namespace: shiqi
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pod-admin3-ui
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  template:
-    metadata:
-      labels:
-        app: pod-admin3-ui
-    spec:
-      containers:
-      - name: admin3-ui
-        image: harbor.labworlds.cc/admin3-ui/master:081003-shiqi
-        ports:
-        - containerPort: 80
-          name: http
-        resources:
-          requests:
-            cpu: "50m"
-            memory: "64Mi"
-          limits:
-            cpu: "100m"
-            memory: "128Mi"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 15
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 5
-      imagePullSecrets:
-      - name: secret-harbor-login
-```
+## 教学效果预期
+1. **分段讲解**：通过将内容分为原理、语法和实践三部分，控制每部分时间，学员不会因长时间听理论而犯困。
+2. **逐步练习**：在语法部分逐个类型讲解和练习 YAML 编写，每次练习后立即执行 `apply` 和查看命令，确保学员跟上节奏。
+3. **实践驱动**：验证部分通过操作确认 Service 功能，增强参与感和成就感。
+4. **联系实际**：以 `deployment-light-year-admin-template` 为实践对象，让学员感到内容与已部署应用相关且有连续性。
+5. **Kuboard 辅助**：通过 Kuboard 图形化界面查看 Service 和 Pod 状态，直观展示资源关系，提升学习体验和理解效率。
 
-#### 后端 ConfigMap 配置 (`configmap-admin3-server.yml`)
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: configmap-admin3-server
-  namespace: shiqi
-data:
-  application.yml: |
-    spring:
-      jpa:
-        generate-ddl: true
-        defer-datasource-initialization: true
-        show-sql: true
-        hibernate:
-          ddl-auto: update
-        properties:
-          hibernate.auto_quote_keyword: true
-      application:
-        name: admin3
-      datasource:
-        driver-class-name: com.mysql.cj.jdbc.Driver
-        url: jdbc:mysql://192.168.110.167:3306/admin3?characterEncoding=utf8
-        username: admin
-        password: admin123
-      sql:
-        init:
-          encoding: utf8
-          data-locations: classpath:data.sql
-          mode: always
-          continue-on-error: true
-      data:
-        web:
-          pageable:
-            one-indexed-parameters: true
-      profiles:
-        include: biz
-    server:
-      servlet:
-        context-path: /admin3
-```
-
-#### 后端 Deployment 配置 (`deployment-admin3-server.yml`)
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: deployment-admin3-server
-  namespace: shiqi
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pod-admin3-server
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  template:
-    metadata:
-      labels:
-        app: pod-admin3-server
-    spec:
-      containers:
-      - name: admin3-server
-        image: harbor.labworlds.cc/admin3-server/master:081003-shiqi
-        ports:
-        - containerPort: 8080
-          name: http
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "256Mi"
-          limits:
-            cpu: "200m"
-            memory: "256Mi"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 15
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        volumeMounts:
-        - name: volumes-admin3-server
-          mountPath: /app/application.yml
-          subPath: application.yml
-      volumes:
-      - name: volumes-admin3-server
-        configMap:
-          name: configmap-admin3-server
-      imagePullSecrets:
-      - name: secret-harbor-login
-```
-
-### 检查命令（必须做）
-这些命令用于检查你的程序是否正常运行，类似“医生检查病人”的工具。
-
-1. **查看所有资源状态**：
-   - 命令：`kubectl get all -n shiqi`
-   - 解释：列出 `shiqi` 命名空间下的所有资源（Deployment、Pod 等），看看它们是否正常。
-2. **查看 Deployment 状态**：
-   - 命令：`kubectl get deployment -n shiqi`
-   - 解释：专门查看 Deployment 是否创建成功，是否所有副本都就绪。
-3. **查看 Pod 状态**：
-   - 命令：`kubectl get pod -n shiqi`
-   - 解释：Pod 是程序运行的地方，状态为 `Running` 说明程序启动了。如果是 `CrashLoopBackOff` 或 `Error`，说明有问题。
-4. **查看日志（程序运行记录）**：
-   - 前端：`kubectl logs -l app=pod-admin3-ui -n shiqi`
-   - 后端：`kubectl logs -l app=pod-admin3-server -n shiqi`
-   - 解释：日志就像程序的日记，记录了程序运行中遇到的问题。查看日志可以帮助你找到错误原因。
-5. **详细描述资源（排查问题）**：
-   - 前端：`kubectl describe deployment deployment-admin3-ui -n shiqi`
-   - 后端：`kubectl describe deployment deployment-admin3-server -n shiqi`
-   - 解释：如果程序有问题，这个命令会提供更详细的信息，比如为什么 Pod 启动失败。
-
-### Kuboard 界面查看步骤（必须做）
-Kuboard 是一个图形化界面，就像 Windows 桌面，比命令行更直观。
-
-1. **登录 Kuboard**：
-   - 打开浏览器，输入 Kuboard 的网址（问你的管理员要），输入用户名和密码登录。
-2. **选择命名空间**：
-   - 登录后，左侧有个菜单，找到“命名空间”，点击 `shiqi`（就像选择一个文件夹）。
-3. **查看程序（Deployment 和 Pod）**：
-   - 在 `shiqi` 命名空间下，点击“工作负载” -> “Deployment”，你会看到 `deployment-admin3-ui` 和 `deployment-admin3-server`。
-   - 点击某个 Deployment，里面有“Pod”选项卡，显示程序是否运行（状态应为绿色或 `Running`）。
-4. **查看配置（ConfigMap）**：
-   - 左侧菜单选“配置” -> “ConfigMap”，找到 `configmap-admin3-server`，点开可以看到后端配置内容。
-5. **查看日志**：
-   - 在 Pod 页面，点击某个 Pod，再点“日志”，选择容器名（比如 `admin3-ui`），就能看到程序运行记录。
-6. **监控资源**：
-   - 在 Deployment 或 Pod 页面，有 CPU 和内存使用图表，确保没有超出限制（就像检查电脑内存是否不够用）。
+希望这个教案能帮助您的学员更好地掌握 Kubernetes Service 的理论和实践。如果有其他调整需求或需要进一步细化某些部分（如 Kuboard 的具体操作截图或更详细步骤），请随时告诉我！
