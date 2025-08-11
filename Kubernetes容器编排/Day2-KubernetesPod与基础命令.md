@@ -129,6 +129,7 @@ Namespace 就像在一栋大厦里划分不同的楼层：每个楼层有自己�
 - **创建 Namespace**：通过命令行或配置文件创建。
   - 命令行：`kubectl create namespace my-namespace`
   - YAML 文件示例：
+    创建文件 `my-namespace.yml`
     ```yaml
     apiVersion: v1
     kind: Namespace
@@ -138,7 +139,7 @@ Namespace 就像在一栋大厦里划分不同的楼层：每个楼层有自己�
 - **查看 Namespace**：列出集群中所有的 Namespace。
   - 命令行：`kubectl get namespaces`
 - **指定 Namespace**：创建资源时，可以指定它属于哪个 Namespace。
-  - 命令行：`kubectl apply -f pod.yaml -n my-namespace`
+  - 命令行：`kubectl apply -f my-namespace.yml`
   - YAML 文件：在 `metadata` 中添加 `namespace` 字段。
 - **删除 Namespace**：删除 Namespace 会同时删除它里面的所有资源。
   - 命令行：`kubectl delete namespace my-namespace`
@@ -304,7 +305,7 @@ Pod 通常属于某个 Namespace。如果你在创建 Pod 时没有指定 Namesp
      namespace: your-pinyin-name  # 替换为你的 Namespace 名称，例如 zhangwei
    type: kubernetes.io/dockerconfigjson  # Secret 类型，用于存储 Docker 镜像仓库登录信息
    stringData:  # 使用 stringData 字段直接以明文形式输入数据
-     .dockerconfigjson: '{"auths":{"harbor.labworlds.cc":{"username":"admin","password":"admin123","auth":"YWRtaW46YWRtaW4xMjM="}}}'  # 明文 JSON 格式的 Docker 配置信息
+     .dockerconfigjson: '{"auths":{"harbor.labworlds.cc":{"username":"admin","password":"admin123"}}}'  # 明文 JSON 格式的 Docker 配置信息
    ```
    **注意**：
    - 将 `namespace` 字段替换为你的 Namespace 名称（拼音全拼，例如 `zhangwei`）。
@@ -353,7 +354,7 @@ Pod 通常属于某个 Namespace。如果你在创建 Pod 时没有指定 Namesp
    - 登录后，在页面顶部或左侧导航栏中找到 Namespace 选择框。
    - 从下拉列表中选择你创建的 Namespace（例如 `your-pinyin-name`）。
 3. **进入 Secret 创建页面**：
-   - 在 Namespace 页面中，点击左侧导航栏中的“配置（Config）”或“Secret”选项。
+   - 在 Namespace 页面中，点击左侧导航栏中的“配置中心”的“Secret”选项。
    - 点击页面右上角的“创建（Create）”或“添加（Add）”按钮，进入 Secret 创建页面。
 4. **填写 Secret 信息**：
    - **名称（Name）**：输入 `secret-harbor-login`。
@@ -469,7 +470,7 @@ YAML 文件准备好后，使用 `kubectl` 命令将 Pod 部署到 Kubernetes �
    - 从下拉列表中选择你创建的 Namespace（例如 `your-pinyin-name`）。
    - 如果没有看到你的 Namespace，可能需要刷新页面或确认登录账户是否有权限查看该 Namespace。
 3. **查看 Pod 列表**：
-   - 在 Namespace 页面中，点击左侧导航栏中的“工作负载（Workloads）”或“Pod”选项。
+   - 在 Namespace 页面中，点击左侧导航栏中的“应用程序”的“容器组”选项。
    - 你会看到当前 Namespace 下的 Pod 列表，找到名为 `pod-stars-emmision` 的 Pod。
    - Pod 列表会显示状态（例如 `Running` 或 `Pending`）、创建时间等信息。如果状态为绿色，表示 Pod 运行正常；如果为红色或黄色，可能存在问题。
 4. **查看 Pod 详细信息**：
