@@ -1286,14 +1286,14 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
         kind: Deployment          # 目标资源类型为 Deployment
         name: deployment-stars-emmision  # 目标 Deployment 名称
       minReplicas: 1              # 最小 Pod 副本数
-      maxReplicas: 10             # 最大 Pod 副本数
+      maxReplicas: 5             # 最大 Pod 副本数
       metrics:                    # 指标配置
       - type: Resource            # 指标类型为资源
         resource:                 # 资源指标
           name: cpu               # 监控 CPU 使用率
           target:                 # 目标值配置
             type: Utilization     # 目标类型为利用率
-            averageUtilization: 30  # 平均 CPU 使用率超过 30% 时触发扩展
+            averageUtilization: 60  # 平均 CPU 使用率超过 30% 时触发扩展
     ```
 3. 应用配置
     ```bash
@@ -1318,17 +1318,20 @@ sudo apt-get update
 sudo apt-get install apache2-utils
 
 # 执行压力测试命令
-ab -n 1000 -c 100 https://shiqi-stars.labworlds.cc:1443/index.html
+ab -n 1000 -c 100 -t 180 https://shiqi-stars.labworlds.cc:1443/index.html
+
 ```
 
 **参数说明**：
 - `-n 1000`：总请求数为 1000。
 - `-c 100`：并发用户数为 100。
+- `-t 180`: 测试时间为 180 秒。
 
 **注意**：由于目标 URL 使用的是自签名证书，`ab` 可能无法直接访问 HTTPS 地址。如果遇到证书不受信任的错误，可以尝试使用 `-k` 参数忽略证书验证：
 
 ```bash
-ab -n 1000 -c 100 -k https://shiqi-stars.labworlds.cc:1443/index.html
+ab -n 1000 -c 100 -t 180 -k https://shiqi-stars.labworlds.cc:1443/index.html
+
 ```
 
 #### 步骤 5：观察 HPA 效果
@@ -1353,3 +1356,67 @@ kubectl get hpa -n shiqi
 kubectl delete -f hpa-stars-emmision.yml
 ```
 
+好的，我来补充关于 HPA（Horizontal Pod Autoscaler）在压力减少后缩容 Pod 的相关说明，并完善内容。
+
+### HPA 的缩容机制
+
+HPA 不仅可以在负载增加时自动扩展 Pod 数量（scale up），还可以在负载减少时自动缩减 Pod 数量（scale down），以释放不必要的资源。缩容的触发条件通常基于同样的监控指标（如 CPU 或内存使用率），当指标低于预设的下限阈值时，HPA 会减少 Pod 副本数。
+
+- **缩容延迟（Cooldown Period）**：为了避免频繁的扩展和缩容操作导致系统不稳定，HPA 通常会设置一个缩容延迟时间（在 Kubernetes 中通过 `--horizontal-pod-autoscaler-downscale-stabilization` 参数配置，默认值为 5 分钟）。这意味着在负载减少后，HPA 不会立即缩容，而是会等待一段时间以确认负载确实持续较低。
+- **最小副本数**：HPA 配置中可以设置最小副本数（`minReplicas`），确保即使负载很低，系统仍然保留一定数量的 Pod 以保证可用性。
+
+### 缩容的具体时机
+HPA 的缩容时机取决于以下因素：
+1. **指标阈值**：如果 Pod 的资源使用率（如 CPU）持续低于目标值或下限阈值（例如目标值为 50%，当前使用率低于 30% 持续一段时间），HPA 会触发缩容。
+2. **稳定时间**：如上所述，默认情况下 Kubernetes 会等待 5 分钟以确认负载是否持续低。如果在这段时间内负载再次增加，缩容操作会被取消。
+3. **自定义配置**：可以通过调整 HPA 的策略或使用自定义指标来改变缩容的触发条件和延迟时间。
+
+### 为什么要设置缩容延迟？
+- **避免震荡**：如果没有延迟，Pod 可能会因为短期的负载波动而频繁扩展和缩容，导致系统不稳定。
+- **用户体验**：快速缩容可能导致负载突然增加时没有足够的 Pod 来处理请求，影响性能。
+
+### 示例
+假设一个 HPA 配置如下：
+- 目标 CPU 使用率：60%
+- 最小副本数：1
+- 最大副本数：5
+- 缩容稳定时间：5 分钟
+
+如果当前有 5 个 Pod 运行，CPU 使用率持续低于 60% 超过 5 分钟，HPA 会根据算法计算出需要的副本数（例如减少到 3 个），并触发缩容操作，但不会低于最小副本数 1。
+
+### 补充到使用场景
+- **资源优化**：在流量低谷时（例如深夜），HPA 可以通过缩容减少 Pod 数量，节约集群资源，同时确保最小副本数以维持基本服务能力。
+- **成本控制**：对于云原生环境，缩容可以减少云资源的占用，从而降低成本。
+
+### 更新后的 Mermaid 结构图
+为了更清晰地展示 HPA 的扩展和缩容机制，我对结构图稍作调整，增加缩容流程的说明。
+
+```mermaid
+graph TD
+    A[用户请求] --> B[Ingress/Load Balancer]
+    B --> C[Deployment]
+    C --> D[Pod 1]
+    C --> E[Pod 2]
+    C --> F[Pod N]
+    G[Metrics Server] --> H[HPA Controller]
+    H -->|监控指标: CPU/内存等| C
+    H -->|扩展: 增加副本数| C
+    H -->|缩容: 减少副本数| C
+    I[Kubernetes API Server] -->|配置HPA规则和阈值| H
+
+    subgraph 监控与自动扩展/缩容
+    G
+    H
+    end
+
+    subgraph 应用部署
+    C
+    D
+    E
+    F
+    end
+```
+
+#### 图解补充说明：
+- **HPA Controller**：不仅在负载高时增加 Pod 副本数（扩展），还会在负载持续低且满足缩容稳定时间后减少 Pod 副本数（缩容）。
+- **Metrics Server**：提供实时的资源使用数据，用于判断是否需要扩展或缩容。
