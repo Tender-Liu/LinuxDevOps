@@ -1128,3 +1128,228 @@ cat /root/shiqi.admin.labworlds.cc/tls.crt
 ### 步骤 6：测试 HTTPS 访问
 在浏览器中访问 `https://shiqi.admin.labworlds.cc:1443`，检查是否可以正常加载页面。由于是自签名证书，浏览器可能会提示不受信任，点击“继续”即可。
 
+
+
+## 第五部分: HPA 的作用、必要性及使用场景
+
+#### HPA 是什么？
+Horizontal Pod Autoscaler (HPA) 是 Kubernetes 中的一种自动扩展机制，用于根据工作负载的资源使用情况（如 CPU 或内存使用率）或其他自定义指标，自动调整 Deployment 或其他控制器中 Pod 的数量。简单来说，HPA 能够动态地增加或减少 Pod 的副本数，以适应当前的需求。
+
+#### 为什么要用 HPA？
+在 Kubernetes 中，Deployment 已经可以帮助你管理应用的部署和副本数量，但手动调整副本数可能会非常繁琐，尤其是在以下情况下：
+- **流量波动**：如果你的应用流量有高峰和低谷（例如电商网站在促销期间流量激增），手动调整副本数无法及时响应。
+- **资源优化**：手动管理副本数可能导致资源浪费（副本过多）或性能瓶颈（副本不足）。
+- **高可用性**：通过自动扩展，HPA 可以在 Pod 故障或负载增加时快速增加副本，确保服务的高可用性。
+
+HPA 的核心优势在于**自动化**和**动态调整**，它可以根据实时的监控数据（如通过 Metrics Server 提供的 CPU 使用率）来决定是否需要扩展或缩减 Pod 数量，从而提高资源利用率和应用性能。
+
+#### HPA 的使用场景
+- **Web 应用**：当访问量突然增加时，HPA 可以自动增加 Pod 数量以分担负载；当访问量减少时，缩减 Pod 数量以节约资源。
+- **批处理任务**：对于周期性任务，HPA 可以根据任务负载动态调整 Pod 数量。
+- **微服务架构**：在微服务系统中，某些服务可能在特定时间段内负载较高，HPA 可以针对这些服务进行独立扩展。
+- **突发事件处理**：例如实时数据处理系统在突发事件（如新闻热点）时需要更多计算资源，HPA 可以快速响应。
+
+与 Deployment 的关系：Deployment 负责定义和管理应用的 Pod 副本，而 HPA 则是基于 Deployment 的基础上，通过监控指标动态调整副本数量。两者结合使用可以实现更智能的资源管理。
+
+### 2. Mermaid 结构图
+
+为了帮助你更直观地理解 HPA 的工作原理，我用 Mermaid 绘制了一个结构图，展示了 HPA 如何与 Deployment 和其他组件交互。
+
+```mermaid
+graph TD
+    A[用户请求] --> B[Ingress/Load Balancer]
+    B --> C[Deployment]
+    C --> D[Pod 1]
+    C --> E[Pod 2]
+    C --> F[Pod N]
+    G[Metrics Server] --> H[HPA Controller]
+    H -->|监控指标: CPU/内存等| C
+    H -->|调整副本数| C
+    I[Kubernetes API Server] -->|配置HPA规则| H
+
+    subgraph 监控与自动扩展
+    G
+    H
+    end
+
+    subgraph 应用部署
+    C
+    D
+    E
+    F
+    end
+```
+
+#### 图解说明：
+- **用户请求**：通过 Ingress 或 Load Balancer 到达 Deployment 管理的 Pod。
+- **Deployment**：管理多个 Pod 副本，负责应用的部署和基本副本控制。
+- **Metrics Server**：收集 Pod 的资源使用情况（如 CPU、内存），并提供给 HPA Controller。
+- **HPA Controller**：根据预设的规则（如 CPU 使用率超过 70% 时扩展），监控指标并动态调整 Deployment 中的 Pod 数量。
+- **Kubernetes API Server**：用于配置 HPA 的规则和目标值。
+
+
+### 2. HPA 语法介绍与示例 YAML 文件（带详细注释）
+
+Horizontal Pod Autoscaler (HPA) 是 Kubernetes 中的一种资源对象，用于根据指定的指标（如 CPU 使用率、内存使用率或其他自定义指标）自动调整 Deployment、StatefulSet 等控制器中 Pod 的副本数量。HPA 通过与 Metrics Server 或其他监控系统集成，动态监控资源使用情况，并在指标达到预设阈值时增加或减少 Pod 数量。
+
+HPA 的配置文件同样使用 YAML 格式，结构清晰。下面是 HPA YAML 文件的基本结构：
+
+- **apiVersion**：指定 Kubernetes API 的版本，通常为 `autoscaling/v2`（较新版本支持更多功能）。
+- **kind**：指定资源类型，这里是 `HorizontalPodAutoscaler`。
+- **metadata**：包含资源的元数据，如名称、命名空间等。
+- **spec**：定义 HPA 的具体配置，包括：
+  - **scaleTargetRef**：指定要进行自动扩展的目标资源（如某个 Deployment）。
+  - **minReplicas**：Pod 的最小副本数量。
+  - **maxReplicas**：Pod 的最大副本数量。
+  - **metrics**：定义用于触发扩展的指标（如 CPU 使用率）及其目标值。
+
+以下是一个针对之前 `deployment-start-emmision` 的 HPA 配置示例，我为每个字段添加了详细的中文注释，方便你理解：
+
+```yaml
+apiVersion: autoscaling/v2  # 指定 Kubernetes API 版本，autoscaling/v2 支持多种指标类型
+kind: HorizontalPodAutoscaler  # 资源类型为 HorizontalPodAutoscaler，用于自动水平扩展
+metadata:  # 元数据部分，包含 HPA 的基本信息
+  name: hpa-stars-emmision  # HPA 的名称，唯一标识资源
+  namespace: shiqi  # HPA 所在的命名空间，与目标 Deployment 一致
+spec:  # HPA 的具体配置内容
+  scaleTargetRef:  # 指定要进行自动扩展的目标资源
+    apiVersion: apps/v1  # 目标资源的 API 版本
+    kind: Deployment  # 目标资源类型为 Deployment
+    name: deployment-stars-emmision  # 目标 Deployment 的名称
+  minReplicas: 2  # Pod 的最小副本数量，即使负载很低也不会少于 2 个 Pod
+  maxReplicas: 10  # Pod 的最大副本数量，即使负载很高也不会超过 10 个 Pod
+  metrics:  # 定义用于触发扩展的指标，可以有多个指标
+  - type: Resource  # 指标类型为资源指标（如 CPU 或内存）
+    resource:  # 资源指标的具体配置
+      name: cpu  # 监控的资源为 CPU
+      target:  # 目标值配置
+        type: Utilization  # 目标类型为利用率（百分比）
+        averageUtilization: 70  # 目标 CPU 平均利用率为 70%，超过此值时增加 Pod，低于此值时减少 Pod
+  - type: Resource  # 另一个指标，监控内存（可选）
+    resource:
+      name: memory  # 监控的资源为内存
+      target:
+        type: Utilization  # 目标类型为利用率
+        averageUtilization: 80  # 目标内存平均利用率为 80%
+```
+
+### 3. HPA 配置的要点说明
+
+- **scaleTargetRef**：指定 HPA 控制的目标资源，通常是 Deployment。确保名称和命名空间与实际 Deployment 一致。
+- **minReplicas 和 maxReplicas**：设置 Pod 副本数量的上下限，避免过度扩展或缩减。
+- **metrics**：HPA 支持多种指标类型：
+  - **Resource**：基于 CPU 或内存利用率，需要安装 Metrics Server 来提供数据。
+  - **Pods**：基于 Pod 级别的自定义指标。
+  - **Object**：基于外部对象（如 Ingress 请求率）的指标。
+  - **External**：基于外部系统（如 Prometheus）的自定义指标。
+- **averageUtilization**：目标利用率是一个百分比，HPA 会根据当前 Pod 的平均资源使用率与此值比较，决定是否调整副本数量。
+
+### 4. HPA 在架构中的位置
+
+HPA 依赖于 Kubernetes 的监控系统（如 Metrics Server）来获取 Pod 的资源使用数据，并通过 Kubernetes API 与 Deployment 交互，动态调整副本数量。它的位置如下：
+- **监控层**：Metrics Server 收集 Pod 的 CPU 和内存使用数据。
+- **控制层**：HPA 根据监控数据和预设规则，决定是否调整 Pod 数量。
+- **执行层**：HPA 通知 Deployment 增加或减少 Pod 副本。
+
+### 5. 前置条件
+
+在配置 HPA 之前，需要确保以下条件已满足：
+1. **安装 Metrics Server**：HPA 需要 Metrics Server 来获取 Pod 的资源使用数据。可以通过以下命令安装：
+   ```bash
+   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+   ```
+2. **Deployment 已配置资源限制**：确保目标 Deployment 中的 Pod 已设置 `resources.requests` 和 `resources.limits`，否则 HPA 无法准确计算利用率。
+
+
+### 实验练习：为 deployment-stars-emmision 配置水平扩展
+这个实验练习的目标是为 `deployment-stars-emmision` 配置水平扩展（HPA），以便在 CPU 使用率超过 30% 时自动扩展 Pod 数量。同时，提供一个压力测试命令用于测试配置的效果。
+
+#### 步骤 1：确保 Metrics Server 已安装
+HPA 需要 Metrics Server 来收集 Pod 的资源使用数据。请确保你的 Kubernetes 集群中已安装 Metrics Server。如果未安装，可以使用以下命令安装：
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+#### 步骤 2：创建 HPA 配置
+1. 创建 `hpa-stars-emmision.yml` 文件
+2. 编辑文件内容
+    ```yaml
+    apiVersion: autoscaling/v2  # 指定 Kubernetes API 版本
+    kind: HorizontalPodAutoscaler  # 资源类型为 HorizontalPodAutoscaler
+    metadata:                      # 元数据部分
+      name: hpa-stars-emmision    # HPA 资源名称
+      namespace: shiqi            # 资源所在的命名空间
+    spec:                          # 规范部分，定义具体配置
+      scaleTargetRef:             # 指定要扩展的目标资源
+        apiVersion: apps/v1       # 目标资源的 API 版本
+        kind: Deployment          # 目标资源类型为 Deployment
+        name: deployment-stars-emmision  # 目标 Deployment 名称
+      minReplicas: 1              # 最小 Pod 副本数
+      maxReplicas: 10             # 最大 Pod 副本数
+      metrics:                    # 指标配置
+      - type: Resource            # 指标类型为资源
+        resource:                 # 资源指标
+          name: cpu               # 监控 CPU 使用率
+          target:                 # 目标值配置
+            type: Utilization     # 目标类型为利用率
+            averageUtilization: 30  # 平均 CPU 使用率超过 30% 时触发扩展
+    ```
+3. 应用配置
+    ```bash
+    kubectl apply -f hpa-stars-emmision.yml
+    ```
+
+#### 步骤 3：验证 HPA 配置
+使用以下命令检查 HPA 是否正确创建和运行：
+
+```bash
+kubectl get hpa -n shiqi
+```
+
+你可以看到 `hpa-stars-emmision` 的状态，包括当前副本数、目标 CPU 使用率等信息。
+
+#### 步骤 4：压力测试命令
+为了测试 HPA 是否能在 CPU 使用率超过 30% 时自动扩展 Pod 数量，可以使用 `ab`（Apache Benchmark）工具对 `https://shiqi-stars.labworlds.cc:1443/index.html` 进行压力测试。以下是压力测试命令：
+
+```bash
+# 安装 ab 工具（如果未安装，以 Ubuntu 为例）
+sudo apt-get update
+sudo apt-get install apache2-utils
+
+# 执行压力测试命令
+ab -n 1000 -c 100 https://shiqi-stars.labworlds.cc:1443/index.html
+```
+
+**参数说明**：
+- `-n 1000`：总请求数为 1000。
+- `-c 100`：并发用户数为 100。
+
+**注意**：由于目标 URL 使用的是自签名证书，`ab` 可能无法直接访问 HTTPS 地址。如果遇到证书不受信任的错误，可以尝试使用 `-k` 参数忽略证书验证：
+
+```bash
+ab -n 1000 -c 100 -k https://shiqi-stars.labworlds.cc:1443/index.html
+```
+
+#### 步骤 5：观察 HPA 效果
+在执行压力测试后，使用以下命令观察 Pod 数量是否增加：
+
+```bash
+kubectl get pods -n shiqi -o wide
+```
+
+同时，检查 HPA 状态以确认是否触发了扩展：
+
+```bash
+kubectl get hpa -n shiqi
+```
+
+如果 CPU 使用率超过 30%，HPA 应该会自动增加 Pod 副本数（最多到 10 个）。
+
+#### 步骤 6：测试完成后清理
+如果不再需要压力测试，可以删除 HPA 配置（可选）：
+
+```bash
+kubectl delete -f hpa-stars-emmision.yml
+```
+
