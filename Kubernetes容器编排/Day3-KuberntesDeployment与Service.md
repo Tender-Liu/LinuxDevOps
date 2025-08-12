@@ -665,7 +665,7 @@ data:
         name: admin3
       datasource:
         driver-class-name: com.mysql.cj.jdbc.Driver
-        url: jdbc:mysql://192.168.110.167:3306/admin3?characterEncoding=utf8
+        url: jdbc:mysql://192.168.110.162:3306/admin3?characterEncoding=utf8
         username: admin
         password: admin123
       sql:
@@ -683,6 +683,11 @@ data:
     server:
       servlet:
         context-path: /admin3
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health
 ```
 
 #### 后端 Deployment 配置 (`deployment-admin3-server.yml`)
@@ -718,19 +723,19 @@ spec:
             cpu: "100m"
             memory: "256Mi"
           limits:
-            cpu: "200m"
-            memory: "256Mi"
+            cpu: "500m"
+            memory: "512Mi"
         livenessProbe:
           httpGet:
             path: /
             port: 8080
-          initialDelaySeconds: 15
+          initialDelaySeconds: 60
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 30
           periodSeconds: 5
         volumeMounts:
         - name: volumes-admin3-server
