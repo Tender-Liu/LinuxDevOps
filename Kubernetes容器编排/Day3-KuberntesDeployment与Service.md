@@ -733,7 +733,7 @@ spec:
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
+            path: /admin3/actuator/health
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 5
