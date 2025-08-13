@@ -687,54 +687,62 @@ spec:                             # 规范部分，定义具体配置
 
 **说明**：此模板适用于多个域名分别指向不同服务的场景，每个域名使用独立的 TLS 证书（通过不同的 Secret 存储），确保安全性和灵活性。
 
+### 带注解的配置（重写规则）
 
-#### 模板 4：带注解的配置（重写规则）
+#### 概述
 适用于需要路径重写的场景，通过注解实现路径转换。
 
 ```yaml
-apiVersion: networking.k8s.io/v1  # 指定 Kubernetes API 版本，Ingress 资源属于 networking.k8s.io 组的 v1 版本
-kind: Ingress                     # 资源类型为 Ingress，用于定义外部流量如何进入集群内部服务
-metadata:                         # 元数据，包含资源的基本信息
-  name: rewrite-ingress           # Ingress 资源的名称，唯一标识该资源
-  namespace: default              # 资源所在的命名空间，这里是默认命名空间 default
-  annotations:                    # 注解部分，用于添加 Ingress 控制器的额外配置
-    nginx.ingress.kubernetes.io/rewrite-target: /$2  # NGINX Ingress 控制器专用注解，用于路径重写
-                                                      # 此处表示将匹配的路径中的特定部分重写为 /$2
-                                                      # $2 代表正则表达式中第二个捕获组的内容（详见下文 path 说明）
-spec:                             # 规范部分，定义 Ingress 的具体配置和行为
-  ingressClassName: nginx         # 指定 Ingress 控制器类型为 nginx，表示使用 NGINX Ingress Controller 处理此资源
-  tls:                            # TLS 配置，用于启用 HTTPS
-  - hosts:                        # 第一个域名及其 TLS 配置
-    - api.example.com             # 指定域名 api.example.com 使用 TLS
-    secretName: api-example-tls   # 引用存储 api.example.com 证书的 Secret 名称
-  rules:                          # 路由规则列表，定义如何根据域名和路径转发请求
-  - host: rewrite.example.com     # 指定域名，只有匹配此域名的请求才会被处理
-    http:                         # HTTP 协议配置，定义路径和后端服务
-      paths:                      # 路径列表，定义具体的路径匹配规则
-      - path: /api/(/|$)(.*)      # 匹配路径 /api/ 后跟任意内容的请求
-                                  # (/|$)(.*) 是一个正则表达式，表示捕获 /api/ 后的所有内容作为第二个捕获组（$2）
-                                  # 例如，请求路径 /api/v1/users 将捕获 v1/users 作为 $2
-        pathType: ImplementationSpecific  # 路径类型为 Prefix，表示匹配以指定路径为前缀的请求
-        backend:                  # 后端配置，定义请求转发到的目标服务
+apiVersion: networking.k8s.io/v1  # 指定 Kubernetes API 版本
+kind: Ingress                     # 资源类型为 Ingress
+metadata:                         # 元数据
+  name: rewrite-ingress           # Ingress 资源名称
+  namespace: default              # 所在命名空间
+  annotations:                    # 注解部分
+    nginx.ingress.kubernetes.io/rewrite-target: /$2  # NGINX Ingress 控制器的路径重写规则
+spec:                             # 规范部分
+  ingressClassName: nginx         # 指定 Ingress 控制器类型
+  tls:                            # TLS 配置
+  - hosts:                        # TLS 适用的域名
+    - api.example.com             # 域名
+      secretName: api-example-tls   # TLS 证书 Secret 名称
+  rules:                          # 路由规则
+  - host: rewrite.example.com     # 匹配的域名
+    http:                         # HTTP 协议配置
+      paths:                      # 路径列表
+      - path: /api(/|$)(.*)      # 匹配路径 /api 后的请求
+        pathType: ImplementationSpecific  # 路径类型
+        backend:                  # 后端配置
           service:                # 目标服务配置
-            name: api-service     # 目标服务的名称，需在同一命名空间内存在
-            port:                 # 目标服务的端口
-              number: 8080        # 服务监听的端口号为 8080
+            name: api-service     # 目标服务名称
+            port:                 # 目标服务端口
+              number: 8080        # 服务监听的端口号
 ```
 
-#### 路径重写规则说明
-- **注解的作用**：`nginx.ingress.kubernetes.io/rewrite-target: /$2` 表示将请求路径重写为指定的目标格式。在本例中，请求路径 `/api/v1/users` 会被重写为 `/v1/users`，即去掉 `/api/` 前缀，只保留后续部分。
-- **正则表达式捕获组**：路径 `/api/(/|$)(.*)` 中的 `(/|$)(.*)` 是一个捕获组，表示匹配 `/api/` 后的所有内容，并将其存储为 `$2`（NGINX Ingress Controller 中，捕获组从 `$1` 开始计数，但这里的 `/api/` 是固定前缀，未被捕获，所以后续部分为 `$2`）。重写目标 `/$2` 会在转发到后端服务时将路径替换为捕获的内容。
-- **适用场景**：这种配置适用于前端请求路径与后端服务路径不一致的情况，例如前端请求 `/api/something`，而后端服务只识别 `/something`。
+### 路径重写规则说明
+- **注解的作用**：`nginx.ingress.kubernetes.io/rewrite-target: /$2` 表示将请求路径重写为指定的目标格式。在本例中，请求路径 `/api/v1/users` 会被重写为 `/v1/users`，即去掉 `/api/` 前缀。
+- **正则表达式捕获组**：路径 `/api(/|$)(.*)` 中的 `(/|$)(.*)` 是一个捕获组，表示匹配 `/api` 后的所有内容，并将其存储为 `$2`。重写目标 `/$2` 会在转发到后端服务时将路径替换为捕获的内容。
+- **适用场景**：适用于前端请求路径与后端服务路径不一致的情况，例如前端请求 `/api/something`，而后端服务只识别 `/something`。
 
-#### 示例效果
-- 用户请求：`https://rewrite.example.com/api/v1/users`
-- 重写后路径：`/v1/users`
-- 转发到后端：`api-service:8080` 接收到的路径为 `/v1/users`
+### 图示
 
+下面是带注解的配置逻辑图示：
 
-### 总结
-以上是为“模板 4：带注解的配置（重写规则）”添加的详细中文注释，解释了路径重写的配置方法和原理。如果你在学习或实际操作中对路径重写有更多需求（如更复杂的正则表达式、其他注解功能等），或者对其他模板有进一步的问题，请随时告诉我，我会继续协助你！
+````mermaid
+  graph TD;
+    A[用户请求] -->|请求路径| B[/api/v1/users];
+    B -->|重写规则| C[/v1/users];
+    C -->|转发到| D[api-service];
+    D -->|返回响应| E[用户响应];
+````
+
+### 说明图示内容
+- **用户请求**：表示外部用户发起的请求。
+- **请求路径**：显示原始请求路径 `/api/v1/users`。
+- **重写规则**：展示重写后的路径 `/v1/users`。
+- **转发到**：表示请求被转发到后端服务 `api-service`。
+- **返回响应**：最终用户收到的响应。
+
 
 #### 2. 路由匹配方法
 `ingress-nginx` 支持基于域名和路径的路由匹配，以下通过表格形式详细说明各种匹配方法及其特点，方便日后学习和查阅。
@@ -752,82 +760,8 @@ spec:                             # 规范部分，定义 Ingress 的具体配�
 - **通配符域名**：如 `*.example.com` 匹配 `sub.example.com`，但不匹配 `example.com`。
 - **默认规则**：如果没有匹配的域名或路径规则，`ingress-nginx` 会尝试转发到默认后端（若配置）。
 
-#### 3. `ingress-nginx` 的重写规则 （赠送的正则重写）
-`ingress-nginx` 支持通过注解实现路径重写（Rewrite），非常适合处理请求路径与后端服务路径不一致的场景。例如，你提到的场景：用户访问 `/api/`，但后端服务实际路径为 `/`。
 
-##### 3.1 重写规则注解
-- **`nginx.ingress.kubernetes.io/rewrite-target`**：指定重写后的目标路径。
-  - 直接重写：如 `rewrite-target: /` 将所有路径重写为根路径。
-  - 捕获组重写：结合正则表达式路径，使用捕获组（如 `$1`, `$2`）动态重写。
-- **`nginx.ingress.kubernetes.io/use-regex`**：启用正则表达式匹配路径，值为 `"true"`。
-
-##### 3.2 重写案例：`/api/` 重写为 `/`
-假设用户访问 `example.com/api/xxx`，但后端服务只接受 `/xxx` 路径，我们可以使用以下配置：
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: rewrite-api-ingress
-  namespace: default
-  annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
-spec:
-  ingressClassName: nginx
-  tls:                   
-  - hosts:
-    - api.example.com  
-    secretName: api-example-tls
-  rules:
-  - host: example.com
-    http:
-      paths:
-      - path: /api/(/|$)(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: api-service
-            port:
-              number: 8080
-```
-
-**解释**：
-- `path: /api/(/|$)(.*)`：匹配 `/api/` 开头的所有路径，`(/|$)(.*)` 捕获 `/api/` 后的内容作为捕获组 `$1`。
-- `rewrite-target: /$1`：将路径重写为 `/` 加上捕获组内容，例如 `/api/test` 重写为 `/test`。
-
-##### 3.3 简单重写案例：去掉前缀
-如果只是简单去掉 `/api/` 前缀，直接重写为 `/`：
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: rewrite-simple-ingress
-  namespace: default
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  ingressClassName: nginx
-  tls:                   
-  - hosts:
-    - api.example.com  
-    secretName: api-example-tls
-  rules:
-  - host: example.com
-    http:
-      paths:
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: api-service
-            port:
-              number: 8080
-```
-
-**解释**：
-- 所有以 `/api` 开头的路径（如 `/api/test`）都会被重写为 `/`，后端服务接收到的是根路径请求。
-
-#### 4. 如何匹配 Service
+#### 3. 如何匹配 Service
 `Ingress` 通过 `backend.service` 字段将流量转发到具体的 Service：
 - **`name`**：指定目标 Service 的名称，必须与集群中已存在的 Service 名称一致。
 - **`port`**：指定 Service 的端口，可以是：
@@ -1139,6 +1073,186 @@ cat /root/shiqi.admin.labworlds.cc/tls.crt
 
 ### 步骤 6：测试 HTTPS 访问
 在浏览器中访问 `https://shiqi.admin.labworlds.cc:1443`，检查是否可以正常加载页面。由于是自签名证书，浏览器可能会提示不受信任，点击“继续”即可。
+
+
+### 作业四：配置 shiqi.go.labworlds.cc
+
+这个作业的目标是为 `shiqi.go.labworlds.cc` 配置 Kubernetes 部署，包括创建 Deployment、Service 和 Ingress 资源，并为项目添加 URL 前缀，同时生成证书以支持 HTTPS。
+
+#### 步骤 1：生成自签名证书
+
+在 Linux 环境中执行以下命令，以生成自签名证书：
+
+```bash
+# 创建目录用于存放证书文件
+mkdir -p /root/shiqi.go.labworlds.cc
+
+# 进入目录
+cd /root/shiqi.go.labworlds.cc
+
+# 生成自签名证书和私钥
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /root/shiqi.go.labworlds.cc/tls.key \
+    -out /root/shiqi.go.labworlds.cc/tls.crt \
+    -subj "/CN=shiqi.go.labworlds.cc"
+```
+
+**生成的文件**：
+- 私钥文件：`/root/shiqi.go.labworlds.cc/tls.key`
+- 证书文件：`/root/shiqi.go.labworlds.cc/tls.crt`
+
+#### 步骤 2：复制证书内容
+在 Linux 环境中，使用以下命令查看证书内容并复制到你的 Windows 电脑（可以通过文本编辑器保存为临时文件）：
+
+```bash
+# 查看私钥内容并复制
+cat /root/shiqi.go.labworlds.cc/tls.key
+
+# 查看证书内容并复制
+cat /root/shiqi.go.labworlds.cc/tls.crt
+```
+
+#### 步骤 3：在 Kuboard 界面创建 TLS Secret
+登录 Kuboard 界面，按照以下步骤创建 TLS Secret：
+1. 进入你的集群，导航到 `shiqi` 命名空间。
+2. 点击 `Secret` 或 `配置` 选项，选择创建新的 Secret。
+3. 选择类型为 `TLS`，并按照以下内容填写：
+   - **Secret 名称**：`secret-shiqi-go-labworlds-cc`
+   - **TLS 证书 (CRT)**：粘贴 `tls.crt` 的内容
+   - **TLS 私钥 (KEY)**：粘贴 `tls.key` 的内容
+   - **命名空间**：`shiqi`
+4. 保存创建。
+
+
+#### 步骤 3：创建 Deployment
+
+创建 `deployment-go-starter.yml` 文件，内容如下：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-go-starter
+  namespace: shiqi
+  labels:
+    app: deployment-go-starter
+spec:
+  selector:
+    matchLabels:
+      app: pod-go-starter
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: pod-go-starter
+    spec:
+      containers:
+      - name: go-starter
+        image: harbor.labworlds.cc/go-starter/master:liujun-v1.0
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/users
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 10
+        ports:
+        - containerPort: 8080
+          name: http
+      restartPolicy: Always
+      imagePullSecrets:
+      - name: secret-harbor-login
+```
+
+#### 步骤 4：创建 Service
+
+创建 `service-go-starter.yml` 文件，内容如下：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-go-starter
+  namespace: shiqi
+spec:
+  selector:
+    app: pod-go-starter
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  type: ClusterIP
+```
+
+#### 步骤 5：配置 Ingress
+
+创建 `ingress-shiqi-go-labworlds-cc.yml` 文件，内容如下：
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-shiqi-go-labworlds-cc
+  namespace: shiqi
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2  # URL 重写，去掉前缀
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+      - shiqi.go.labworlds.cc
+      secretName: secret-shiqi-go-labworlds-cc
+  rules:
+  - host: shiqi.go.labworlds.cc
+    http:
+      paths:
+      - path: /go(/|$)(.*)    # (/|$)(.*) 是一个正则表达式，表示捕获 /go/ 后的所有内容作为第二个捕获组（$2）
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-go-starter
+            port:
+              number: 8080
+```
+
+#### 步骤 6：应用配置
+
+在 Kubernetes 集群中应用上述配置文件：
+
+```bash
+kubectl apply -f deployment-go-starter.yml
+kubectl apply -f service-go-starter.yml
+kubectl apply -f ingress-shiqi-go-labworlds-cc.yml
+```
+
+#### 步骤 7：测试页面
+
+访问以下链接以测试服务是否正常工作：
+
+[https://shiqi.go.admin.labworlds.cc/go/swagger/index.html](https://shiqi.go.admin.labworlds.cc/go/swagger/index.html)
 
 
 
