@@ -1172,7 +1172,7 @@ overlay 模块就像“虚拟网线”，把不同节点上的 Pod 连接成一�
 **面试提示**：
 如果面试官问到 Kubernetes 网络初始化或 Service 转发失败的排查方法，可以提到 `overlay` 和 `br_netfilter` 模块，确保它们被正确加载（通过 `lsmod | grep overlay` 和 `lsmod | grep br_netfilter` 检查）。
 
-#### 5.4 原理总结(简答版)
+#### 5.4 原理总结(简单版)
 
 - **Service 流量转发需要 kube-proxy**：没错，Service 本身只是一个抽象概念，实际的流量转发是由 kube-proxy 实现的。kube-proxy 负责将 Service 的虚拟 IP（ClusterIP）映射到具体的 Pod IP，确保请求能到达目标 Pod。
   
