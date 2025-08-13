@@ -703,6 +703,10 @@ metadata:                         # 元数据，包含资源的基本信息
                                                       # $2 代表正则表达式中第二个捕获组的内容（详见下文 path 说明）
 spec:                             # 规范部分，定义 Ingress 的具体配置和行为
   ingressClassName: nginx         # 指定 Ingress 控制器类型为 nginx，表示使用 NGINX Ingress Controller 处理此资源
+  tls:                            # TLS 配置，用于启用 HTTPS
+  - hosts:                        # 第一个域名及其 TLS 配置
+    - api.example.com             # 指定域名 api.example.com 使用 TLS
+    secretName: api-example-tls   # 引用存储 api.example.com 证书的 Secret 名称
   rules:                          # 路由规则列表，定义如何根据域名和路径转发请求
   - host: rewrite.example.com     # 指定域名，只有匹配此域名的请求才会被处理
     http:                         # HTTP 协议配置，定义路径和后端服务
@@ -770,6 +774,10 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
   ingressClassName: nginx
+  tls:                   
+  - hosts:
+    - api.example.com  
+    secretName: api-example-tls
   rules:
   - host: example.com
     http:
@@ -799,6 +807,10 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
+  tls:                   
+  - hosts:
+    - api.example.com  
+    secretName: api-example-tls
   rules:
   - host: example.com
     http:
