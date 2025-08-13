@@ -710,7 +710,7 @@ spec:                             # 规范部分
   - host: rewrite.example.com     # 匹配的域名
     http:                         # HTTP 协议配置
       paths:                      # 路径列表
-      - path: /api(/|$)(.*)      # 匹配路径 /api 后的请求
+      - path: /api(/|$)(.*)      # 匹配路径 /api 后的请求 我写的是/api(/|$)(.*) 不别没事找事写成/api/(/|$)(.*)
         pathType: ImplementationSpecific  # 路径类型
         backend:                  # 后端配置
           service:                # 目标服务配置
