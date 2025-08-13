@@ -1252,7 +1252,7 @@ kubectl apply -f ingress-shiqi-go-labworlds-cc.yml
 
 访问以下链接以测试服务是否正常工作：
 
-[https://shiqi.go.admin.labworlds.cc/go/swagger/index.html](https://shiqi.go.admin.labworlds.cc/go/swagger/index.html)
+[https://shiqi.go.labworlds.cc/go/swagger/index.html](https://shiqi.go.labworlds.cc/go/swagger/index.html)
 
 
 
