@@ -707,10 +707,10 @@ spec:                             # 规范部分，定义 Ingress 的具体配�
   - host: rewrite.example.com     # 指定域名，只有匹配此域名的请求才会被处理
     http:                         # HTTP 协议配置，定义路径和后端服务
       paths:                      # 路径列表，定义具体的路径匹配规则
-      - path: /api/(.*)           # 匹配路径 /api/ 后跟任意内容的请求
-                                  # (.*) 是一个正则表达式，表示捕获 /api/ 后的所有内容作为第二个捕获组（$2）
+      - path: /api/(/|$)(.*)      # 匹配路径 /api/ 后跟任意内容的请求
+                                  # (/|$)(.*) 是一个正则表达式，表示捕获 /api/ 后的所有内容作为第二个捕获组（$2）
                                   # 例如，请求路径 /api/v1/users 将捕获 v1/users 作为 $2
-        pathType: Prefix          # 路径类型为 Prefix，表示匹配以指定路径为前缀的请求
+        pathType: ImplementationSpecific  # 路径类型为 Prefix，表示匹配以指定路径为前缀的请求
         backend:                  # 后端配置，定义请求转发到的目标服务
           service:                # 目标服务配置
             name: api-service     # 目标服务的名称，需在同一命名空间内存在
@@ -720,7 +720,7 @@ spec:                             # 规范部分，定义 Ingress 的具体配�
 
 #### 路径重写规则说明
 - **注解的作用**：`nginx.ingress.kubernetes.io/rewrite-target: /$2` 表示将请求路径重写为指定的目标格式。在本例中，请求路径 `/api/v1/users` 会被重写为 `/v1/users`，即去掉 `/api/` 前缀，只保留后续部分。
-- **正则表达式捕获组**：路径 `/api/(.*)` 中的 `(.*)` 是一个捕获组，表示匹配 `/api/` 后的所有内容，并将其存储为 `$2`（NGINX Ingress Controller 中，捕获组从 `$1` 开始计数，但这里的 `/api/` 是固定前缀，未被捕获，所以后续部分为 `$2`）。重写目标 `/$2` 会在转发到后端服务时将路径替换为捕获的内容。
+- **正则表达式捕获组**：路径 `/api/(/|$)(.*)` 中的 `(/|$)(.*)` 是一个捕获组，表示匹配 `/api/` 后的所有内容，并将其存储为 `$2`（NGINX Ingress Controller 中，捕获组从 `$1` 开始计数，但这里的 `/api/` 是固定前缀，未被捕获，所以后续部分为 `$2`）。重写目标 `/$2` 会在转发到后端服务时将路径替换为捕获的内容。
 - **适用场景**：这种配置适用于前端请求路径与后端服务路径不一致的情况，例如前端请求 `/api/something`，而后端服务只识别 `/something`。
 
 #### 示例效果
@@ -774,8 +774,8 @@ spec:
   - host: example.com
     http:
       paths:
-      - path: /api/(.*)
-        pathType: Prefix
+      - path: /api/(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: api-service
@@ -784,7 +784,7 @@ spec:
 ```
 
 **解释**：
-- `path: /api/(.*)`：匹配 `/api/` 开头的所有路径，`(.*)` 捕获 `/api/` 后的内容作为捕获组 `$1`。
+- `path: /api/(/|$)(.*)`：匹配 `/api/` 开头的所有路径，`(/|$)(.*)` 捕获 `/api/` 后的内容作为捕获组 `$1`。
 - `rewrite-target: /$1`：将路径重写为 `/` 加上捕获组内容，例如 `/api/test` 重写为 `/test`。
 
 ##### 3.3 简单重写案例：去掉前缀
