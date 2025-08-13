@@ -173,7 +173,7 @@ graph TD
 - 将上述镜像地址修改为国内加速镜像地址（具体地址需在镜像同步网站上查询）。
 
 ##### 4.2 修改资源限制
-- 在 `deploy.yaml` 文件中找到 `Deployment` 资源部分（大约在第428行）。
+- 在 `deploy.yaml` 文件中找到 `Deployment` 资源部分（大约在第482行）。
 - 添加或修改资源限制配置，确保 `ingress-nginx` 运行时不会占用过多资源：
   ```yaml
   resources:
