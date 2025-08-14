@@ -1067,7 +1067,7 @@ spec:
 
 **说明**：通过 `kubectl apply -f pvc-shiqi-redis-exist-pvc.yml` 命令创建。
 
-#### 练习：StatefulSet 部署 Redis - PVC 未创建的情况
+#### 练习：StatefulSet 部署 Redis - PVC 已创建的情况
 
 接下来，我们创建一个 StatefulSet 来部署 Redis，并引用上面创建的 PVC。以下是 StatefulSet 的 YAML 文件：
 文件名: `statefulset-redis-exist-pvc.yml`
@@ -1461,3 +1461,479 @@ spec:  # StatefulSet 的规格定义
      "Hello, Redis Dynamic PVC!"
      ```
      **说明**：由于 PVC 的持久化存储，即使 Pod 被删除重建，数据依然保留。
+
+
+## 第六部分：StatefulSet 原理
+
+### 1. 从 Deployment 的缺点说起：为什么需要 StatefulSet？
+
+- **回顾 Deployment 的作用**：在 Kubernetes 中，Deployment 是一种常用的工作负载资源，用于管理无状态应用的部署。Deployment 通过控制 Pod 的副本数、滚动更新和自动恢复等功能，确保应用的高可用性和可扩展性。典型的无状态应用如 Web 服务器（Nginx、Apache），它们的 Pod 之间没有特定的身份标识，数据不依赖于特定 Pod，可以随时替换或重新调度。
+- **Deployment 的缺点**：
+  1. **无法保证 Pod 的唯一性与稳定性**：Deployment 创建的 Pod 是无差别的，每个 Pod 的名称和网络标识（IP 地址）是动态生成的。如果某个 Pod 被删除或重新调度，新的 Pod 会获得一个全新的名称和 IP 地址。这对于需要稳定标识的应用（如数据库主从节点）来说是个问题，因为它们依赖固定的网络标识进行通信。
+  2. **不支持有序部署与扩展**：Deployment 在创建或扩展 Pod 时，Pod 的启动顺序是不可预测的。对于某些应用（如数据库集群），需要严格按照顺序启动（例如先启动主节点，再启动从节点），Deployment 无法满足这种需求。
+  3. **存储管理的局限性**：虽然 Deployment 可以结合 PVC（持久卷声明）为 Pod 提供持久化存储，但它无法自动为每个 Pod 分配独立的存储资源。如果需要为每个 Pod 分配唯一的存储（如数据库实例各自独立的数据目录），Deployment 的配置会变得复杂且难以管理。
+- **问题引导**：如果我们部署一个 Redis 集群，需要主从节点之间通过固定标识通信，并且每个节点的数据存储必须独立且持久化，Deployment 能满足这些需求吗？显然，Deployment 的设计目标是管理无状态应用，对于有状态应用的需求显得力不从心。
+- **引入 StatefulSet**：为了解决 Deployment 在管理有状态应用时的局限性，Kubernetes 提供了 StatefulSet 这一资源类型。StatefulSet 专为有状态应用设计，能够保证 Pod 的唯一性和稳定性，支持有序部署和扩展，并通过 `volumeClaimTemplates` 自动为每个 Pod 分配独立的存储资源。
+- **互动思考**：问学习者，如果用 Deployment 部署一个需要主从复制的 MySQL 数据库，会遇到哪些问题？StatefulSet 能如何解决这些问题？
+
+### 2. StatefulSet 在企业中的作用：有状态与无状态的区别
+
+- **什么是无状态（Stateless）？**
+  - **定义**：无状态应用是指应用实例之间没有特定的身份差异，数据不依赖于特定实例，实例可以随时被替换或重新调度，而不影响应用的整体功能。无状态应用通常将数据存储在外部（如数据库、缓存服务），自身不保存状态信息。
+  - **特点**：
+    1. **实例可替换**：Pod 可以随时被删除或重新创建，新的 Pod 与旧的 Pod 没有区别。
+    2. **动态网络标识**：Pod 的名称和 IP 地址是动态生成的，不需要固定。
+    3. **并行部署**：Pod 的启动顺序无关紧要，可以并行创建或销毁。
+  - **典型场景**：Web 服务器（如 Nginx）、API 网关、负载均衡器等。这些应用通常通过外部数据库或缓存存储数据，自身不保存状态。
+  - **Kubernetes 管理方式**：无状态应用通常使用 Deployment 管理，结合 Service 提供负载均衡。
+
+- **什么是有状态（Stateful）？**
+  - **定义**：有状态应用是指应用实例具有特定的身份标识，数据依赖于特定实例，实例之间可能存在依赖关系（如主从关系），不能随意替换或重新调度。有状态应用通常需要将数据持久化存储在本地或特定存储资源中。
+  - **特点**：
+    1. **实例唯一性**：每个实例（Pod）有唯一的名称，不能随意替换。
+    2. **稳定网络标识**：Pod 的名称是固定的，并且通过 Headless Service 提供稳定的 DNS 记录。虽然 Pod 的 IP 地址可能在重启或重新调度时发生变化，但 DNS 记录（如 `pod-name.service-name.namespace.svc.cluster.local`）始终指向正确的 Pod，方便节点间通信。
+    3. **有序部署**：实例的启动和停止需要按照特定顺序进行，例如数据库集群的主从节点。
+    4. **独立存储需求**：每个实例需要独立的持久化存储，不能共享同一存储资源。
+  - **典型场景**：数据库（如 MySQL、PostgreSQL、MongoDB）、分布式缓存（如 Redis 主从集群）、消息队列（如 Kafka、ZooKeeper）等。这些应用需要保存状态信息，依赖特定实例的身份和数据。
+  - **Kubernetes 管理方式**：有状态应用通常使用 StatefulSet 管理，结合 Headless Service 和 PVC 提供稳定的网络标识和独立存储。
+
+- **什么是 Headless Service？**
+  - **定义**：Headless Service 是 Kubernetes 中一种特殊的 Service 类型，与普通的 Service 不同，它不会为 Pod 分配一个统一的 Cluster IP 地址，也不会提供负载均衡功能。相反，Headless Service 直接返回与该 Service 关联的所有 Pod 的 IP 地址或 DNS 记录，允许客户端直接访问特定的 Pod。
+  - **特点**：
+    1. **无 Cluster IP**：Headless Service 的 `spec.clusterIP` 字段设置为 `None`，表示不分配统一的 IP 地址。
+    2. **直接访问 Pod**：通过 Headless Service，客户端可以获取到每个 Pod 的独立 DNS 记录（如 `pod-name.service-name.namespace.svc.cluster.local`），从而直接与特定 Pod 通信。
+    3. **稳定 DNS 记录**：对于 StatefulSet 管理的 Pod，Headless Service 提供稳定的 DNS 记录，即使 Pod 的 IP 地址发生变化，DNS 记录依然指向正确的 Pod。
+  - **与 StatefulSet 的关系**：StatefulSet 通常与 Headless Service 配合使用，因为有状态应用需要每个 Pod 具有唯一的网络标识，方便 Pod 之间直接通信（如数据库主从节点的同步）。Headless Service 通过 DNS 记录为每个 Pod 提供稳定的访问入口，而 StatefulSet 保证 Pod 名称的唯一性和有序性。
+  - **典型配置**：在 StatefulSet 的 `spec.serviceName` 字段中指定一个 Headless Service 的名称，Kubernetes 会自动为该 StatefulSet 创建的每个 Pod 生成对应的 DNS 记录。
+  - **示例**：假设有一个名为 `redis-service` 的 Headless Service，关联到一个名为 `redis-statefulset` 的 StatefulSet，Pod 名称为 `redis-statefulset-0`，则可以通过 DNS 记录 `redis-statefulset-0.redis-service.default.svc.cluster.local` 直接访问该 Pod。
+
+- **StatefulSet 在企业中的作用**：
+  1. **管理分布式数据库**：企业在部署数据库集群（如 MySQL 主从、MongoDB 副本集）时，使用 StatefulSet 可以确保每个数据库节点有唯一的标识和独立存储，支持主从复制和数据一致性。
+  2. **支持分布式系统**：对于需要协调一致的分布式系统（如 ZooKeeper、Etcd），StatefulSet 提供有序部署和稳定标识，确保节点间通信和状态同步。
+  3. **持久化存储管理**：StatefulSet 通过 `volumeClaimTemplates` 为每个 Pod 自动创建独立的 PVC，简化了存储管理，特别适合需要独立数据存储的应用。
+  4. **高可用性与容错**：StatefulSet 支持 Pod 的有序重启和恢复，确保在故障恢复时不会破坏应用的状态依赖（如主从关系）。
+- **互动思考**：问学习者，假设企业需要部署一个 Kafka 集群，Kafka 的每个节点需要独立存储日志数据并保持固定标识，是应该选择 Deployment 还是 StatefulSet？为什么？
+
+
+### 3.1 Mermaid 结构图：StatefulSet 与 Deployment 的特性与适用场景对比
+
+```mermaid
+graph TD
+    subgraph Kubernetes 工作负载对比
+        A[Deployment<br/>无状态应用管理] -->|特性| A1[Pod 可替换<br/>动态名称与 IP]
+        A -->|特性| A2[并行部署与扩展<br/>启动顺序无关]
+        A -->|特性| A3[共享存储<br/>不保证独立 PVC]
+        A -->|适用场景| A4[Web 服务器<br/>如 Nginx、API 网关]
+        
+        B[StatefulSet<br/>有状态应用管理] -->|特性| B1[Pod 唯一性<br/>稳定名称与 DNS 记录]
+        B -->|特性| B2[有序部署与扩展<br/>按顺序启动/停止]
+        B -->|特性| B3[独立存储<br/>每个 Pod 独立 PVC]
+        B -->|适用场景| B4[数据库与分布式系统<br/>如 MySQL、Redis、Kafka]
+    end
+```
+
+#### 说明
+- 这个图表专注于 Deployment 和 StatefulSet 的核心特性以及适用场景的对比。
+- 通过这种拆分，学习者可以先聚焦于两者的功能差异和使用场景，理解无状态应用和有状态应用管理的不同需求。
+
+
+### 3.2 Mermaid 结构图：StatefulSet 与 Deployment 的结构对比
+
+```mermaid
+graph TD
+    subgraph 结构对比
+        subgraph Deployment 结构
+            D_Pod1[Pod-1<br/>动态名称/IP] -->|负载均衡| D_Svc[Service<br/>统一入口 Cluster IP]
+            D_Pod2[Pod-2<br/>动态名称/IP] -->|负载均衡| D_Svc
+            D_Pod3[Pod-3<br/>动态名称/IP] -->|负载均衡| D_Svc
+            D_Svc -->|访问| D_App[无状态应用]
+        end
+        
+        subgraph StatefulSet 结构
+            S_Pod1[Pod-0<br/>固定名称] -->|稳定 DNS 记录| S_Svc[Headless Service<br/>无 Cluster IP]
+            S_Pod2[Pod-1<br/>固定名称] -->|稳定 DNS 记录| S_Svc
+            S_Pod3[Pod-2<br/>固定名称] -->|稳定 DNS 记录| S_Svc
+            S_Pod1 -->|独立存储| S_PVC1[PVC-0]
+            S_Pod2 -->|独立存储| S_PVC2[PVC-1]
+            S_Pod3 -->|独立存储| S_PVC3[PVC-2]
+            S_Svc -->|直接访问 Pod| S_App[有状态应用]
+        end
+    end
+```
+
+#### 说明
+- 这个图表专注于 Deployment 和 StatefulSet 的结构差异，展示了它们与 Service 的关联方式以及存储管理的不同。
+- Deployment 使用普通 Service 提供负载均衡，Pod 名称和 IP 是动态的；而 StatefulSet 使用 Headless Service 提供稳定 DNS 记录，并为每个 Pod 分配独立存储（PVC）。
+
+- **图解说明**：
+  1. **Deployment 部分**：
+     - 展示了 Deployment 管理无状态应用的特性，Pod 名称和 IP 动态生成，通过 Service 提供负载均衡和统一的 Cluster IP 入口。
+     - 强调 Pod 是可替换的，适用于不需要特定标识和独立存储的应用。
+  2. **StatefulSet 部分**：
+     - 展示了 StatefulSet 管理有状态应用的特性，Pod 名称固定，通过 Headless Service 提供稳定的 DNS 记录，而非统一的 Cluster IP。
+     - 每个 Pod 分配独立的 PVC，确保数据隔离和持久化，适用于需要唯一性和有序性的应用。
+  3. **特性对比**：
+     - 从 Pod 唯一性、部署顺序和存储管理三个方面对比了两者的差异，帮助学习者理解为什么有状态应用需要 StatefulSet。
+- **互动思考**：问学习者，根据这个图，StatefulSet 的 Headless Service 和 Deployment 的 Service 有何不同？为什么 Headless Service 更适合有状态应用？
+
+
+## 第七部分：StatefulSet 语法结构
+
+### 1. StatefulSet 语法结构解析：核心字段含义
+
+在 Kubernetes 中，StatefulSet 的配置文件使用 YAML 格式编写，包含多个关键字段，用于定义 Pod 的行为、网络标识和存储管理等。以下是 StatefulSet 的基本语法结构和核心字段的详细说明，之后我们将通过两个已部署的 Redis 示例进一步理解这些字段的应用。
+
+#### 基本语法结构
+一个典型的 StatefulSet YAML 文件结构如下（不含具体内容，仅展示框架）：
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: <statefulset-name>
+  namespace: <namespace>
+spec:
+  serviceName: <headless-service-name>
+  replicas: <number>
+  selector:
+    matchLabels:
+      <key>: <value>
+  template:
+    metadata:
+      labels:
+        <key>: <value>
+    spec:
+      containers:
+      - name: <container-name>
+        image: <image-name>
+        ports:
+        - containerPort: <port-number>
+          name: <port-name>
+        volumeMounts:
+        - name: <volume-name>
+          mountPath: <path>
+  volumeClaimTemplates: # 可选字段，用于自动创建 PVC
+  - metadata:
+      name: <pvc-name>
+    spec:
+      accessModes: ["<access-mode>"]
+      resources:
+        requests:
+          storage: <size>
+      storageClassName: <storage-class>
+# 或者使用 volumes 字段，手动指定存储（可选，与 volumeClaimTemplates 二选一）
+#  volumes:
+#  - name: <volume-name>
+#    persistentVolumeClaim:
+#      claimName: <pvc-name>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: <headless-service-name>
+  namespace: <namespace>
+spec:
+  clusterIP: None
+  selector:
+    <key>: <value>
+  ports:
+  - port: <port-number>
+    targetPort: <target-port>
+    protocol: <protocol>
+    name: <port-name>
+```
+
+#### 字段解析：StatefulSet 核心字段含义
+
+1. **apiVersion 和 kind**：
+   - `apiVersion: apps/v1`：指定 Kubernetes API 的版本，StatefulSet 属于 `apps` 组，版本为 `v1`。
+   - `kind: StatefulSet`：声明这是一个 StatefulSet 资源对象，用于管理有状态应用。
+
+2. **metadata**：
+   - `name`：StatefulSet 的名称，用于唯一标识该资源，例如 `redis-statefulset`。
+   - `namespace`：指定资源所在的命名空间，用于资源隔离和管理，例如 `default`。
+
+3. **spec**：
+   - `serviceName`：指定与该 StatefulSet 关联的 Headless Service 名称，例如 `redis-headless`。这是 StatefulSet 的关键字段，用于为 Pod 提供稳定的网络标识（DNS 记录）。必须先创建对应的 Headless Service，否则 StatefulSet 无法正常工作。
+   - `replicas`：指定 Pod 的副本数量，例如 `3`，表示创建 3 个 Pod 实例。StatefulSet 会按照顺序创建 Pod，名称为 `name-0`, `name-1`, `name-2`。
+   - `selector`：定义 Pod 选择器，用于关联 StatefulSet 与其管理的 Pod。`matchLabels` 指定标签，例如 `app: redis`，确保 StatefulSet 管理具有该标签的 Pod。
+   - `template`：定义 Pod 的模板，包含 Pod 的元数据（`metadata`）和规范（`spec`）。
+     - `metadata.labels`：为 Pod 打标签，例如 `app: redis`，与 `selector` 保持一致。
+     - `spec.containers`：定义容器配置，例如容器名称（`name: redis`）、镜像（`image: redis:6.2`）、端口（`containerPort: 6379`）和挂载点（`volumeMounts`）。
+   - `volumeClaimTemplates`（可选字段）：
+     - 用于自动为每个 Pod 创建独立的 PVC（持久卷声明），适合有状态应用的数据隔离需求。
+     - `metadata.name`：PVC 的名称模板，例如 `redis-data`，实际创建时会附加 Pod 序号，如 `redis-data-redis-statefulset-0`。
+     - `spec.accessModes`：存储访问模式，例如 `ReadWriteOnce`，表示存储只能被单个节点读写。
+     - `spec.resources.requests.storage`：请求的存储容量，例如 `1Gi`。
+     - `spec.storageClassName`：指定存储类，例如 `standard`，用于动态分配存储资源。
+   - `volumes`（可选字段，与 `volumeClaimTemplates` 二选一）：
+     - 用于手动指定已存在的 PVC 或其他卷类型。
+     - `persistentVolumeClaim.claimName`：指定预定义的 PVC 名称，例如 `redis-pvc`。与 `volumeClaimTemplates` 不同，此方式不会为每个 Pod 自动创建独立 PVC，所有 Pod 共享同一个 PVC（不适合有状态应用）。
+
+4. **Headless Service 配置**：
+   - `apiVersion: v1` 和 `kind: Service`：声明这是一个 Service 资源。
+   - `metadata.name`：Service 名称，例如 `redis-headless`，与 StatefulSet 的 `serviceName` 字段一致。
+   - `spec.clusterIP: None`：设置为 `None`，表示这是一个 Headless Service，不分配统一的 Cluster IP，客户端直接访问 Pod 的 IP 或 DNS 记录。
+   - `spec.selector`：选择器，与 StatefulSet 的 Pod 标签一致，例如 `app: redis`，用于关联 Service 和 Pod。
+   - `spec.ports`：定义端口映射，例如 `port: 6379` 和 `targetPort: 6379`，用于访问服务。
+
+### 2. 示例解析：通过两个已部署的 Redis 部署文件理解语法实现
+
+在之前的练习中，我们已经完成了 `statefulset-redis-not-exist-pvc` 和 `statefulset-redis-exist-pvc` 的部署，现在通过这两个示例的配置文件，逐一解析如何使用上述字段实现 StatefulSet 的配置。同时，我们将 Headless Service 的定义单独列为 `headless-redis-not-exist-pvc.yml` 和 `headless-redis-exist-pvc.yml` 文件。
+
+#### 示例 1：`statefulset-redis-not-exist-pvc.yml`（使用 `volumeClaimTemplates` 自动创建 PVC）
+
+这个示例展示了如何使用 `volumeClaimTemplates` 为每个 Pod 自动创建独立的 PVC，适合有状态应用的存储需求。
+
+```yaml
+# 定义 StatefulSet 资源
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-statefulset  # StatefulSet 的名称，唯一标识资源
+  namespace: default       # 资源所在的命名空间
+spec:
+  serviceName: redis-headless  # 关联的 Headless Service 名称，用于提供稳定 DNS 记录
+  replicas: 1                  # Pod 副本数量，创建 1 个有序 Pod（redis-statefulset-0）
+  selector:                    # 选择器，关联 StatefulSet 和 Pod
+    matchLabels:
+      app: redis               # 匹配标签，确保管理带有 app=redis 的 Pod
+  template:                    # Pod 模板定义
+    metadata:
+      labels:
+        app: redis             # 为 Pod 打标签，与 selector 一致
+    spec:
+      containers:              # 容器配置
+      - name: redis            # 容器名称
+        image: redis:6.2       # 使用的镜像版本
+        ports:                 # 容器暴露的端口
+        - containerPort: 6379  # Redis 服务端口
+          name: redis-port     # 端口名称
+        volumeMounts:          # 挂载存储卷
+        - name: redis-data     # 挂载卷名称，与 volumeClaimTemplates 一致
+          mountPath: /data     # 挂载路径，Redis 数据存储目录
+  volumeClaimTemplates:        # 自动为每个 Pod 创建独立 PVC 的模板
+  - metadata:
+      name: redis-data         # PVC 名称模板，实际为 redis-data-<statefulset-name>-<index>
+    spec:
+      accessModes: ["ReadWriteOnce"]  # 访问模式，单节点读写
+      resources:
+        requests:
+          storage: 1Gi         # 请求存储容量为 1Gi
+      storageClassName: standard  # 存储类名称，用于动态分配存储
+```
+
+#### 对应的 Headless Service 文件：`headless-redis-not-exist-pvc.yml`
+
+```yaml
+# 定义 Headless Service 资源
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless     # Service 名称，与 StatefulSet 的 serviceName 一致
+  namespace: default       # 资源所在的命名空间
+spec:
+  clusterIP: None          # 设置为 None，表示 Headless Service，不分配 Cluster IP
+  selector:                # 选择器，关联 Service 和 Pod
+    app: redis             # 匹配带有 app=redis 标签的 Pod
+  ports:                   # 端口映射配置
+  - port: 6379             # Service 暴露的端口
+    targetPort: 6379       # 目标 Pod 的端口
+    protocol: TCP          # 协议类型
+    name: redis-port       # 端口名称
+```
+
+#### 解析与说明
+- **存储管理**：使用 `volumeClaimTemplates` 字段，StatefulSet 会为每个 Pod 自动创建独立的 PVC（如 `redis-data-redis-statefulset-0`），确保数据隔离，符合有状态应用需求。
+- **网络标识**：通过 `serviceName: redis-headless` 关联 Headless Service，为每个 Pod 提供稳定的 DNS 记录（如 `redis-statefulset-0.redis-headless.default.svc.cluster.local`）。
+- **适用场景**：这种方式适合部署数据库或分布式系统，每个实例需要独立存储，例如 Redis 主从集群或 MySQL 集群。
+- **互动思考**：问学习者，使用 `volumeClaimTemplates` 自动创建 PVC 的方式，如何确保每个 Pod 的数据不会相互干扰？
+
+#### 示例 2：`statefulset-redis-exist-pvc.yml`（使用 `volumes` 手动指定预定义 PVC）
+
+这个示例展示了如何使用 `volumes` 字段手动指定一个已存在的 PVC，所有 Pod 共享同一个存储资源（不推荐用于有状态应用）。
+
+```yaml
+# 定义 StatefulSet 资源
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-statefulset-pvc  # StatefulSet 的名称，唯一标识资源
+  namespace: default           # 资源所在的命名空间
+spec:
+  serviceName: redis-headless-pvc  # 关联的 Headless Service 名称，用于提供稳定 DNS 记录
+  replicas: 3                      # Pod 副本数量，创建 3 个有序 Pod（redis-statefulset-pvc-0 到 2）
+  selector:                        # 选择器，关联 StatefulSet 和 Pod
+    matchLabels:
+      app: redis-pvc             # 匹配标签，确保管理带有 app=redis-pvc 的 Pod
+  template:                        # Pod 模板定义
+    metadata:
+      labels:
+        app: redis-pvc           # 为 Pod 打标签，与 selector 一致
+    spec:
+      containers:                  # 容器配置
+      - name: redis                # 容器名称
+        image: redis:6.2           # 使用的镜像版本
+        ports:                     # 容器暴露的端口
+        - containerPort: 6379      # Redis 服务端口
+          name: redis-port         # 端口名称
+        volumeMounts:              # 挂载存储卷
+        - name: redis-data         # 挂载卷名称，与 volumes 字段一致
+          mountPath: /data         # 挂载路径，Redis 数据存储目录
+      volumes:                     # 手动指定存储卷，使用已存在的 PVC
+      - name: redis-data           # 卷名称，与 volumeMounts 一致
+        persistentVolumeClaim:     # 指定 PVC 类型
+          claimName: redis-pvc     # 预定义的 PVC 名称，所有 Pod 共享此 PVC
+```
+
+#### 对应的 Headless Service 文件：`headless-redis-exist-pvc.yml`
+
+```yaml
+# 定义 Headless Service 资源
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless-pvc  # Service 名称，与 StatefulSet 的 serviceName 一致
+  namespace: default        # 资源所在的命名空间
+spec:
+  clusterIP: None           # 设置为 None，表示 Headless Service，不分配 Cluster IP
+  selector:                 # 选择器，关联 Service 和 Pod
+    app: redis-pvc          # 匹配带有 app=redis-pvc 标签的 Pod
+  ports:                    # 端口映射配置
+  - port: 6379              # Service 暴露的端口
+    targetPort: 6379        # 目标 Pod 的端口
+    protocol: TCP           # 协议类型
+    name: redis-port        # 端口名称
+```
+
+#### 解析与说明
+- **存储管理**：使用 `volumes` 字段手动指定一个已存在的 PVC（`redis-pvc`），所有 Pod 共享同一个存储资源。这种方式不符合有状态应用的数据独立性需求，仅适用于特定测试场景或非关键应用。
+- **网络标识**：通过 `serviceName: redis-headless-pvc` 关联 Headless Service，仍然为每个 Pod 提供稳定的 DNS 记录。
+- **适用场景**：这种方式不适合典型的有状态应用（如数据库），因为数据共享可能导致冲突或一致性问题，仅用于临时测试或特殊需求。
+- **互动思考**：问学习者，使用 `volumes` 手动指定 PVC 的方式与 `volumeClaimTemplates` 相比，有哪些潜在风险？为什么不推荐用于有状态应用？
+
+
+
+### 3. 练习：StatefulSet `statefulset-redis-exist-pvc` 创建 Headless Service
+
+通过本练习，学习者将掌握如何为 StatefulSet 创建 Headless Service，理解其作用，并通过进入 Redis 容器进行测试，验证 Headless Service 的稳定 DNS 记录功能。
+
+#### 3.1 先创建对应的 Headless Service
+
+我们将为名为 `statefulset-redis-exist-pvc` 的 StatefulSet 创建一个 Headless Service。以下是 YAML 文件示例：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-headless-redis-exist-pvc
+  namespace: shiqi
+spec:
+  clusterIP: None  # 设置为 None，表示这是一个 Headless Service
+  selector:
+    app: redis-exist-pvc  # 匹配 StatefulSet 中 Pod 的标签
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+      name: redis
+```
+
+**操作步骤：**
+1. 将上述 YAML 保存为 `service-headless-redis-exist-pvc.yaml`。
+2. 使用以下命令应用该配置文件，创建 Headless Service：
+   ```bash
+   kubectl apply -f service-headless-redis-exist-pvc.yaml
+   ```
+3. 验证 Headless Service 是否创建成功：
+   ```bash
+   kubectl get svc service-headless-redis-exist-pvc -n shiqi
+   ```
+   预期输出类似：
+   ```
+   NAME                               TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+   service-headless-redis-exist-pvc   ClusterIP   None         <none>        6379/TCP   1m
+   ```
+   注意 `CLUSTER-IP` 字段显示为 `None`，确认这是一个 Headless Service。
+
+#### 3.2 命令教学与解释：什么是 Headless Service？
+
+**概念解释：**
+- **Headless Service 的定义**：Headless Service 是一种特殊的 Kubernetes Service，通过设置 `spec.clusterIP: None` 来避免分配统一的 Cluster IP。不同于普通 Service（会进行负载均衡），Headless Service 直接返回后端 Pod 的 IP 地址或 DNS 记录。
+- **与 StatefulSet 的关系**：StatefulSet 管理的 Pod 需要稳定的网络标识（即固定名称和 DNS 记录），Headless Service 能为每个 Pod 创建独立的 DNS 记录（如 `pod-name.service-name.namespace.svc.cluster.local`），因此是 StatefulSet 的理想搭配。
+- **应用场景**：用于有状态应用（如数据库 Redis、MySQL），需要直接访问特定 Pod 而非通过负载均衡。
+
+**命令详解：**
+- `kubectl apply -f service-headless-redis-exist-pvc.yaml`：
+  - 该命令将 YAML 文件中的配置应用到 Kubernetes 集群，创建名为 `service-headless-redis-exist-pvc` 的 Headless Service。
+  - `spec.clusterIP: None` 是关键参数，确保 Service 不分配 Cluster IP，直接解析到 Pod。
+- `kubectl get svc service-headless-redis-exist-pvc -n shiqi`：
+  - 查询 Service 的状态，确认其 `CLUSTER-IP` 为 `None`，验证 Headless Service 创建成功。
+- **DNS 记录的作用**：
+  - 假设 StatefulSet 名为 `statefulset-redis-exist-pvc`，Pod 名称为 `statefulset-redis-exist-pvc-0` 和 `statefulset-redis-exist-pvc-1`，则通过 Headless Service，Pod 的 DNS 记录为：
+    - `statefulset-redis-exist-pvc-0.redis-exist-pvc.shiqi.svc.cluster.local`
+    - `statefulset-redis-exist-pvc-1.redis-exist-pvc.shiqi.svc.cluster.local`
+  - 这些 DNS 记录允许客户端直接访问特定 Pod，即使 Pod IP 发生变化，DNS 记录依然稳定。
+  - 如果不会拼接这个DNS域名，请进入Pod中，查看`cat /etc/hosts`
+      ```bash
+      root@statefulset-redis-exist-pvc-0:/# cat /etc/hosts
+      # Kubernetes-managed hosts file.
+      127.0.0.1       localhost
+      ::1     localhost ip6-localhost ip6-loopback
+      fe00::0 ip6-localnet
+      fe00::0 ip6-mcastprefix
+      fe00::1 ip6-allnodes
+      fe00::2 ip6-allrouters
+      10.244.121.182  statefulset-redis-exist-pvc-0.redis-exist-pvc.shiqi.svc.cluster.local   statefulset-redis-exist-pvc-0
+      ```
+
+**互动思考**：如果不使用 Headless Service，而是普通 Service，访问 Redis Pod 时会遇到什么问题？为什么 Headless Service 更适合有状态应用？
+
+
+#### 3.3 进入 Redis 容器内部进行测试
+
+**前提条件：**
+- 确保 `statefulset-redis-exist-pvc` 已经部署完成，且包含至少 2 个 Pod（如 `statefulset-redis-exist-pvc-0` 和 `statefulset-redis-exist-pvc-1`）。
+- Headless Service `service-headless-redis-exist-pvc` 已创建成功。
+
+**测试步骤：**
+1. **进入其中一个 Redis Pod**：
+   假设我们要进入 `statefulset-redis-exist-pvc-0`，使用以下命令：
+   ```bash
+   kubectl exec -it statefulset-redis-exist-pvc-0 -- /bin/bash
+   ```
+   如果容器内没有 `bash`，可以尝试使用 `sh`：
+   ```bash
+   kubectl exec -it statefulset-redis-exist-pvc-0 -- /bin/sh
+   ```
+
+3. **测试 Headless Service 的 DNS 解析**：
+   在容器内，测试是否能通过 Headless Service 访问其他 Pod：
+   ```bash
+   nslookup statefulset-redis-exist-pvc-1.service-headless-redis-exist-pvc
+   ```
+   预期输出会显示 `statefulset-redis-exist-pvc-1` 的 IP 地址，证明 Headless Service 提供了稳定的 DNS 记录。
+
+4. **测试 Redis 连接（可选）**：
+   如果 Redis 客户端已安装，可以尝试连接到其他 Pod：
+   ```bash
+   redis-cli -h statefulset-redis-exist-pvc-1.service-headless-redis-exist-pvc -p 6379
+   ```
+   连接成功后，可以执行简单命令验证：
+   ```redis
+   PING
+   ```
+   预期输出：`PONG`，表示通过 Headless Service 成功访问到目标 Pod 的 Redis 服务。
+
+5. **退出容器**：
+   测试完成后，输入以下命令退出容器：
+   ```bash
+   exit
+   ```
+
+**预期结果：**
+- 通过 Headless Service 的 DNS 记录，可以直接访问特定 Pod（如 `statefulset-redis-exist-pvc-1`），而非随机负载均衡到某个 Pod。
+- 这验证了 Headless Service 为 StatefulSet 提供的稳定网络标识功能。
+
+**互动思考**：如果在测试中发现无法解析 DNS 或连接 Redis，可能的原因有哪些？如何排查和解决？
+
