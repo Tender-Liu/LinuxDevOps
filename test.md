@@ -1,148 +1,230 @@
-好的，我会根据你的要求，补充关于 Kuboard 的教学内容，以及 `kubectl` 常用命令（包括 `get`、`describe`、`delete` 等）的学习内容，并加入重新执行 `apply` 的步骤。这部分内容将延续之前的教案结构，专注于实践操作和工具使用，帮助学习者更好地掌握 Kubernetes 资源管理和操作。
+### StatefulSet 部署 Redis - 动态分配的PV
 
----
-
-## 教案：Kubernetes PV 实践与工具使用（续）
-
-### 教学目标
-1. 掌握如何使用 Kuboard 查看和管理 Kubernetes 资源。
-2. 学习 `kubectl` 常用命令，包括 `get`、`describe`、`delete` 等，用于管理 PV 和其他资源。
-3. 理解如何重新执行 `apply` 操作以更新或重新创建资源。
-4. 结合之前的 NFS PV 创建练习，巩固资源配置和验证流程。
-
-### 教学对象
-- Kubernetes 初学者或有一定基础的学习者，具备基本的 PV 和 PVC 概念。
-- 需要学习 Kubernetes 管理工具和命令行操作的人员。
-
-### 教学时长
-- Kuboard 使用讲解：10 分钟
-- `kubectl` 常用命令讲解与实践：10 分钟
-- 重新执行 `apply` 操作：5 分钟
-- 总计：25 分钟
-
----
-
-### 7. 实践练习：创建 NFS 目录和 PV（续）
-
-（之前的内容已完成，包括 7.1 登录 NFS 主机并创建目录，以及 7.2 创建 PV 的基本步骤。以下是补充内容。）
-
-#### 7.3 使用 Kuboard 查看和管理 Kubernetes 资源
-- **目标**：通过 Kuboard 界面查看刚刚创建的 PV 资源，了解如何使用图形化工具管理 Kubernetes 集群。
+#### 1. 登录 NFS 主机并创建目录
+- **目标**：在 NFS 服务器 `192.168.110.168` 上创建一个目录 `/nfs/shiqi-redis-not-exist-pvc`，用于 Redis 数据的持久化存储。
 - **步骤**：
-  1. **访问 Kuboard 界面**：
-     - 打开浏览器，输入 Kuboard 的访问地址（假设为 `http://your-kuboard-url:port`，具体地址和端口根据你的环境配置提供，通常由管理员提供）。
-     - 使用管理员提供的用户名和密码登录。
-  2. **导航到资源视图**：
-     - 登录后，在左侧导航栏中选择“集群”或“命名空间”视图。
-     - 如果 PV 未绑定到特定命名空间，可以在“集群”视图中找到“存储”或“Persistent Volumes”选项。
-  3. **查看 PV 资源**：
-     - 在“Persistent Volumes”列表中，找到之前创建的 PV（名称为 `pv-shiqi-redis`）。
-     - 点击 PV 名称，查看详细信息，包括状态（`Available` 或 `Bound`）、容量、存储类型（NFS）等。
-  4. **其他操作**：
-     - 在 Kuboard 中，你还可以查看相关的事件日志，检查是否有错误信息。
-     - 如果需要删除或编辑资源，Kuboard 通常提供图形化界面支持，但建议初学者结合命令行操作以加深理解。
-- **互动思考**：问学习者，相比命令行工具，Kuboard 这样的图形化界面有哪些优势？在什么情况下更适合使用命令行？
-- **注意事项**：
-  - Kuboard 的具体界面和功能可能因版本或配置不同而有所差异，建议根据实际环境调整操作步骤。
-  - 如果你的集群未安装 Kuboard，可以跳过此部分，或参考官方文档进行安装。
+  1. **登录 NFS 主机**：使用 SSH 登录到 NFS 服务器（假设已配置好 NFS 服务）。
+     ```
+     ssh user@192.168.110.168
+     ```
+  2. **创建目录**：创建指定目录并设置权限。
+     ```
+     sudo mkdir -p /nfs/shiqi-redis-not-exist-pvc
+     sudo chmod -R 777 /nfs/shiqi-redis-not-exist-pvc  # 教学环境使用，生产环境应设置更严格权限
+     ```
+  3. **验证目录**：确认目录已创建。
+     ```
+     ls -ld /nfs/shiqi-redis-not-exist-pvc
+     ```
+  4. **检查 NFS 共享配置**：确保 `/nfs` 已配置为共享目录。如果未配置，需编辑 `/etc/exports` 文件并重启 NFS 服务。
+     ```
+     sudo vi /etc/exports  # 添加或确认共享配置，例如：/nfs *(rw,sync,no_root_squash)
+     sudo systemctl restart nfs  # 重启 NFS 服务
+     ```
 
-#### 7.4 学习 `kubectl` 常用命令
-- **目标**：掌握 `kubectl` 基本命令，用于查看、描述、删除和管理 Kubernetes 资源。
-- **步骤与命令讲解**：
-  1. **查看资源列表：`kubectl get`**：
-     - 用于列出指定类型的资源，检查其状态。
-     - 示例：查看所有 PV。
-       ```
-       kubectl get pv
-       ```
-     - 示例：查看特定 PV 的状态。
-       ```
-       kubectl get pv pv-shiqi-redis
-       ```
-     - 附加选项：`-o wide` 显示更多详细信息。
-       ```
-       kubectl get pv pv-shiqi-redis -o wide
-       ```
-  2. **查看资源详细信息：`kubectl describe`**：
-     - 用于查看资源的详细配置和事件日志，便于排查问题。
-     - 示例：查看 PV 的详细信息。
-       ```
-       kubectl describe pv pv-shiqi-redis
-       ```
-     - 注意：通过 `describe` 可以看到 PV 是否绑定到 PVC，以及 `claimRef` 是否正确设置。
-  3. **删除资源：`kubectl delete`**：
-     - 用于删除指定的资源（如 PV、PVC 等）。
-     - 示例：删除之前创建的 PV。
-       ```
-       kubectl delete pv pv-shiqi-redis
-       ```
-     - 替代方式：通过 YAML 文件删除资源。
-       ```
-       kubectl delete -f pv-shiqi-redis.yaml
-       ```
-     - 注意：删除操作不可逆，需谨慎执行。如果 PV 的 `reclaimPolicy` 为 `Retain`，数据不会自动删除，需手动清理。
-  4. **其他常用命令**：
-     - 查看所有命名空间：`kubectl get namespaces`
-     - 查看 Pod 列表：`kubectl get pods -n <namespace>`
-     - 查看日志：`kubectl logs <pod-name> -n <namespace>`
-- **互动思考**：问学习者，如果 PV 状态显示异常（例如未绑定），应该使用哪个命令查看详细信息？如何删除一个不再需要的 PV？
-- **实践小任务**：
-  - 使用 `kubectl get pv` 检查所有 PV 列表，找到 `pv-shiqi-redis` 的状态。
-  - 使用 `kubectl describe pv pv-shiqi-redis` 查看其详细信息，确认 `claimRef` 字段是否正确。
-  - （可选）如果环境允许，尝试删除 PV 并重新创建。
+**优化说明**：增加了 NFS 共享配置的具体命令示例，便于初学者操作。
 
-#### 7.5 重新执行 `apply` 操作
-- **目标**：学习如何使用 `kubectl apply` 重新应用配置，以更新或重新创建资源。
-- **背景说明**：如果 PV 配置有误（如 `claimRef` 拼写错误），或需要更新 PV 的某些字段，可以修改 YAML 文件后重新执行 `apply` 操作。`apply` 命令会根据资源的当前状态决定是创建还是更新。
+
+#### 2. 提前准备 PV
+- **目标**：创建一个 PersistentVolume (PV)，为后续动态创建的 PVC 提供存储资源。
+- **文件**：`pv-shiqi-redis-not-exist-pvc.yml`
+- **YAML 定义**：
+  ```yaml
+  apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    name: pv-shiqi-redis-not-exist-pvc
+  spec:
+    capacity:
+      storage: 64Mi
+    accessModes:
+      - ReadWriteOnce  # 支持多个 Pod 读写（注意：Redis 更适合 ReadWriteOnce）
+    reclaimPolicy: Retain  # 数据保留策略，删除 PVC 后 PV 不会被自动删除
+    nfs:
+      path: /nfs/shiqi-redis-not-exist-pvc
+      server: 192.168.110.168
+  ```
+- **创建命令**：
+  ```
+  kubectl apply -f pv-shiqi-redis-not-exist-pvc.yml
+  ```
+
+**优化说明**：对 `accessModes` 增加了说明，提醒用户 Redis 更适合 `ReadWriteOnce` 模式，避免误解。
+
+
+#### 3. 创建 StatefulSet（使用模板动态创建 PVC）
+- **目标**：通过 `volumeClaimTemplates` 让 Kubernetes 自动为每个 Pod 创建独立的 PVC，实现数据持久化。
+- **文件**：`statefulset-redis-not-exist-pvc.yml`
+- **YAML 定义**：
+  ```yaml
+  apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: statefulset-redis-not-exist-pvc
+    namespace: shiqi
+    labels:
+      app: redis-not-exist-pvc
+      version: "7.4.4"
+  spec:
+    serviceName: "redis-not-exist-pvc"  # 关联 Headless Service，用于 Pod 间网络发现
+    replicas: 1  # 单实例 Redis，生产环境可根据需求调整
+    selector:
+      matchLabels:
+        app: redis-not-exist-pvc
+    template:
+      metadata:
+        labels:
+          app: redis-not-exist-pvc
+          version: "7.4.4"
+      spec:
+        containers:
+        - name: redis
+          image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:7.4.4
+          ports:
+          - containerPort: 6379
+            name: redis
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            exec:
+              command:
+              - redis-cli
+              - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          volumeMounts:
+          - name: pvc-shiqi  # 与 volumeClaimTemplates 的名称一致
+            mountPath: /data  # Redis 数据存储目录
+        restartPolicy: Always
+    volumeClaimTemplates:  # 动态创建 PVC 模板
+    - metadata:
+        name: pvc-shiqi  # PVC 名称前缀，实际名称会附加 Pod名 + 序号（如 redis-not-exist-pvc-0）
+      spec:
+        accessModes:
+        - ReadWriteOnce  # 单个 Pod 读写，适合 Redis 单实例
+        resources:
+          requests:
+            storage: 64Mi  # 请求存储空间
+        storageClassName: ""  # 空字符串表示不使用动态供应，匹配静态 PV
+  ```
+
+
+#### 4. 部署与验证步骤
+- **目标**：通过命令行或图形界面部署 StatefulSet，并验证其运行状态及数据持久化。
 - **步骤**：
-  1. **检查当前 PV 状态**：
+  1. **保存 YAML 文件**：将上述 StatefulSet YAML 内容保存为 `statefulset-redis-not-exist-pvc.yml`。
+  2. **应用配置文件**：使用以下命令部署 StatefulSet。
      ```
-     kubectl get pv pv-shiqi-redis
+     kubectl apply -f statefulset-redis-not-exist-pvc.yml
      ```
-  2. **修改 YAML 文件（可选）**：
-     - 如果需要调整配置（如修改 `claimRef` 的 `namespace` 或 `name`），编辑 `pv-shiqi-redis.yaml` 文件。
-     - 示例：将 `namespace` 从 `shiqi` 改为 `redis-app`。
-       ```yaml
-       claimRef:
-         name: pvc-shiqi-redis
-         namespace: redis-app
-       ```
-  3. **重新执行 `apply` 操作**：
-     - 使用以下命令重新应用配置。
-       ```
-       kubectl apply -f pv-shiqi-redis.yaml
-       ```
-     - 注意：如果资源已存在，`apply` 会尝试更新资源；如果资源不存在，则会重新创建。
-  4. **验证更新结果**：
-     - 检查 PV 状态是否正确。
-       ```
-       kubectl get pv pv-shiqi-redis
-       ```
-     - 查看详细信息，确认配置是否已更新。
-       ```
-       kubectl describe pv pv-shiqi-redis
-       ```
-- **互动思考**：问学习者，`kubectl apply` 和 `kubectl create` 有什么区别？在什么情况下需要重新执行 `apply`？
-- **注意事项**：
-  - 如果 PV 已绑定到 PVC，某些字段（如 `claimRef`）可能无法直接更新，需先删除绑定关系或资源。
-  - 建议在修改配置前备份原始 YAML 文件，避免误操作导致资源丢失。
+  3. **检查 StatefulSet 状态**：确认 StatefulSet 是否成功创建。
+     ```
+     kubectl get statefulsets -n shiqi
+     ```
+     预期输出类似：
+     ```
+     NAME                             READY   AGE
+     statefulset-redis-not-exist-pvc  1/1     2m
+     ```
+  4. **检查 Pod 状态**：确认 Pod 是否正常运行。
+     ```
+     kubectl get pods -n shiqi
+     ```
+     预期输出类似：
+     ```
+     NAME                               READY   STATUS    RESTARTS   AGE
+     statefulset-redis-not-exist-pvc-0  1/1     Running   0          2m
+     ```
+  5. **检查 PVC 状态**：确认动态创建的 PVC 是否绑定成功。
+     ```
+     kubectl get pvc -n shiqi
+     ```
+     预期输出类似：
+     ```
+     NAME                        STATUS   VOLUME                       CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+     redis-data-statefulset-redis-not-exist-pvc-0  Bound    pv-shiqi-redis-not-exist-pvc  64Mi       RWO                           2m
+     ```
+  6. **验证挂载情况**：进入 Pod 内部，确认 `/data` 目录是否已挂载。
+     ```
+     kubectl exec -it statefulset-redis-not-exist-pvc-0 -n shiqi -- /bin/bash
+     ls -ld /data
+     ```
+     预期输出类似：
+     ```
+     drwxrwxrwx 2 redis redis 4096 Aug 14 21:03 /data
+     ```
 
----
+#### 5. 验证 Redis 数据持久化
+- **目标**：确认 Redis 数据是否正确存储在动态创建的 PVC 挂载目录下。
+- **步骤**：
+  1. **进入 Redis 容器**：使用以下命令进入 Redis 容器。
+     ```
+     kubectl exec -it statefulset-redis-not-exist-pvc-0 -n shiqi -- /bin/bash
+     ```
+  2. **检查数据目录**：查看 `/data` 目录下的文件，确认 Redis 数据文件是否存在。
+     ```
+     ls -l /data
+     ```
+     预期输出类似：
+     ```
+     total 4
+     -rw-r--r-- 1 redis redis 1024 Aug 14 21:03 dump.rdb
+     ```
+     **说明**：Redis 默认将数据持久化存储为 `dump.rdb` 文件。
+  3. **写入测试数据**：使用 Redis CLI 写入一些测试数据。
+     ```
+     redis-cli
+     SET testkey "Hello, Redis Dynamic PVC!"
+     GET testkey
+     SAVE
+     ```
+     预期输出：
+     ```
+     "Hello, Redis Dynamic PVC!"
+     ```
+     **说明**：`SAVE` 命令会强制将数据写入磁盘，更新 `/data/dump.rdb` 文件。
+  4. **验证数据持久化**：删除 Pod，模拟 Pod 重启，确认数据是否依然存在。
+     ```
+     kubectl delete pod statefulset-redis-not-exist-pvc-0 -n shiqi
+     kubectl get pods -n shiqi -w  # 等待 Pod 重新创建
+     kubectl exec -it statefulset-redis-not-exist-pvc-0 -n shiqi -- redis-cli GET testkey
+     ```
+     预期输出：
+     ```
+     "Hello, Redis Dynamic PVC!"
+     ```
+     **说明**：由于 PVC 的持久化存储，即使 Pod 被删除重建，数据依然保留。
 
-### 教学总结
-1. Kuboard 是一个强大的图形化工具，可以直观地查看和管理 Kubernetes 资源，适合初学者快速上手。
-2. `kubectl` 命令行工具是管理 Kubernetes 资源的核心手段，掌握 `get`、`describe`、`delete` 等命令有助于高效操作和排查问题。
-3. 重新执行 `apply` 操作是更新或修复资源配置的常用方法，结合 YAML 文件可以灵活管理资源。
-4. 通过 NFS PV 创建和工具使用的实践，学习者应能更好地理解 Kubernetes 存储资源的配置与管理流程。
+### 3. 作业：深入理解 Redis 与 StatefulSet
 
-### 课后作业
-1. 使用 Kuboard 查看当前集群中的所有 PV，并记录 `pv-shiqi-redis` 的状态和详细信息。
-2. 使用 `kubectl` 命令完成以下操作：
-   - 查看所有 PV 列表（`kubectl get pv`）。
-   - 查看 `pv-shiqi-redis` 的详细信息（`kubectl describe pv pv-shiqi-redis`）。
-   - （可选）如果环境允许，尝试删除 PV 并重新应用配置。
-3. 修改 `pv-shiqi-redis.yaml` 文件中的 `claimRef.namespace` 为一个新值（如 `redis-test`），重新执行 `apply` 操作，并验证配置是否更新。
+为了帮助你更深入地理解为什么 Redis 需要使用 StatefulSet 而不是 Deployment，请完成以下作业：
 
----
+1. **思考与回答**：Redis 使用 StatefulSet 的原因是什么？请从以下几个方面分析并写下你的理解：
+   - **持久化存储**：Redis 的数据需要持久化，以防止数据丢失。StatefulSet 如何通过 PVC 提供持久化存储的能力？
+   - **稳定的网络标识**：StatefulSet 为每个 Pod 分配一个唯一的、稳定的网络标识，这对 Redis 集群模式中的节点间通信有何重要意义？
+   - **有序部署与扩展**：StatefulSet 支持有序的部署和扩展，确保 Redis 实例按照特定顺序启动和停止，这对数据一致性有何帮助？
 
-以上是关于 Kuboard 使用、`kubectl` 常用命令和重新执行 `apply` 操作的补充内容。如果需要进一步调整或扩展其他工具（如 Helm 或其他 UI 工具）的教学内容，请随时告诉我！
+2. **实践扩展**：尝试将 StatefulSet 的副本数（`replicas`）从 1 增加到 3，观察 PVC 和 Pod 的创建情况。记录 Kubernetes 如何为每个 Pod 分配独立的 PVC（如果使用了 `volumeClaimTemplates`）。
+
+**提示**：你可以通过修改 YAML 文件中的 `replicas` 字段，然后重新应用配置文件来完成扩展：
+```bash
+kubectl apply -f redis-dynamic-statefulset.yaml
+```
+
+
