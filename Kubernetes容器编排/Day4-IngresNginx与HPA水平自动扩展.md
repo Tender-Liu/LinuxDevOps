@@ -729,11 +729,17 @@ spec:                             # 规范部分
 下面是带注解的配置逻辑图示：
 
 ````mermaid
-  graph TD;
-    A[用户请求] -->|请求路径| B[/api/v1/users];
-    B -->|重写规则| C[/v1/users];
-    C -->|转发到| D[api-service];
-    D -->|返回响应| E[用户响应];
+  graph TD
+    A[用户请求] -->|请求路径| B["/api/v1/users"]
+    B -->|重写规则| C["/v1/users"]
+    C -->|转发到| D[api-service]
+    D -->|返回响应| E[用户响应]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+    style E fill:#fce4ec
 ````
 
 ### 说明图示内容
