@@ -1349,7 +1349,7 @@ spec:  # HPA 的具体配置内容
     kind: Deployment  # 目标资源类型为 Deployment
     name: deployment-stars-emmision  # 目标 Deployment 的名称
   minReplicas: 2  # Pod 的最小副本数量，即使负载很低也不会少于 2 个 Pod
-  maxReplicas: 10  # Pod 的最大副本数量，即使负载很高也不会超过 10 个 Pod
+  maxReplicas: 4  # Pod 的最大副本数量，即使负载很高也不会超过 10 个 Pod
   metrics:  # 定义用于触发扩展的指标，可以有多个指标
   - type: Resource  # 指标类型为资源指标（如 CPU 或内存）
     resource:  # 资源指标的具体配置
@@ -1418,7 +1418,7 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
         kind: Deployment          # 目标资源类型为 Deployment
         name: deployment-stars-emmision  # 目标 Deployment 名称
       minReplicas: 1              # 最小 Pod 副本数
-      maxReplicas: 5             # 最大 Pod 副本数
+      maxReplicas: 3             # 最大 Pod 副本数
       metrics:                    # 指标配置
       - type: Resource            # 指标类型为资源
         resource:                 # 资源指标
