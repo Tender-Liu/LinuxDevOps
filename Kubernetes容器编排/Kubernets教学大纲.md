@@ -33,7 +33,7 @@
   - DaemonSet：确保每个节点运行一个 Pod 副本，适用于日志收集、监控代理等场景。
 - **互动讨论**：Service 和 Ingress 的区别是什么？Ingress-Nginx 在流量管理中有哪些优势？DaemonSet 的典型应用场景有哪些？
 
-#### 第 5 天：调度策略与工作负载控制器对比（Deployment、StatefulSet、DaemonSet）
+#### 第 5 天：调度策略与工作负载控制器对比（Deployment、StatefulSet，DaemonSet）
 - **目标**：学习 Kubernetes 调度策略，并通过对比复习三大工作负载控制器（Deployment、StatefulSet、DaemonSet）。
 - **内容**：
   - 标签（Labels）：为资源添加元数据，用于筛选和组织。

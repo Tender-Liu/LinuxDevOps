@@ -1,7 +1,12 @@
 # Kubernetes存储与StatefulSet
 
 ## 教学目标
-
+- 理解 Kubernetes 中的存储机制，包括临时存储和持久化存储的区别
+- 掌握 PersistentVolume（PV）和 PersistentVolumeClaim（PVC）的创建、绑定和使用
+- 了解 StorageClass 的作用及其在动态供应 PV 中的应用
+- 熟练操作 StatefulSet，包括部署有状态应用和数据持久化管理
+- 学习 StatefulSet 与 Deployment 的区别及其在数据库等有状态服务中的作用
+- 实践 PV、PVC 和 StatefulSet 的组合使用，处理实际部署场景中的数据持久化问题
 
 ## 第一部分：什么是 Storage、PV 和 PVC
 
