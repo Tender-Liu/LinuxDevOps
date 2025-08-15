@@ -1424,58 +1424,6 @@ spec:  # StatefulSet 的规格定义
 
 ### 练习：StatefulSet 部署 Redis - 动态分配的PV
 
-#### 1. 登录 NFS 主机并创建目录
-- **目标**：在 NFS 服务器 `192.168.110.168` 上创建一个目录 `/nfs/shiqi-redis-not-exist-pvc`，用于 Redis 数据的持久化存储。
-- **步骤**：
-  1. **登录 NFS 主机**：使用 SSH 登录到 NFS 服务器（假设已配置好 NFS 服务）。
-     ```
-     ssh user@192.168.110.168
-     ```
-  2. **创建目录**：创建指定目录并设置权限。
-     ```
-     sudo mkdir -p /nfs/shiqi-redis-not-exist-pvc
-     sudo chmod -R 777 /nfs/shiqi-redis-not-exist-pvc  # 教学环境使用，生产环境应设置更严格权限
-     ```
-  3. **验证目录**：确认目录已创建。
-     ```
-     ls -ld /nfs/shiqi-redis-not-exist-pvc
-     ```
-  4. **检查 NFS 共享配置**：确保 `/nfs` 已配置为共享目录。如果未配置，需编辑 `/etc/exports` 文件并重启 NFS 服务。
-     ```
-     sudo vi /etc/exports  # 添加或确认共享配置，例如：/nfs *(rw,sync,no_root_squash)
-     sudo systemctl restart nfs  # 重启 NFS 服务
-     ```
-
-**优化说明**：增加了 NFS 共享配置的具体命令示例，便于初学者操作。
-
-
-#### 2. 提前准备 PV
-- **目标**：创建一个 PersistentVolume (PV)，为后续动态创建的 PVC 提供存储资源。
-- **文件**：`pv-shiqi-redis-not-exist-pvc.yml`
-- **YAML 定义**：
-  ```yaml
-  apiVersion: v1
-  kind: PersistentVolume
-  metadata:
-    name: pv-shiqi-redis-not-exist-pvc
-  spec:
-    capacity:
-      storage: 64Mi
-    accessModes:
-      - ReadWriteOnce  # 支持多个 Pod 读写（注意：Redis 更适合 ReadWriteOnce）
-    persistentVolumeReclaimPolicy: Retain  # 数据保留策略，删除 PVC 后 PV 不会被自动删除
-    nfs:
-      path: /nfs/shiqi-redis-not-exist-pvc
-      server: 192.168.110.168
-  ```
-- **创建命令**：
-  ```
-  kubectl apply -f pv-shiqi-redis-not-exist-pvc.yml
-  ```
-
-**优化说明**：对 `accessModes` 增加了说明，提醒用户 Redis 更适合 `ReadWriteOnce` 模式，避免误解。
-
-
 #### 3. 创建 StatefulSet（使用模板动态创建 PVC）
 - **目标**：通过 `volumeClaimTemplates` 让 Kubernetes 自动为每个 Pod 创建独立的 PVC，实现数据持久化。
 - **文件**：`statefulset-redis-not-exist-pvc.yml`
@@ -1545,7 +1493,7 @@ spec:  # StatefulSet 的规格定义
         resources:
           requests:
             storage: 64Mi  # 请求存储空间
-        storageClassName: ""  # 空字符串表示不使用动态供应，匹配静态 PV
+        storageClassName: "nfs-client"  # 空字符串表示不使用动态供应，匹配静态 PV,去公司用nfs-client-retain
   ```
 
 
