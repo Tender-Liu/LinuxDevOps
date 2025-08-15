@@ -346,7 +346,7 @@ graph TD
       storage: 5Gi  # 定义存储容量为 5GiB
     accessModes:
       - ReadWriteOnce  # 仅支持单个 Pod 读写
-    reclaimPolicy: Retain  # 回收策略，保留数据
+    persistentVolumeReclaimPolicy: Retain  # 回收策略，保留数据
     hostPath:  # 指定存储类型为 hostPath
       path: /mnt/data  # 节点上的本地目录路径
       type: DirectoryOrCreate  # 如果目录不存在则创建
@@ -363,7 +363,7 @@ graph TD
       storage: 64Mi  # 定义存储容量为 64MiB
     accessModes:
       - ReadWriteMany  # 支持多个 Pod 同时读写
-    reclaimPolicy: Retain  # 回收策略，保留数据
+    persistentVolumeReclaimPolicy: Retain  # 回收策略，保留数据
     nfs:  # 指定存储类型为 NFS
       path: /nfs/share  # NFS 服务器上的共享目录
       server: 192.168.110.168  # NFS 服务器地址
@@ -381,7 +381,7 @@ graph TD
       storage: 20Gi  # 定义存储容量为 20GiB
     accessModes:
       - ReadWriteOnce  # 仅支持单个 Pod 读写
-    reclaimPolicy: Delete  # 回收策略，删除数据（云存储常见）
+    persistentVolumeReclaimPolicy: Delete  # 回收策略，删除数据（云存储常见）
     awsElasticBlockStore:  # 指定存储类型为 AWS EBS
       volumeID: vol-1234567890abcdef0  # EBS 卷 ID
       fsType: ext4  # 文件系统类型
@@ -393,7 +393,7 @@ graph TD
   - `metadata.name`：给 PV 起个名字，方便识别。
   - `spec.capacity.storage`：定义 PV 提供的存储空间大小。
   - `spec.accessModes`：定义访问模式，根据存储类型选择合适的模式。
-  - `spec.reclaimPolicy`：定义回收策略（Delete、Recycle、Retain）。
+  - `spec.persistentVolumeReclaimPolicy`：定义回收策略（Delete、Recycle、Retain）。
   - 存储类型字段（如 `hostPath`、`nfs` 等）：指定具体的存储类型和配置参数。
 - **互动思考**：问学习者，如果我要创建一个容量为 30Gi 的 NFS PV，支持多个 Pod 读写，回收策略为 Retain，NFS 服务器地址为 `192.168.110.168:/nfs/data`，应该怎么写 YAML 文件？
 
@@ -436,7 +436,7 @@ graph TD
       storage: 5Gi  # 定义存储容量为 5GiB
     accessModes:
       - ReadWriteOnce  # 仅支持单个 Pod 读写
-    reclaimPolicy: Retain  # 回收策略，保留数据
+    persistentVolumeReclaimPolicy: Retain  # 回收策略，保留数据
     hostPath:  # 指定存储类型为 hostPath
       path: /mnt/data  # 节点上的本地目录路径
       type: DirectoryOrCreate  # 如果目录不存在则创建
@@ -457,7 +457,7 @@ graph TD
       storage: 64Mi  # 定义存储容量为 64MiB
     accessModes:
       - ReadWriteMany  # 支持多个 Pod 同时读写
-    reclaimPolicy: Retain  # 回收策略，保留数据
+    persistentVolumeReclaimPolicy: Retain  # 回收策略，保留数据
     nfs:  # 指定存储类型为 NFS
       path: /nfs/share  # NFS 服务器上的共享目录
       server: 192.168.110.168  # NFS 服务器地址
@@ -503,7 +503,7 @@ graph TD
           storage: 64Mi
         accessModes:
           - ReadWriteMany  # 支持多个 Pod 读写
-        reclaimPolicy: Retain
+        persistentVolumeReclaimPolicy: Retain
         nfs:
           path: /nfs/shiqi-redis
           server: 192.168.110.168
@@ -573,7 +573,7 @@ graph TD
        ```
        kubectl delete -f pv-shiqi-redis.yaml
        ```
-     - 注意：删除操作不可逆，需谨慎执行。如果 PV 的 `reclaimPolicy` 为 `Retain`，数据不会自动删除，需手动清理。
+     - 注意：删除操作不可逆，需谨慎执行。如果 PV 的 `persistentVolumeReclaimPolicy` 为 `Retain`，数据不会自动删除，需手动清理。
   4. **其他常用命令**：
      - 查看所有命名空间：`kubectl get namespaces`
      - 查看 Pod 列表：`kubectl get pods -n <namespace>`
@@ -778,7 +778,7 @@ graph TD
        ```
        kubectl delete pvc pvc-shiqi-redis -n shiqi
        ```
-     - 注意：删除 PVC 后，绑定的 PV 会根据其 `reclaimPolicy` 决定是否释放或删除。
+     - 注意：删除 PVC 后，绑定的 PV 会根据其 `persistentVolumeReclaimPolicy` 决定是否释放或删除。
 - **互动思考**：问学习者，如果删除一个 PVC，绑定的 PV 会怎么样？如何查看 PV 的回收策略？
 
 
@@ -1037,7 +1037,7 @@ spec:
     storage: 64Mi
   accessModes:
     - ReadWriteMany  # 支持多个 Pod 读写
-  reclaimPolicy: Retain
+  persistentVolumeReclaimPolicy: Retain
   nfs:
     path: /nfs/shiqi-redis-exist-pvc
     server: 192.168.110.168
@@ -1290,7 +1290,7 @@ spec:  # StatefulSet 的规格定义
       storage: 64Mi
     accessModes:
       - ReadWriteOnce  # 支持多个 Pod 读写（注意：Redis 更适合 ReadWriteOnce）
-    reclaimPolicy: Retain  # 数据保留策略，删除 PVC 后 PV 不会被自动删除
+    persistentVolumeReclaimPolicy: Retain  # 数据保留策略，删除 PVC 后 PV 不会被自动删除
     nfs:
       path: /nfs/shiqi-redis-not-exist-pvc
       server: 192.168.110.168
