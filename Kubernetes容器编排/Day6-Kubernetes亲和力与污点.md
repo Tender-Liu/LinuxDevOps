@@ -808,7 +808,7 @@ spec:
             podAffinityTerm:
               labelSelector:
                 matchLabels:
-                  name: zhangwei  # 匹配目标 Pod 的标签
+                  pod: pod-admin3-ui  # 匹配目标 Pod 的标签
               topologyKey: "kubernetes.io/hostname"  # 按主机名划分拓扑，同一节点
       containers:
         - image: 'harbor.labworlds.cc/stars-emmision/master:08111536-panfulin'
