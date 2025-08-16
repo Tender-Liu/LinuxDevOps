@@ -185,3 +185,4 @@ rules:
 - `resources` 指定具体的资源类型，与 `apiGroups` 相关联，常见如 `pods`、`deployments`。
 - `verbs` 定义允许的操作，常见如 `get`、`list`、`create`、`delete` 等。
 - 通过合理组合这些字段，可以精细化地控制权限，满足不同场景的需求。
+
