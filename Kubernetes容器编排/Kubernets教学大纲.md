@@ -42,14 +42,14 @@
   - 对比复习 Deployment、StatefulSet、DaemonSet 的特点和应用场景。
 - **互动讨论**：三大工作负载控制器的适用场景有何不同？亲和力和污点如何配合优化调度？
 
-#### 第 6 天：权限管理、水平自动扩展（HPA）与故障排查及综合复习
+#### 第 6 天：权限管理、与故障排查及综合复习
 - **目标**：学习权限控制和 HPA 配置，掌握故障排查技巧，复习核心内容。
 - **内容**：
   - RBAC 权限管理，创建角色和绑定。
   - Horizontal Pod Autoscaler（HPA）配置，根据负载自动扩展 Pod。
-  - 查看 Pod 日志、事件（Events），排查问题。
-  - 复习 ConfigMap、Secret、Deployment、StatefulSet、DaemonSet、Ingress-Nginx、调度策略等核心概念。
-- **互动讨论**：HPA 的 CPU 使用率阈值如何设置更合理？如何通过日志和事件快速定位问题？
+  - 查看 Pod 日志、事件（Events），排查问题。合理使用kuboard查看日志、事件、指标等
+  - 复习 Pod, ConfigMap、Secret、Deployment、StatefulSet、DaemonSet、service、Ingress-Nginx、调度策略等核心概念。面试题各类详情
+- **互动讨论**：如何通过日志和事件快速定位问题？
 
 ### 说明
 - **内容覆盖**：大纲涵盖了 Kubernetes 的核心资源和工作负载控制器（Deployment、StatefulSet、DaemonSet）、网络管理（Service、Ingress-Nginx）、调度策略（标签、亲和力、污点）、自动扩展（HPA）以及配置管理（ConfigMap、Secret）等关键内容。
