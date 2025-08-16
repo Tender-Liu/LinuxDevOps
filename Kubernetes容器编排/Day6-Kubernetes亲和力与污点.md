@@ -444,76 +444,76 @@ graph TD
   - `app: frontend` （类型标签，表示前端应用）
   **注意**：根据 YAML 文件的结构，`app: pod-stars-emmision` 是主要标签，与 `selector` 匹配；这里假设添加多个标签值，但 Kubernetes 同一键名下只能有一个值，建议调整为不同键名（如 `type: frontend`）。
 - **完整 YAML 文件**：
-  以下是更新后的 `deployment-stars-emmision.yml`，已为 Pod 添加标签：
-	```yaml
-	apiVersion: apps/v1  # 指定 Kubernetes API 版本，apps/v1 是 Deployment 资源的 API 版本
-	kind: Deployment     # 资源类型为 Deployment，用于管理 Pod 的无状态应用部署
-	metadata:            # 资源的元数据，包含名称、命名空间等信息
-		name: deployment-stars-emmision  # Deployment 的名称，唯一标识该资源
-		namespace: shiqi                 # Deployment 所属的命名空间，用于资源隔离
-	spec:                # Deployment 的规格定义，描述期望的状态
-		replicas: 1        # 期望运行的 Pod 副本数量，这里是 1 个副本
-		revisionHistoryLimit: 10  # 保留的历史版本数量，用于回滚，最多保留 10 个历史版本
-		selector:          # 选择器，用于匹配 Deployment 管理的 Pod，必须与 Pod 标签一致
-			matchLabels:     # 匹配标签，Deployment 通过这些标签找到要管理的 Pod
-				app: pod-stars-emmision  # 匹配标签键值对，Pod 必须有此标签才能被管理
-		strategy:          # 部署策略，定义如何更新 Pod
-			rollingUpdate:   # 滚动更新策略，逐步替换旧 Pod，避免服务中断
-				maxSurge: 25%  # 最大额外副本比例，更新时最多可以超出期望副本数的 25%
-				maxUnavailable: 25%  # 最大不可用比例，更新时最多允许 25% 的副本不可用
-			type: RollingUpdate  # 更新类型为滚动更新，确保服务平滑过渡
-		template:          # Pod 模板，定义 Pod 的结构和配置
-			metadata:        # Pod 的元数据，包含 Pod 的标签等信息
-				labels:        # Pod 的标签，用于分类和筛选
-					app: pod-stars-emmision  # 项目标签，表示属于 stars-emmision 项目
-					type: frontend           # 应用类型标签，表示这是一个前端应用（这是我加的，滴滴滴）
-			spec:            # Pod 的详细规格，定义 Pod 内部的容器和其他配置
-				containers:    # 容器列表，定义 Pod 中运行的容器
-					- image: 'harbor.labworlds.cc/stars-emmision/master:08111536-panfulin'  # 容器镜像地址和版本
-						imagePullPolicy: IfNotPresent  # 镜像拉取策略，若本地有镜像则不拉取
-						livenessProbe:  # 存活探针，用于检测容器是否存活，若失败则重启容器
-							failureThreshold: 3  # 失败阈值，连续 3 次失败后认为容器不健康
-							httpGet:             # 使用 HTTP GET 请求检测容器健康状态
-								path: /            # 请求路径，检测根路径
-								port: 80           # 请求端口，检测 80 端口
-								scheme: HTTP       # 请求协议，使用 HTTP 协议
-							initialDelaySeconds: 5  # 初始延迟，容器启动后等待 5 秒开始检测
-							periodSeconds: 5        # 检测周期，每 5 秒检测一次
-							successThreshold: 1     # 成功阈值，1 次成功即认为健康
-							timeoutSeconds: 1       # 超时时间，每次检测超时时间为 1 秒
-						name: stars-emmision      # 容器名称，用于标识容器
-						ports:                    # 容器暴露的端口列表
-							- containerPort: 80     # 容器内部端口，暴露 80 端口
-								protocol: TCP         # 端口协议，使用 TCP 协议
-						readinessProbe:           # 就绪探针，用于检测容器是否就绪提供服务
-							failureThreshold: 3     # 失败阈值，连续 3 次失败后认为容器未就绪
-							initialDelaySeconds: 5  # 初始延迟，容器启动后等待 5 秒开始检测
-							periodSeconds: 5        # 检测周期，每 5 秒检测一次
-							successThreshold: 1     # 成功阈值，1 次成功即认为就绪
-							tcpSocket:              # 使用 TCP 套接字检测容器就绪状态
-								port: 80              # 检测 80 端口是否可以连接
-							timeoutSeconds: 1       # 超时时间，每次检测超时时间为 1 秒
-						resources:                # 资源限制和请求，定义容器的 CPU 和内存使用
-							limits:                 # 资源上限，容器最多能使用的资源量
-								cpu: 100m             # CPU 上限为 100 毫核（0.1 核）
-								memory: 128Mi         # 内存上限为 128 MiB
-							requests:               # 资源请求，容器启动时申请的资源量
-								cpu: 50m              # CPU 请求为 50 毫核（0.05 核）
-								memory: 100Mi         # 内存请求为 100 MiB
-						startupProbe:             # 启动探针，用于检测容器是否启动完成
-							exec:                   # 使用执行命令的方式检测
-								command:              # 执行的命令列表
-									- sh                # 使用 shell 解释器
-									- '-c'              # 指定 shell 命令
-									- ps aux | grep nginx || ps aux | grep stars  # 检查进程是否存在 nginx 或 stars
-							failureThreshold: 30    # 失败阈值，连续 30 次失败后认为启动失败
-							initialDelaySeconds: 10 # 初始延迟，容器启动后等待 10 秒开始检测
-							periodSeconds: 5        # 检测周期，每 5 秒检测一次
-							successThreshold: 1     # 成功阈值，1 次成功即认为启动完成
-							timeoutSeconds: 2       # 超时时间，每次检测超时时间为 2 秒
-				imagePullSecrets:             # 镜像拉取密钥，用于从私有镜像仓库拉取镜像
-					- name: secret-harbor-login # 密钥名称，引用已创建的 Secret 资源
-	```
+    以下是更新后的 `deployment-stars-emmision.yml`，已为 Pod 添加标签：
+    ```yaml
+    apiVersion: apps/v1  # 指定 Kubernetes API 版本，apps/v1 是 Deployment 资源的 API 版本
+    kind: Deployment     # 资源类型为 Deployment，用于管理 Pod 的无状态应用部署
+    metadata:            # 资源的元数据，包含名称、命名空间等信息
+      name: deployment-stars-emmision  # Deployment 的名称，唯一标识该资源
+      namespace: shiqi                 # Deployment 所属的命名空间，用于资源隔离
+    spec:                # Deployment 的规格定义，描述期望的状态
+      replicas: 1        # 期望运行的 Pod 副本数量，这里是 1 个副本
+      revisionHistoryLimit: 10  # 保留的历史版本数量，用于回滚，最多保留 10 个历史版本
+      selector:          # 选择器，用于匹配 Deployment 管理的 Pod，必须与 Pod 标签一致
+        matchLabels:     # 匹配标签，Deployment 通过这些标签找到要管理的 Pod
+          app: pod-stars-emmision  # 匹配标签键值对，Pod 必须有此标签才能被管理
+      strategy:          # 部署策略，定义如何更新 Pod
+        rollingUpdate:   # 滚动更新策略，逐步替换旧 Pod，避免服务中断
+          maxSurge: 25%  # 最大额外副本比例，更新时最多可以超出期望副本数的 25%
+          maxUnavailable: 25%  # 最大不可用比例，更新时最多允许 25% 的副本不可用
+        type: RollingUpdate  # 更新类型为滚动更新，确保服务平滑过渡
+      template:          # Pod 模板，定义 Pod 的结构和配置
+        metadata:        # Pod 的元数据，包含 Pod 的标签等信息
+          labels:        # Pod 的标签，用于分类和筛选
+            app: pod-stars-emmision  # 项目标签，表示属于 stars-emmision 项目
+            type: frontend           # 应用类型标签，表示这是一个前端应用（这是我加的，滴滴滴）
+        spec:            # Pod 的详细规格，定义 Pod 内部的容器和其他配置
+          containers:    # 容器列表，定义 Pod 中运行的容器
+            - image: 'harbor.labworlds.cc/stars-emmision/master:08111536-panfulin'  # 容器镜像地址和版本
+              imagePullPolicy: IfNotPresent  # 镜像拉取策略，若本地有镜像则不拉取
+              livenessProbe:  # 存活探针，用于检测容器是否存活，若失败则重启容器
+                failureThreshold: 3  # 失败阈值，连续 3 次失败后认为容器不健康
+                httpGet:             # 使用 HTTP GET 请求检测容器健康状态
+                  path: /            # 请求路径，检测根路径
+                  port: 80           # 请求端口，检测 80 端口
+                  scheme: HTTP       # 请求协议，使用 HTTP 协议
+                initialDelaySeconds: 5  # 初始延迟，容器启动后等待 5 秒开始检测
+                periodSeconds: 5        # 检测周期，每 5 秒检测一次
+                successThreshold: 1     # 成功阈值，1 次成功即认为健康
+                timeoutSeconds: 1       # 超时时间，每次检测超时时间为 1 秒
+              name: stars-emmision      # 容器名称，用于标识容器
+              ports:                    # 容器暴露的端口列表
+                - containerPort: 80     # 容器内部端口，暴露 80 端口
+                  protocol: TCP         # 端口协议，使用 TCP 协议
+              readinessProbe:           # 就绪探针，用于检测容器是否就绪提供服务
+                failureThreshold: 3     # 失败阈值，连续 3 次失败后认为容器未就绪
+                initialDelaySeconds: 5  # 初始延迟，容器启动后等待 5 秒开始检测
+                periodSeconds: 5        # 检测周期，每 5 秒检测一次
+                successThreshold: 1     # 成功阈值，1 次成功即认为就绪
+                tcpSocket:              # 使用 TCP 套接字检测容器就绪状态
+                  port: 80              # 检测 80 端口是否可以连接
+                timeoutSeconds: 1       # 超时时间，每次检测超时时间为 1 秒
+              resources:                # 资源限制和请求，定义容器的 CPU 和内存使用
+                limits:                 # 资源上限，容器最多能使用的资源量
+                  cpu: 100m             # CPU 上限为 100 毫核（0.1 核）
+                  memory: 128Mi         # 内存上限为 128 MiB
+                requests:               # 资源请求，容器启动时申请的资源量
+                  cpu: 50m              # CPU 请求为 50 毫核（0.05 核）
+                  memory: 100Mi         # 内存请求为 100 MiB
+              startupProbe:             # 启动探针，用于检测容器是否启动完成
+                exec:                   # 使用执行命令的方式检测
+                  command:              # 执行的命令列表
+                    - sh                # 使用 shell 解释器
+                    - '-c'              # 指定 shell 命令
+                    - ps aux | grep nginx || ps aux | grep stars  # 检查进程是否存在 nginx 或 stars
+                failureThreshold: 30    # 失败阈值，连续 30 次失败后认为启动失败
+                initialDelaySeconds: 10 # 初始延迟，容器启动后等待 10 秒开始检测
+                periodSeconds: 5        # 检测周期，每 5 秒检测一次
+                successThreshold: 1     # 成功阈值，1 次成功即认为启动完成
+                timeoutSeconds: 2       # 超时时间，每次检测超时时间为 2 秒
+          imagePullSecrets:             # 镜像拉取密钥，用于从私有镜像仓库拉取镜像
+            - name: secret-harbor-login # 密钥名称，引用已创建的 Secret 资源
+    ```
 - **步骤**：
   1. 将以上 YAML 文件保存到本地（比如 `deployment-stars-emmision.yml`）。
   2. 应用该配置文件到集群：
