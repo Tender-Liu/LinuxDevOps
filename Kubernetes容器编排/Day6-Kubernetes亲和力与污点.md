@@ -441,7 +441,7 @@ graph TD
 - **目标**：为 `deployment-stars-emmision.yml` 文件中的 Pod 添加标签，注意是 Pod 的标签，而不是 Deployment 的标签（Deployment 的标签在亲和力学习中无直接作用）。
 - **标签要求**：
   - `app: pod-stars-emmision` （项目标签，表示 stars-emmision 项目）
-  - `app: frontend` （类型标签，表示前端应用）
+  - `type: frontend` （类型标签，表示前端应用）
   **注意**：根据 YAML 文件的结构，`app: pod-stars-emmision` 是主要标签，与 `selector` 匹配；这里假设添加多个标签值，但 Kubernetes 同一键名下只能有一个值，建议调整为不同键名（如 `type: frontend`）。
 - **完整 YAML 文件**：
     以下是更新后的 `deployment-stars-emmision.yml`，已为 Pod 添加标签：
