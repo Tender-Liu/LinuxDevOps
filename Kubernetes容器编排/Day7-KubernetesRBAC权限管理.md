@@ -1,4 +1,4 @@
-# Kubernetes 权限管理与综合复习
+# Kubernetes RBAC权限管理
 
 ## 学习目标：
 - **理解 RBAC 权限管理**：掌握 Kubernetes 中基于角色的访问控制（RBAC）的核心概念，了解角色（Role）和集群角色（ClusterRole）的定义与应用场景。
