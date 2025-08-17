@@ -60,12 +60,14 @@
   - 🗄️ **MySQL数据库** - 掌握数据库管理与优化。
   - 🐳 **Docker容器技术** - 学习容器化部署技术。
   - 🔄 **缓存与消息队列** - 构建高性能系统。
+- **应用开发与部署阶段**：
+  - 💻 **多语言后端服务开发与部署** - 使用Go、Python、Java、Node.js开发和发布后端服务。
+  - 🌐 **前端开发与静态页面部署** - 掌握Node.js和Vue.js，开发和部署前端页面。
 - **现代运维阶段**：
   - 🚀 **DevOps工具链** - 掌握CI/CD、监控等现代运维工具。
 - **冲刺阶段**：🏆 **综合实战与面试准备** - 通过企业级项目和面试强化，迈向职业巅峰。
 
 > 💡 **小贴士**：每个阶段循序渐进，完成一个阶段后再进入下一个，确保基础扎实！
-
 
 ### 📖 学习资源类型
 
@@ -585,7 +587,7 @@
         <th style="padding: 10px; border: 1px solid #ddd; background-color: #e3f2fd;"><h3>第一阶段：基础建设</h3><em>预计用时：4-5周</em></th>
         <th style="padding: 10px; border: 1px solid #ddd; background-color: #e8f5e8;"><h3>第二阶段：编程能力</h3><em>预计用时：3-4周</em></th>
         <th style="padding: 10px; border: 1px solid #ddd; background-color: #fff3e0;"><h3>第三阶段：数据与存储</h3><em>预计用时：3-4周</em></th>
-        <th style="padding: 10px; border: 1px solid #ddd; background-color: #fce4ec;"><h3>第四阶段：现代运维</h3><em>预计用时：3-4周</em></th>
+        <th style="padding: 10px; border: 1px solid #ddd; background-color: #fce4ec;"><h3>第四阶段：应用与现代运维</h3><em>预计用时：4-5周</em></th>
       </tr>
     </thead>
     <tbody>
@@ -632,6 +634,12 @@
           - Kafka应用实践
         </td>
         <td style="padding: 10px; border: 1px solid #ddd;">
+          <h4>多语言后端开发 (10-14天)</h4>
+          - Go、Python、Java、Node.js开发<br>
+          - 后端服务部署与优化
+          <h4>前端开发与部署 (7-10天)</h4>
+          - Node.js与Vue.js开发<br>
+          - 静态页面与前端应用部署
           <h4>DevOps工具链 (14-21天)</h4>
           - CI/CD流水线构建<br>
           - 配置管理自动化<br>
@@ -760,5 +768,24 @@
           • Python自动化开发<br>
           • 数据库管理优化<br>
           • 容器技术应用<br>
-          • CI/CD流水线<br>
+          • CI/CD流水线构建<br>
           • 性能调优经验
+        </td>
+        <td style="padding: 10px; border: 1px solid #ddd;">
+          • 分布式系统运维<br>
+          • Kubernetes集群管理<br>
+          • 多语言服务部署<br>
+          • 高可用架构设计<br>
+          • 自动化运维体系搭建
+        </td>
+        <td style="padding: 10px; border: 1px solid #ddd;">
+          • 企业级运维架构设计<br>
+          • 云原生技术规划<br>
+          • DevOps文化推广<br>
+          • 跨团队协作与技术领导<br>
+          • 运维战略与成本优化
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
