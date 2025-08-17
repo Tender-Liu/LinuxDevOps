@@ -46,7 +46,6 @@
 - **目标**：学习权限控制和 HPA 配置，掌握故障排查技巧，复习核心内容。
 - **内容**：
   - RBAC 权限管理，创建角色和绑定。
-  - Horizontal Pod Autoscaler（HPA）配置，根据负载自动扩展 Pod。
   - 查看 Pod 日志、事件（Events），排查问题。合理使用kuboard查看日志、事件、指标等
   - 复习 Pod, ConfigMap、Secret、Deployment、StatefulSet、DaemonSet、service、Ingress-Nginx、调度策略等核心概念。面试题各类详情
 - **互动讨论**：如何通过日志和事件快速定位问题？

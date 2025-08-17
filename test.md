@@ -1,127 +1,98 @@
-你好！如果你在 Kubernetes 环境中只有 `name=名字拼音` 标签可用，我会根据这个标签来调整亲和力示例和配置，确保内容贴合你的实际情况。以下是基于 `name=名字拼音` 标签的优化教案片段，重点是亲和力配置示例和说明。我假设 `名字拼音` 是类似 `zhangwei` 这样的具体值，如果有不同，请提供具体标签值，我会进一步调整。
+我们开始写第三部分：kubeconfig 文件管理多个集群或多个集群
+1. windwos：本地C:\Users\用户\.kube\config linux：家目录 ~/.kube/config
+如何配置多个账户在一个
+
+
+
+好的，我明白您的需求。以下是关于如何在 Kuboard 界面中查看 RBAC 相关内容（例如 ServiceAccount、ClusterRole、ClusterRoleBinding、Secret 等）的补充说明。Kuboard 是一个基于 Web 的 Kubernetes 管理界面，提供直观的方式来查看和管理集群资源。以下内容将帮助您在 Kuboard 中查看作业二中创建的普通运维人员账号及其相关权限配置。
 
 ---
 
-## **二、亲和力（Affinity）**（基于 `name=名字拼音` 标签的示例）
+#### 8. 在 Kuboard 界面中查看 RBAC 相关内容
+Kuboard 提供了一个用户友好的图形化界面，允许您浏览和管理 Kubernetes 集群中的资源。以下是在 Kuboard 中查看作业二中创建的资源（如 ServiceAccount、ClusterRole、ClusterRoleBinding、Secret 等）的具体步骤。假设您已经安装并登录了 Kuboard，并且有权限访问集群。
 
-### **1. 背景说明**
-- 在你的环境中，节点或 Pod 的标签可能只有 `name=名字拼音` 这一种形式（例如 `name=zhangwei`）。
-- 亲和力规则可以通过这个标签来控制 Pod 的调度位置，例如将 Pod 调度到特定名字拼音的节点，或让 Pod 靠近/远离特定名字拼音的其他 Pod。
+##### 8.1 登录 Kuboard 并选择集群
+1. 打开浏览器，访问 Kuboard 的 Web 界面（通常是您部署 Kuboard 的 IP 地址和端口，例如 `http://<IP>:32567`）。
+2. 使用您的凭据登录 Kuboard。
+3. 在顶部导航栏或集群列表中，选择您正在操作的 Kubernetes 集群（即通过 `Kubeadm` 部署的集群）。
 
-#### **教学提示**
-- 解释标签的作用：标签是 Kubernetes 中标识资源的方式，亲和力通过匹配标签来决定调度。
-- 问学员：如果你只有 `name=名字拼音` 标签，你会如何用它来区分不同类型的节点或 Pod？
+**解释**：  
+- Kuboard 支持管理多个 Kubernetes 集群，登录后需要选择正确的集群以查看相应的资源。
 
----
+##### 8.2 查看 ServiceAccount
+要查看在 `kube-system` 命名空间中创建的 `ops-user` 服务账户：
+1. 在左侧导航栏中，点击 **命名空间**（Namespaces）。
+2. 在命名空间列表中，找到并点击 `kube-system` 命名空间。
+3. 在 `kube-system` 命名空间的页面中，点击顶部菜单的 **服务账户**（Service Accounts）选项卡。
+4. 在服务账户列表中，找到 `ops-user`，点击其名称可以查看详细信息。
 
-### **2. 简单示例（基于 `name=名字拼音` 标签）**
-以下是针对你的标签设计的亲和力规则示例，展示如何使用 `name=名字拼音` 来实现节点亲和性和 Pod 反亲和性。
+**预期结果**：  
+- 您将看到 `ops-user` 服务账户的基本信息，例如创建时间、命名空间等。
+- 如果有关联的 Secret（例如 Token），可能会在详细信息中显示相关链接。
 
-- **节点亲和性（硬性要求）**：
-  强制 Pod 调度到带有 `name=zhangwei` 标签的节点（假设 `zhangwei` 是你环境中的一个具体拼音值）。
-  ```yaml
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:  # 硬性要求，调度时必须满足
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: name          # 匹配节点的标签键，这里是 name
-            operator: In       # 操作符，表示值在列表中
-            values:
-            - zhangwei         # 匹配值，必须是 zhangwei
-  ```
-  **解释**：如果没有节点带有 `name=zhangwei` 标签，Pod 将不会被调度。适用于严格要求 Pod 调度到特定节点的场景，例如某个负责人的专用节点。
+**解释**：  
+- Kuboard 的界面允许您直观地浏览服务账户列表及其关联资源。
 
-- **Pod 亲和性（软性要求）**：
-  尽量将 Pod 调度到与带有 `name=zhangwei` 标签的 Pod 所在的节点。
-  ```yaml
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:  # 软性要求，尽量满足
-      - weight: 100           # 权重，值越高优先级越高（1-100）
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              name: zhangwei    # 匹配其他 Pod 的标签，寻找 name=zhangwei 的 Pod
-          topologyKey: "kubernetes.io/hostname"  # 按主机名划分拓扑，同一主机名表示同一节点
-  ```
-  **解释**：调度器会尽量将 Pod 调度到与 `name=zhangwei` 的 Pod 相同的节点（例如相关服务需要靠在一起），但如果没有符合条件的节点，Pod 仍会被调度到其他地方。
+##### 8.3 查看 ClusterRole
+要查看创建的 `ops-read-write-no-delete` 集群角色：
+1. 在左侧导航栏中，点击 **集群角色**（Cluster Roles）。
+2. 在集群角色列表中，使用搜索框输入 `ops-read-write-no-delete` 以快速定位。
+3. 点击 `ops-read-write-no-delete` 的名称，查看其详细信息，包括权限规则（`rules`）。
 
-- **Pod 反亲和性（软性要求）**：
-  尽量避免 Pod 与其他带有 `name=zhangwei` 标签的 Pod 调度到同一节点。
-  ```yaml
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:  # 软性要求，尽量满足
-      - weight: 100           # 权重，值越高优先级越高（1-100）
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              name: zhangwei    # 匹配其他 Pod 的标签，寻找 name=zhangwei 的 Pod
-          topologyKey: "kubernetes.io/hostname"  # 按主机名划分拓扑，同一主机名表示同一节点
-  ```
-  **解释**：调度器会尽量将 Pod 分散到不同节点，避免与 `name=zhangwei` 的 Pod 在同一节点上（例如避免单点故障），但如果节点不足，Pod 仍会被调度。
+**预期结果**：  
+- 详细信息页面会展示该 `ClusterRole` 的权限配置，例如允许的操作（`verbs`）包括 `get`、`list`、`create` 等，但不包括 `delete`。
+- 您可以看到该角色适用于所有 API 组和资源类型（`apiGroups` 和 `resources` 为 `*`）。
 
-#### **教学提示**
-- 强调 `name=名字拼音` 标签的灵活性：虽然标签单一，但仍可以通过亲和力实现复杂的调度需求。
-- 问学员：如果你有多个 `name=名字拼音` 标签值，如何用 Pod 反亲和性确保 Pod 分布均匀？
+**解释**：  
+- Kuboard 将 `ClusterRole` 作为全局资源单独列出，方便查看和管理集群级别的角色。
 
----
+##### 8.4 查看 ClusterRoleBinding
+要查看创建的 `ops-read-write-no-delete-binding` 集群角色绑定：
+1. 在左侧导航栏中，点击 **集群角色绑定**（Cluster Role Bindings）。
+2. 在集群角色绑定列表中，使用搜索框输入 `ops-read-write-no-delete-binding` 以快速定位。
+3. 点击 `ops-read-write-no-delete-binding` 的名称，查看其详细信息，包括绑定的主体（`subjects`）和角色引用（`roleRef`）。
 
-### **3. 直观理解：Mermaid 图（基于 `name=名字拼音` 标签）**
-以下是基于 `name=名字拼音` 标签的亲和力效果图，帮助你直观理解调度结果。
+**预期结果**：  
+- 详细信息页面会展示该绑定将 `ops-read-write-no-delete` 角色关联到 `ops-user` 服务账户（位于 `kube-system` 命名空间）。
+- 您可以确认权限是集群级别的，适用于所有命名空间。
 
-```mermaid
-graph TD
-    A[节点1: name=zhangwei] -->|节点亲和性| B[Pod1: name=zhangwei]
-    A -->|Pod 亲和性| C[Pod2: name=lihua]
-    D[节点2: name=wangming] -->|Pod 反亲和性| E[Pod3: name=zhangwei]
-    F[亲和力作用] -->|节点亲和性| G[Pod 调度到特定节点]
-    F -->|Pod 亲和性| H[Pod 靠近其他 Pod]
-    F -->|Pod 反亲和性| I[Pod 远离其他 Pod]
-```
+**解释**：  
+- `ClusterRoleBinding` 在 Kuboard 中作为全局资源列出，用于查看角色与主体之间的绑定关系。
 
-#### **图表解释**
-- **节点亲和性**：Pod1 因为节点亲和性规则，被调度到带有 `name=zhangwei` 标签的节点1。
-- **Pod 亲和性**：Pod2 因为想靠近 Pod1（例如与 `name=zhangwei` 相关的服务），也被调度到节点1。
-- **Pod 反亲和性**：Pod3 因为不想与其他 `name=zhangwei` 的 Pod 在同一节点，所以被调度到节点2（`name=wangming`）。
+##### 8.5 查看 Secret
+要查看在 `kube-system` 命名空间中创建的 `ops-user-token` Secret（如果手动创建）：
+1. 在左侧导航栏中，点击 **命名空间**（Namespaces）。
+2. 在命名空间列表中，找到并点击 `kube-system` 命名空间。
+3. 在 `kube-system` 命名空间的页面中，点击顶部菜单的 **密钥**（Secrets）选项卡。
+4. 在密钥列表中，找到 `ops-user-token`，点击其名称可以查看详细信息。
 
-#### **教学提示**
-- 用图表帮助学员理解：即使只有 `name=名字拼音` 标签，亲和力依然可以实现“聚集”和“分散”的调度效果。
-- 问学员：如果节点1 宕机，Pod1 和 Pod2 都会受影响，如何调整亲和性规则来提高可靠性？
+**预期结果**：  
+- 您将看到 `ops-user-token` 的基本信息，例如类型（`kubernetes.io/service-account-token`）和关联的服务账户（通过注解）。
+- **注意**：Kuboard 不会直接显示 Secret 的明文内容（如 Token），这是出于安全考虑。如果需要使用 Token，可能需要通过其他方式提取。
 
----
+**解释**：  
+- Secret 在 Kuboard 中按命名空间组织，方便查看与特定服务账户关联的密钥。
 
-### **4. 亲和力配置建议（针对 `name=名字拼音` 标签）**
-- **标签单一的挑战**：由于只有 `name=名字拼音` 标签，可能难以区分 Pod 或节点的具体角色（例如前端、数据库）。建议在条件允许时为资源添加更多描述性标签（如 `role=frontend`），以便更精细地控制调度。
-- **当前可行方案**：
-  - 使用 `name=名字拼音` 区分不同负责人或团队的资源，通过亲和性将相关 Pod 调度到对应节点。
-  - 对于高可用需求，使用 Pod 反亲和性，确保相同 `name=名字拼音` 的 Pod 分散到不同节点。
-- **注意事项**：
-  - 如果 `name=名字拼音` 标签值较少，可能导致亲和性规则过于宽泛或过于严格，需根据实际节点数量调整硬性/软性要求。
-  - 检查节点和 Pod 是否正确打上了 `name=名字拼音` 标签，避免因标签缺失导致调度失败。
+##### 8.6 测试权限（可选）
+虽然 Kuboard 本身不直接支持模拟服务账户权限进行测试，但您可以通过查看资源的方式间接确认权限范围：
+1. 在 Kuboard 中，浏览不同的命名空间（例如 `default` 或 `shiqi`）。
+2. 确认您可以看到资源列表（例如 Pods、Deployments 等），这表明 `ops-user` 的查看权限已生效。
+3. 注意 Kuboard 界面中是否提供删除按钮或操作选项（取决于 Kuboard 版本和权限配置），但由于权限限制，实际删除操作无法执行。
 
-#### **教学提示**
-- 提醒学员：标签是亲和力规则的基础，使用前需确保节点和 Pod 的标签一致且准确。
-- 问学员：如果你的节点没有 `name=zhangwei` 标签，但 Pod 配置了硬性节点亲和性，会发生什么？如何解决？
+**解释**：  
+- 如果您希望在 Kuboard 中以 `ops-user` 身份登录并测试权限，需要为该服务账户生成 Token，并配置 Kuboard 的访问凭据（这通常涉及更复杂的设置，超出本文范围）。
+- 更简单的测试方式是使用 `kubectl` 命令行工具模拟权限（如作业二第 6 步所述）。
 
----
+##### 8.7 查看集群整体状态
+Kuboard 还提供集群整体状态的概览，帮助您确认环境是否正常：
+1. 在左侧导航栏中，点击 **概览**（Overview）或 **节点**（Nodes）。
+2. 查看集群节点的状态、资源使用情况等，确保集群运行正常。
 
-### **5. 总结与互动讨论**
-#### **总结**
-- 即使只有 `name=名字拼音` 标签，亲和力依然可以有效控制 Pod 调度，实现节点亲和性、Pod 亲和性和反亲和性。
-- 通过硬性要求和软性要求，可以灵活调整调度策略，满足不同场景需求。
-- 建议未来为资源添加更多标签，以便更精确地应用亲和力规则。
+**解释**：  
+- 集群状态概览有助于确认 RBAC 配置是否影响了集群的整体运行。
+- Kuboard 的图形化界面使查看节点和资源状态变得直观。
 
-#### **互动讨论问题**
-- 在只有 `name=名字拼音` 标签的环境中，你会如何用亲和性优化应用性能？
-- 如果你有多个相同 `name=名字拼音` 的 Pod，如何用反亲和性提高应用的高可用性？
-- 如果节点标签值不足以支持你的调度需求，你会如何改进标签体系？
-
----
-
-### **补充说明**
-- 如果 `名字拼音` 标签的具体值与我假设的 `zhangwei`、`lihua`、`wangming` 不一致，请提供实际值，我会进一步调整示例。
-- 如果你有具体的应用场景（例如需要将某些 Pod 绑定到特定拼音名字的节点），请告诉我，我可以为你定制更贴合的亲和力规则。
-
-希望这些基于 `name=名字拼音` 标签的亲和力示例和说明对你有帮助！如果需要进一步优化教案或补充内容，请随时告知。祝学习顺利！😊
+##### 8.8 注意事项
+- **权限限制**：如果您在 Kuboard 中以管理员身份登录，您将看到所有资源和操作选项。但如果以 `ops-user` 身份登录（需要额外配置），界面可能会根据权限限制某些操作（例如隐藏删除按钮）。
+- **版本差异**：Kuboard 的界面和功能可能因版本不同而有所差异，上述步骤基于常见版本（如 Kuboard v3）。如果界面不同，请参考您使用的版本的官方文档。
+- **日志和事件**：如果遇到权限相关问题，可以在 Kuboard 中查看资源的 **事件**（Events）或日志，以帮助排查问题。
