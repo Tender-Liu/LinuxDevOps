@@ -427,7 +427,7 @@ graph TD
    - 点击“立即购买”并完成支付。
    - **确认**：在列表中看到 `nat-route-private`，状态为“运行中”。
 
-    ![创建nat网关](/Kubernetes周边服务/images/nat网关创建.png "创建nat网关")
+    ![创建nat网关](/Kubernetes周边服务/images/NAT网关创建.png "创建nat网关")
 
 2. **绑定弹性 IP（EIP）**：
    - 创建后，点击 NAT 网关名称进入详情页，点击“绑定弹性公网 IP”。
