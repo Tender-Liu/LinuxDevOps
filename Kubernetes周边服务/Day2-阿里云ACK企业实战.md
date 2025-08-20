@@ -577,3 +577,171 @@ ACR 作为云原生生态的一部分，具备以下显著优势：
 - **系统依赖**：Harbor 安装需要 Docker 和 Docker Compose，如果 ECS 主机未预装，`install.sh` 脚本会尝试自动安装；如遇问题，请手动安装后再运行脚本。
 - **域名解析**：Cloudflare 中的 DNS 记录指向内网 IP，仅在 VPC 内部有效；如果 OpenVPN 未配置正确，可能无法解析或访问域名。
 
+
+
+## 阿里云 ACK 集群创建与子账户授权及 kubectl config 本地配置
+
+### 目标
+在阿里云上创建企业级 ACK 集群，配置 Private 子网和安全组，授权子账户管理员权限，并完成本地 `kubectl` 工具的配置以管理集群。
+
+### 步骤说明
+1. **创建 ACK 集群**
+  - 登录阿里云控制台（https://www.aliyun.com），进入“容器服务 Kubernetes 版（ACK）”页面。
+    ![ack主页](/Kubernetes周边服务/enterprise/ack主页.png "ack主页")
+  - 点击“创建集群”，命名集群为 `ack-labworlds-prod`，命名规则为 `ack-企业名-环境`（例如 `ack-labworlds-prod` 表示生产环境）。
+    ![ack创建一](/Kubernetes周边服务/enterprise/ack创建一.png "ack创建一")
+
+2. **选择集群类型及基本配置**
+  - **集群类型**：选择“托管版 ACK 集群”（基础版），由阿里云托管控制平面，降低维护成本。
+  - **地域**：选择“杭州”（或根据实际需求选择其他地域）。
+  - **版本**：选择列表中的第一个 Kubernetes 版本（通常为最新稳定版本），方便后期进行集群升级。
+  - **自动升级**：关闭自动升级选项，手动控制升级时间以确保稳定性。
+  ![ack创建二](/Kubernetes周边服务/enterprise/ack创建二.png "ack创建二")  
+
+3. **网络配置（VPC 和子网）**
+  - **VPC**：选择您已创建的自定义 VPC（不要使用默认 VPC）。
+  - **子网**：勾选所有 **Private 子网**（确保所有节点和 Pod 都在私有网络中运行）。
+  - **NAT 网关**：由于您已配置 NAT 网关，不要勾选“配置 SNAT”（避免重复配置公网访问）。
+  - 确保网络配置符合企业安全要求，节点和 Pod 均不可直接暴露在公网。
+  ![ack创建三](/Kubernetes周边服务/enterprise/ack创建三.png "ack创建三")  
+
+4. **安全组配置**
+  - **安全组**：仅选择 **Private 安全组**，禁止选择 Public 安全组。
+  - 确保安全组规则限制访问范围，例如只允许 VPC 内部或通过 OpenVPN 接入的客户端访问集群相关端口（如 API Server 端口 6443）。
+  
+
+5. **网络插件选择**
+  - **网络插件**：选择阿里云提供的 **Terway** 网络插件，支持 VPC 与 Pod 直接通信，并启用 **IPVS 模式**，提升网络性能和负载均衡能力。
+  - Terway 插件会为每个 Pod 分配 VPC 内的 IP 地址，方便与 VPC 内其他服务（如 Harbor）通信。
+  
+
+6. **创建节点池**
+  - **节点类型**：选择“抢占式实例”（Spot Instance），价格更低，适合非关键性负载。
+  - **节点规格**：选择 4 核 8G 内存，系统盘存储 40G（可根据需求调整）。
+  - **节点数量**：设置为 2 台（初期测试或小型集群足够，后期可扩展）。
+  - **密钥对**：选择您已创建的 SSH 密钥对，用于登录节点进行排查或管理。
+  - 确认节点池配置，确保节点分布在 Private 子网中。
+  ![ack创建四](/Kubernetes周边服务/enterprise/ack创建四.png "ack创建四") 
+  ![ack创建五](/Kubernetes周边服务/enterprise/ack创建五.png "ack创建五")  
+  ![ack创建六](/Kubernetes周边服务/enterprise/ack创建六.png "ack创建六")  
+
+
+7. **安装附加组件**
+  - 勾选以下组件以增强集群功能：
+    - **监控组件**：如 Prometheus、阿里云监控（ARMS），用于集群和应用监控。
+    - **Nginx Ingress Controller**：用于处理外部流量入口，方便后续部署服务。
+  - 其他组件根据需求选择（如日志组件 Logtail 等）。
+  ![ack创建七](/Kubernetes周边服务/enterprise/ack创建七.png "ack创建七")  
+
+8. **提交创建集群**
+  - 检查所有配置无误后，点击“创建集群”按钮。
+  - 创建过程通常需要 10-20 分钟，期间控制台会显示进度。创建完成后，集群状态会变为“运行中”。
+
+9. **子账户权限授权（安全管理）**
+  - 进入集群信息页面，点击左侧菜单中的“安全管理”或“访问控制”。
+  - 在“角色授权”或“用户管理”选项中，找到子账户授权功能。
+  - 将需要管理集群的子账户添加到授权列表中，并分配“管理员”角色（Administrator），确保子账户拥有完全控制权限。
+  - 保存配置，子账户即可通过控制台或 `kubectl` 管理集群。
+  - **注意**：建议遵循最小权限原则，仅为必要人员分配管理员权限，避免安全风险。
+  ![ack登录权限](/Kubernetes周边服务/enterprise/ack登录权限.png "ack登录权限")
+  ![ack登录config获取](/Kubernetes周边服务/enterprise/ack登录config获取.png "ack登录config获取")  
+
+
+
+
+10. **获取并配置 kubectl config 文件（本地配置）**
+  - 在集群信息页面，点击“连接信息”或“集群连接”选项。
+  - 找到 `kubectl` 连接配置部分，点击“复制”或“下载”按钮，获取 `kubeconfig` 文件内容。
+  - 在本地电脑上（Windows 或 macOS），将该配置内容保存到以下路径：
+    - **Windows**：`C:\Users\您的用户名\.kube\config`
+    - **macOS/Linux**：`/home/您的用户名/.kube/config`
+  - 确保文件名为 `config`，且目录 `.kube` 已存在（如果没有，需手动创建）。
+  - **权限设置**（macOS/Linux）：执行以下命令保护配置文件：
+    ```bash
+    chmod 600 ~/.kube/config
+    ```
+  - **验证连接**：安装 `kubectl` 工具（如果未安装，可从 Kubernetes 官网下载或通过包管理器安装），然后执行以下命令检查是否能连接到集群：
+    ```bash
+    kubectl get nodes
+    ```
+  - 如果输出显示集群节点信息（如 2 个节点的状态为 `Ready`），则配置成功。
+
+### 注意事项
+- **网络安全**：集群节点和 Pod 均在 Private 子网中，无法直接从公网访问。如需本地管理集群，需通过 OpenVPN 接入 VPC 网络。
+- **抢占式实例风险**：抢占式实例可能因资源不足被回收，建议后期关键负载切换为按量付费或包年包月实例。
+- **Terway 网络插件**：Terway 绑定 VPC IP 地址，Pod IP 会占用 VPC 子网 IP 资源，确保子网 IP 范围足够大。
+- **kubectl 工具**：确保本地安装的 `kubectl` 版本与集群版本兼容（通常选择与集群版本相同或略高的版本）。
+- **子账户权限**：管理员权限包含集群所有操作权限，谨慎分配；如需限制权限，可自定义角色绑定。
+- **集群升级**：关闭自动升级后，需定期手动检查 Kubernetes 版本更新，确保集群安全性和兼容性。
+
+
+
+## Kubernetes 可视化界面 Kuboard 安装
+
+### 目标
+在阿里云 VPC 的 Private 子网中创建一台主机，部署 Kuboard 可视化管理工具，并通过 Agent 方式连接并管理 ACK 集群。
+
+### 步骤说明
+1. **创建 ECS 主机**
+   - 登录阿里云控制台（https://www.aliyun.com），进入“云服务器 ECS”页面。
+   - 点击“创建实例”，配置如下：
+     - **规格**：选择 1 核 2G 内存（适合轻量级应用，如 Kuboard）。
+     - **网络**：选择您已创建的 VPC，并分配到 **Private 子网**，确保主机无法直接从公网访问。
+     - **安全组**：选择或创建一个 **Private 安全组**，限制访问范围（例如仅允许 VPC 内部或通过 OpenVPN 接入的客户端访问）。
+     - **地域**：选择与 ACK 集群相同的地域（如杭州），以减少网络延迟。
+     - **操作系统**：选择常见的 Linux 发行版（如 CentOS、Ubuntu），确保支持 Docker。
+     - **其他配置**：按需选择磁盘大小（默认系统盘即可），并绑定 SSH 密钥或设置密码用于登录。
+   - 创建完成后，记录 ECS 主机的内网 IP 地址（例如 `10.133.7.85`），后续配置 Kuboard 时会用到。
+   - **访问方式**：确保可以通过 OpenVPN 接入 VPC 网络，并通过 SSH 登录到该主机。
+
+2. **部署 Kuboard 容器**
+   - 在 ECS 主机上执行以下命令，启动 Kuboard 容器：
+     ```bash
+     sudo docker run -d \
+         --restart=unless-stopped \
+         --name=kuboard \
+         -p 80:80/tcp \
+         -p 10081:10081/tcp \
+         -e KUBOARD_ENDPOINT="http://10.133.7.85:80" \
+         -e KUBOARD_AGENT_SERVER_TCP_PORT="10081" \
+         -v /root/kuboard-data:/data \
+         swr.cn-east-2.myhuaweicloud.com/kuboard/kuboard:v3
+     ```
+   - **参数说明**：
+     - `-p 80:80/tcp` 和 `-p 10081:10081/tcp`：映射 Kuboard 的 Web 界面端口（80）和 Agent 通信端口（10081）。
+     - `-e KUBOARD_ENDPOINT="http://10.133.7.85:80"`：设置 Kuboard 的访问端点，替换 `10.133.7.85` 为您 ECS 主机的实际内网 IP 地址。
+     - `-e KUBOARD_AGENT_SERVER_TCP_PORT="10081"`：设置 Agent 通信端口，保持默认 10081。
+     - `-v /root/kuboard-data:/data`：将数据持久化存储到主机目录 `/root/kuboard-data`。
+     - `swr.cn-east-2.myhuaweicloud.com/kuboard/kuboard:v3`：Kuboard 镜像地址，使用 v3 版本。
+   - 执行完成后，通过以下命令检查容器是否正常运行：
+     ```bash
+     docker ps
+     ```
+   - 如果容器状态为 `Up`，则 Kuboard 部署成功。
+
+3. **访问 Kuboard Web 界面**
+   - 确保已通过 OpenVPN 接入 VPC 网络（因为 Kuboard 部署在 Private 子网，无法直接从公网访问）。
+   - 在浏览器中输入 `http://10.133.7.85:80`（替换为您的 ECS 内网 IP），访问 Kuboard 的 Web 界面。
+   - 首次访问时，Kuboard 会提示设置管理员账户和密码，按照页面指引完成初始化。
+   - 登录后，您将看到 Kuboard 的管理界面。
+
+4. **为 Kubernetes 集群安装 Kuboard Agent**
+   - 在 Kuboard Web 界面中，选择“添加集群”或“连接集群”选项。
+   - 选择 **Agent 方式** 连接 Kubernetes 集群（适合 ACK 集群）。
+   - Kuboard 会生成一组命令或 YAML 文件，用于在目标 Kubernetes 集群中部署 Agent。
+   - 在本地电脑上，确保已配置好 `kubectl` 工具并能连接到 ACK 集群（参考之前步骤）。
+   - 执行 Kuboard 提供的命令或应用 YAML 文件，例如：
+     ```bash
+     kubectl apply -f <kuboard-agent.yaml>
+     ```
+   - 或者直接复制 Kuboard 提供的 `kubectl` 命令并执行。
+   - 部署完成后，Kuboard Agent 会与 Kuboard 服务建立连接，集群将出现在 Kuboard 界面中。
+   - 在 Kuboard 中选择该集群，即可进行可视化管理（如查看节点、Pod、部署应用等）。
+
+### 注意事项
+- **网络限制**：Kuboard 部署在 Private 子网，无法直接从公网访问，需通过 OpenVPN 接入 VPC 网络后才能访问 Web 界面。
+- **端口开放**：确保 ECS 主机安全组允许 VPC 内部访问 80 和 10081 端口，以便 Kuboard Web 界面和 Agent 通信正常。
+- **内网 IP**：`KUBOARD_ENDPOINT` 参数中的 IP 必须是 ECS 主机的内网 IP，且在 VPC 网络内可达。
+- **数据持久化**：Kuboard 数据存储在 `/root/kuboard-data` 目录，建议定期备份该目录以防数据丢失。
+- **Agent 部署**：确保 ACK 集群的 API Server 可被 Kuboard Agent 访问（通常在 VPC 内部无问题），如有连接问题，检查安全组规则或网络配置。
+- **Kuboard 版本**：本文使用的是 `v3` 版本，如需更新版本，请参考 Kuboard 官方文档或镜像仓库。
