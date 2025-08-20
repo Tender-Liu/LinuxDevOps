@@ -1,6 +1,5 @@
 # 阿里云 ACK 企业实战
 
-
 ## 教学目标
 - 掌握阿里云容器服务 ACK（Aliyun Container Service for Kubernetes）的基本概念和使用方法。
 - 理解如何在阿里云 VPC 环境中部署和管理 Kubernetes 集群。
@@ -119,33 +118,8 @@ ACK 适用于以下常见场景，结合您的学员背景，这些场景可以�
 - **高可用业务**：通过多可用区部署和自动扩缩容，确保业务系统的高可用性和稳定性。
 - **混合云部署**：结合阿里云和本地环境，通过 ACK Anywhere 实现统一的容器管理。
 
-### 第二部分：ACK 集群网络规划与 VPC 集成-前置条件
-**目标**：理解 ACK 集群如何与已准备好的 VPC 网络环境集成。
 
-- **内容**：
-  1. **回顾 VPC 网络结构**：
-     - VPC 名称：`vpc-prod-shiqi`，IP 范围：`10.8.0.0/16`，覆盖所有子网。
-     - 可用区分布：杭州的 B、D、E、F 四个可用区，确保高可用性。
-     - 交换机（子网）划分：
-       - **Public 子网**：`switch-public-region-b`（10.8.0.0/24，B 区）、`switch-public-region-d`（10.8.1.0/24，D 区）。
-       - **Private 子网**：`switch-private-region-b`（10.8.4.0/22，B 区）、`switch-private-region-d`（10.8.8.0/22，D 区）、`switch-private-region-e`（10.8.12.0/22，E 区）、`switch-private-region-f`（10.8.16.0/22，F 区）。
-     - NAT 网关：`nat-route-private` 部署在 Public 子网（10.8.1.0/24，D 区），绑定 EIP `121.43.144.176`，用于 Private 子网访问公网。
-     - 路由表：`route-prod-shiqi` 管理所有子网流量，Private 子网通过 NAT 网关访问互联网。
-  2. **ACK 网络模式**：
-     - **Flannel 模式**：适合简单的网络需求，基于 overlay 网络。
-     - **Terway 模式**：推荐模式，基于阿里云 ENI（弹性网卡），与 VPC 深度集成，提供高性能网络。
-  3. **ACK 集群网络规划**：
-     - ACK 集群的 Pod 网络 CIDR：建议选择与 VPC CIDR 不重叠的范围（如 `172.16.0.0/16`）。
-     - 节点分布：将 ACK 节点分布在 Private 子网的多个可用区（如 B、D、E、F），确保高可用性。
-     - Service 网络：选择与 Pod 网络不重叠的 CIDR（如 `192.168.0.0/16`）。
-     - 公网访问：通过 SLB（负载均衡）绑定 Public 子网的 EIP 实现外部访问。
-
-- **学习任务**：
-  - 在阿里云控制台查看 VPC 和子网配置，熟悉网络结构。
-  - 学习 Terway 网络插件的配置方式，理解其与 VPC 的集成原理。
-
-
-## 第三部分：阿里云 ACR 理论与 Harbor 对比
+## 第二部分：阿里云 ACR 理论与 Harbor 对比
 
 ### 一、什么是阿里云 ACR
 **阿里云 ACR（Aliyun Container Registry）** 是阿里云提供的一种托管式容器镜像服务，用于存储、分发和管理 Docker 镜像。ACR 旨在帮助用户构建、存储和分发容器镜像，支持与阿里云 ACK（容器服务 Kubernetes）无缝集成，提供高效、安全的镜像管理能力。
@@ -314,61 +288,292 @@ ACR 作为云原生生态的一部分，具备以下显著优势：
 - **Harbor 的项目**：更适合中小型团队或简单项目，项目直接对应具体的业务需求，管理方式更直观。
 
 
-
-### 第四部分：应用部署与 Kubernetes 资源迁移
-**目标**：将虚拟机环境中的 Kubernetes 资源迁移到 ACK，并验证功能。
-
-- **内容**：
-  1. **部署核心资源**：
-     - 使用已熟悉的 YAML 文件部署 Pod、Deployment、StatefulSet 等资源。
-     - 配置 ConfigMap 和 Secret，验证数据注入。
-     - 使用 DaemonSet 部署节点级应用（如日志采集 agent）。
-  2. **网络与访问**：
-     - 创建 Service（ClusterIP、NodePort、LoadBalancer 类型）：
-       - LoadBalancer 类型会自动绑定阿里云 SLB，实现公网访问。
-     - 配置 Ingress-Nginx：
-       - 在 ACK 中安装 Ingress-Nginx 控制器。
-       - 创建 Ingress 规则，绑定域名并通过 SLB 实现外部访问。
-  3. **调度策略**：
-     - 使用 nodeSelector、taint 和 toleration 实现 Pod 调度。
-     - 配置亲和性（Affinity）规则，确保 Pod 分布在不同可用区。
-
-- **学习任务**：
-  - 部署一个简单的应用（如 Nginx），通过 Service 和 Ingress 实现外部访问。
-  - 配置调度策略，确保 Pod 分布在不同可用区。
-
-
-### 第五部分：ACK 高级功能与运维
-**目标**：掌握 ACK 提供的日志、监控和自动扩缩容等高级功能。
+### 第三部分：ACK 集群网络规划与 VPC 集成-前置条件
+**目标**：理解 ACK 集群如何与已准备好的 VPC 网络环境集成。
 
 - **内容**：
-  1. **日志管理**：
-     - 启用 ACK 的日志服务，收集容器日志并存储到阿里云 SLS（日志服务）。
-     - 在控制台查看日志，或通过 API 查询。
-  2. **监控与告警**：
-     - 启用 Prometheus 监控，查看集群和应用的性能指标。
-     - 配置告警规则，及时发现异常。
-  3. **自动扩缩容**：
-     - 配置 HPA（Horizontal Pod Autoscaler），根据 CPU/内存负载自动调整 Pod 副本数。
-     - 配置集群节点自动扩缩容，确保资源弹性。
+  1. **回顾 VPC 网络结构**：
+     - VPC 名称：`vpc-prod-shiqi`，IP 范围：`10.8.0.0/16`，覆盖所有子网。
+     - 可用区分布：杭州的 B、D、E、F 四个可用区，确保高可用性。
+     - 交换机（子网）划分：
+       - **Public 子网**：`switch-public-region-b`（10.8.0.0/24，B 区）、`switch-public-region-d`（10.8.1.0/24，D 区）。
+       - **Private 子网**：`switch-private-region-b`（10.8.4.0/22，B 区）、`switch-private-region-d`（10.8.8.0/22，D 区）、`switch-private-region-e`（10.8.12.0/22，E 区）、`switch-private-region-f`（10.8.16.0/22，F 区）。
+     - NAT 网关：`nat-route-private` 部署在 Public 子网（10.8.1.0/24，D 区），绑定 EIP `121.43.144.176`，用于 Private 子网访问公网。
+     - 路由表：`route-prod-shiqi` 管理所有子网流量，Private 子网通过 NAT 网关访问互联网。
+  2. **ACK 网络模式**：
+     - **Flannel 模式**：适合简单的网络需求，基于 overlay 网络。
+     - **Terway 模式**：推荐模式，基于阿里云 ENI（弹性网卡），与 VPC 深度集成，提供高性能网络。
+  3. **ACK 集群网络规划**：
+     - ACK 集群的 Pod 网络 CIDR：建议选择与 VPC CIDR 不重叠的范围（如 `172.16.0.0/16`）。
+     - 节点分布：将 ACK 节点分布在 Private 子网的多个可用区（如 B、D、E、F），确保高可用性。
+     - Service 网络：选择与 Pod 网络不重叠的 CIDR（如 `192.168.0.0/16`）。
+     - 公网访问：通过 SLB（负载均衡）绑定 Public 子网的 EIP 实现外部访问。
 
 - **学习任务**：
-  - 配置日志收集，查看容器运行日志。
-  - 设置一个简单的 HPA 规则，模拟负载并验证自动扩容。
+  - 在阿里云控制台查看 VPC 和子网配置，熟悉网络结构。
+  - 学习 Terway 网络插件的配置方式，理解其与 VPC 的集成原理。
 
 
-## 总结与实践项目
-- **总结**：
-  - 复习 ACK 的基本概念、网络集成、集群创建和应用部署。
-  - 对比虚拟机 Kubernetes 与 ACK 的异同，总结 ACK 的优势。
-- **实践项目**：
-  - 部署一个完整的微服务应用（包含前端、后端、数据库），通过 Ingress 实现外部访问。
-  - 配置日志和监控，确保应用运行稳定。
-  - 模拟高负载场景，验证自动扩缩容功能。
+## 第四部分：VPC OpenVPN 部署
+
+#### 理论背景
+由于运维服务和后端服务部署在 VPC 的 Private 子网中，出于安全考虑，这些服务无法直接从外部访问。企业需要通过 OpenVPN 接入 VPC 网络，以安全地访问内部资源。因此，需要在 VPC 环境中部署 OpenVPN 服务。
+
+#### 部署步骤
+1. **获取 OpenVPN 安装脚本**
+  - 项目地址：https://github.com/Nyr/openvpn-install/blob/master/openvpn-install.sh
+  - 由于可能无法直接下载 GitHub 文件，需复制文件内容。
+  - 登录到 OpenVPN ECS 主机，将内容保存为 `openvpn-install.sh` 文件，并赋予执行权限（例如：`chmod +x openvpn-install.sh`）。
+
+2. **安装 OpenVPN**
+   - 运行脚本 `./openvpn-install.sh`，按照提示完成安装。
+
+3. **修改 OpenVPN 配置**
+  - 编辑配置文件 `/etc/openvpn/server/server.conf`，修改为以下内容（需根据实际 VPC 网络地址调整）：
+    ```
+    ### 自动生成的 以上不要动
+    local 10.133.0.191
+    port 1194
+    proto udp
+    dev tun
+    ca ca.crt
+    cert server.crt
+    key server.key
+    dh dh.pem
+    auth SHA512
+    tls-crypt tc.key
+    topology subnet
+
+    # 推送 VPC 网络，需修改为自己的 VPC 网络范围
+    server 10.8.0.0 255.255.255.0
+    push "route 10.133.0.0 255.255.0.0"  # 只推送 VPC 网络，需修改为自己的 VPC 网络范围
+    ifconfig-pool-persist ipp.txt
+    # 结束位置，你们仔细找找
+
+    push "block-outside-dns"
+    keepalive 10 120
+    user nobody
+    group nogroup
+    persist-key
+    persist-tun
+    verb 3
+    crl-verify crl.pem
+    explicit-exit-notify
+    ```
+
+4. **重启 OpenVPN 服务**
+   - 执行命令：`systemctl restart openvpn-server@server.service`，确保配置生效。
+
+5. **后续客户端管理**
+   - 再次运行 `./openvpn-install.sh`，脚本会显示以下选项：
+     ```
+     OpenVPN is already installed.
+     Select an option:
+        1) Add a new client
+        2) Revoke an existing client
+        3) Remove OpenVPN
+        4) Exit
+     ```
+   - 根据需要选择添加新客户端、撤销现有客户端等操作，并按照提示完成。
+
+#### 注意事项
+- 配置中的 `local` 地址（如 `10.133.0.191`）和推送的路由（如 `10.133.0.0 255.255.0.0`）需根据实际 VPC 网络环境调整。
+- 确保 OpenVPN 服务器部署在可以被外部访问的子网（如 Public 子网），或通过 NAT 网关和 EIP 实现外部访问。
 
 
-## 教学资源
-- 阿里云 ACK 官方文档：https://help.aliyun.com/product/85222.html
-- Kubernetes 官方文档：https://kubernetes.io/
-- kubectl 命令参考：https://kubernetes.io/docs/reference/kubectl/
+## 第五部分：企业级harbor仓库配置-阿里云SSL证书申请
+
+### 数字证书管理服务简介
+**阿里云数字证书管理服务（SSL Certificates Service）** 是阿里云提供的一种 SSL/TLS 证书管理解决方案，旨在帮助用户为其网站或服务启用 HTTPS 加密，保障数据传输的安全性。该服务支持用户购买、申请、托管和一键部署 SSL 证书，广泛应用于 Web 服务器、API 接口、容器服务（如 Harbor）等场景。
+
+#### 核心功能与优势
+1. **免费证书支持**：阿里云提供一定数量的免费 SSL 证书（通常为 DV 级别的域名验证证书），适合个人或小型企业用户快速启用 HTTPS。
+2. **多种证书类型**：支持 DV（域名验证）、OV（组织验证）和 EV（扩展验证）证书，满足不同安全需求。
+3. **一键部署**：证书可以一键部署到阿里云相关产品（如 SLB、CDN、WAF 等），简化配置流程。
+4. **证书管理**：提供证书的申请、续期、下载和托管功能，方便用户集中管理。
+5. **权威 CA 合作**：阿里云与全球知名证书颁发机构（CA）合作，如 DigiCert、GlobalSign、Symantec 等，确保证书的权威性和兼容性。
+6. **免费额度**：阿里云为每个用户提供一定数量的免费证书（通常为 10 个或 20 个 DV 证书，具体以最新政策为准），非常适合初期测试或小型项目。
+
+#### 适用场景
+- 为 Web 应用、API 服务启用 HTTPS 加密。
+- 为企业内部服务（如 Harbor 镜像仓库）提供权威认证的 SSL 证书，确保安全访问。
+- 满足合规性要求，避免浏览器显示“不安全”警告。
+
+
+### 申请 Harbor 免费 HTTPS 证书的流程
+由于 Harbor 在企业环境中需要使用权威认证的 HTTPS 证书，阿里云数字证书管理服务可以免费提供证书（假设您的账户有免费额度）。以下是针对域名 `aliyun-harbor.labworlds.cc` 的证书申请流程，使用 CNAME 验证方式，并在 Cloudflare 中完成 DNS 验证。
+
+#### 前提条件
+1. 域名 `aliyun-harbor.labworlds.cc` 已解析到目标服务器（Harbor 所在服务器）。
+2. 域名管理权限在 Cloudflare 上，可以添加 DNS 记录。
+3. 阿里云账户已开通数字证书管理服务，并有免费证书额度（假设可免费申请 10 个证书）。
+
+#### 申请流程
+1. **登录阿里云控制台**
+  - 访问阿里云官网（https://www.aliyun.com），登录您的阿里云账户。
+  - 在顶部搜索栏输入“证书管理”或“SSL 证书”，进入“数字证书管理服务”页面。
+  
+![阿里云免费证书申请](/Kubernetes周边服务/enterprise/阿里云免费证书申请.png "阿里云免费证书申请")
+
+
+2. **开通证书服务与免费证书服务**
+   - 如果是首次使用，点击“开通服务”按钮，按照提示完成开通。
+   - 在证书管理页面，点击“免费证书”或“申请证书”选项，查看是否有免费额度（通常阿里云会显示您可申请的免费证书数量，如 10 个）。
+   - 确认有免费额度后，点击“申请免费证书”按钮。
+
+3. **填写证书申请信息**
+  - **证书类型**：选择“免费 DV SSL 证书”（域名验证型证书，适合 Harbor 场景）。
+    ![创建证书信息](/Kubernetes周边服务/enterprise/创建证书信息.png "创建证书信息")
+  - **域名信息**：
+    - 输入域名：`aliyun-harbor.labworlds.cc`。
+    - 如果支持多域名或泛域名，可根据需要添加（如 `*.labworlds.cc`，但免费证书可能不支持泛域名，具体以阿里云政策为准）。
+    ![证书申请资料填写](/Kubernetes周边服务/enterprise/证书申请资料填写.png "证书申请资料填写")
+  - **验证方式**：选择“CNAME 验证”（DNS 验证方式）。
+  - 点击“下一步”或“提交申请”，系统会生成一个待验证的 CNAME 记录。
+  ![证书验证提示](/Kubernetes周边服务/enterprise/证书验证提示.png "证书验证提示")
+
+4. **获取 CNAME 验证记录**
+  - 申请提交后，阿里云控制台会显示一个 CNAME 记录，格式通常如下：
+    - **主机记录**：例如 `_acme-challenge.aliyun-harbor`（具体以控制台显示为准）。
+    - **记录类型**：CNAME。
+    - **记录值**：例如 `xxxxxxxxxxxx.verify.aliyun.com`（具体以控制台显示为准）。
+  - 记录下这些信息，准备在 Cloudflare 中添加 DNS 记录。
+  ![证书CNAME验证信息](/Kubernetes周边服务/enterprise/证书CNAME验证信息.png "证书CNAME验证信息")
+
+
+5. **在 Cloudflare 中添加 CNAME 验证记录**
+   - 登录 Cloudflare 账户，进入域名 `labworlds.cc` 的 DNS 管理页面。
+   - 点击“添加记录”按钮，添加以下记录：
+     - **类型**：选择 `CNAME`。
+     - **名称**：输入阿里云提供的“主机记录”，例如 `_acme-challenge.aliyun-harbor`。
+     - **目标**：输入阿里云提供的“记录值”，例如 `xxxxxxxxxxxx.verify.aliyun.com`。
+     - **TTL**：选择默认值或设置为较短时间（如 120 秒），以便快速生效。
+     - **代理状态**：选择“仅 DNS”（DNS Only），确保记录不被 Cloudflare 代理，验证才能通过。
+   - 保存记录，等待 DNS 解析生效（通常需要几分钟，具体取决于 DNS 传播时间）。
+  ![cloudflare-cname证书验证](/Kubernetes周边服务/enterprise/cloudflare-cname证书验证.png "cloudflare-cname证书验证")
+
+6. **返回阿里云控制台完成验证**
+   - 返回阿里云数字证书管理服务页面，点击“验证”或“检查验证状态”按钮。
+   - 系统会自动检测 Cloudflare 中的 CNAME 记录是否正确配置。如果验证通过，状态会更新为“验证成功”；如果未通过，请检查 Cloudflare 中的记录是否正确或等待 DNS 传播完成。
+   - 验证成功后，阿里云会向证书颁发机构（CA）提交申请，证书通常在几分钟到几小时内签发。
+
+7. **下载证书**
+  - 证书签发完成后，在阿里云控制台的“证书列表”中找到该证书，状态显示为“已签发”。
+  - 点击“下载”按钮，下载证书文件（通常包含 PEM 格式的证书文件和私钥文件）。
+  - 根据 Harbor 的配置要求，将证书文件和私钥文件上传到 Harbor 服务器，并在 Harbor 的配置文件中指定证书路径（例如 `/root/harbor/ssl/` 目录）。
+  ![下载harbor证书](/Kubernetes周边服务/enterprise/下载harbor证书.png "下载harbor证书")
+
+
+#### 注意事项
+- **免费证书限制**：阿里云免费证书通常为 DV 级别，仅验证域名所有权，不包含组织信息，适合内部或测试环境。如果企业对证书有更高要求（如 OV/EV 证书），需购买付费证书。
+- **DNS 解析时间**：Cloudflare 中的 DNS 记录可能需要几分钟到几小时生效，验证失败时请耐心等待或检查记录是否正确。
+- **证书续期**：免费证书通常有效期为 3 月，到期前需手动续期或重新申请。阿里云控制台会提供续期提醒。
+- **Cloudflare 代理**：验证期间确保 CNAME 记录为“仅 DNS”模式，否则阿里云无法直接访问记录导致验证失败。
+
+
+### 第五部分：企业级 Harbor 仓库配置与域名配置
+
+#### 目标
+在 VPC 的 Private 子网中部署企业级 Harbor 镜像仓库，确保其安全性，并通过域名配置和 OpenVPN 实现内部网络访问。
+
+#### 步骤说明
+1. **创建 ECS 主机**
+   - 在阿里云控制台中创建一台 ECS 实例，配置如下：
+     - 规格：2 核 4G 内存（根据实际需求可调整）。
+     - 网络：选择 VPC 的 **Private 子网**，确保主机无法直接从公网访问。
+     - 安全组：选择或创建一个 **Private 安全组**，限制访问范围（例如仅允许 VPC 内部访问，或通过 OpenVPN 接入的客户端访问）。
+     - 主机名称：命名为 `server-private-harbor`（可自定义）。
+   - 创建完成后，记录 ECS 主机的内网 IP 地址（例如 `10.133.x.x`），后续配置域名解析时会用到。
+
+2. **下载 Harbor 离线安装包**
+   - 在本地电脑上访问 Harbor 官方发布页面：
+     - 链接：https://github.com/goharbor/harbor/releases/download/v2.13.2/harbor-offline-installer-v2.13.2.tgz
+   - 下载离线安装包 `harbor-offline-installer-v2.13.2.tgz` 到本地电脑。
+   ![harbor下载](/Kubernetes周边服务/enterprise/harbor下载.png "harbor下载")
+
+3. **使用 SFTP 上传安装包到 ECS 主机**
+   - 使用 SFTP 工具（如 FileZilla、WinSCP 或命令行 `sftp`）连接到 ECS 主机。
+     - 主机地址：ECS 内网 IP 或通过 OpenVPN 接入后的可达地址。
+     - 用户名：默认通常为 `ecs-user`（根据实际系统用户调整）。
+     - 密码/密钥：使用 ECS 登录凭据或 SSH 密钥。
+   - 将下载的 `harbor-offline-installer-v2.13.2.tgz` 文件上传到 ECS 主机的 `/home/ecs-user/` 目录下。
+
+4. **解压 Harbor 安装包**
+   - 登录 ECS 主机（通过 SSH 或 OpenVPN 接入后 SSH）。
+   - 执行以下命令解压安装包：
+     ```bash
+     tar -xvf /home/ecs-user/harbor-offline-installer-v2.13.2.tgz -C /home/ecs-user/
+     ```
+   - 解压后，`/home/ecs-user/` 目录下会出现 `harbor` 文件夹，包含 Harbor 的安装文件。
+
+5. **复制并准备配置文件**
+   - 进入 Harbor 目录：
+     ```bash
+     cd /home/ecs-user/harbor
+     ```
+   - 复制模板配置文件 `harbor.yml.tmpl` 为 `harbor.yml`：
+     ```bash
+     cp harbor.yml.tmpl harbor.yml
+     ```
+
+6. **修改 Harbor 配置文件**
+   - 编辑 `harbor.yml` 文件（可以使用 `vim` 或 `nano` 编辑器，例如 `vim harbor.yml`）。
+   - 根据您的证书路径和需求，修改以下配置内容：
+     ```yaml
+     # HTTPS 相关配置
+     https:
+       # Harbor 的 HTTPS 端口，默认是 443
+       port: 443
+       # Nginx 使用的证书和私钥文件路径
+       certificate: /home/ecs-user/aliyun-harbor.labworlds.cc.pem
+       private_key: /home/ecs-user/aliyun-harbor.labworlds.cc.key
+       # 是否启用强 SSL 加密套件（默认：false）
+       # strong_ssl_ciphers: false
+
+     # Harbor 管理员密码
+     harbor_admin_password: admin123
+     ```
+   - **注意**：
+     - 请确保 `certificate` 和 `private_key` 路径正确，指向您从阿里云数字证书管理服务下载的证书文件（例如 `.pem` 和 `.key` 文件）。
+     - 如果证书文件尚未上传，请通过 SFTP 将证书文件上传到指定路径（如 `/home/ecs-user/`）。
+     - `harbor_admin_password` 可根据需要修改为更安全的密码。
+
+7. **安装 Harbor 服务**
+   - 在 `harbor` 目录下，执行安装脚本：
+     ```bash
+     ./install.sh
+     ```
+   - 脚本会自动安装 Docker（如果未安装）、Docker Compose，并启动 Harbor 服务。
+   - 安装过程中，脚本会根据 `harbor.yml` 配置生成所需的容器和服务，安装完成后，Harbor 将以 HTTPS 方式运行在 443 端口。
+   - 安装成功后，脚本会输出类似以下信息：
+     ```
+     ----Harbor has been installed and started successfully.----
+     ```
+   - 可以通过 `docker-compose ps` 查看 Harbor 相关容器是否正常运行。
+
+8. **配置 Cloudflare 域名（仅限 VPC 内部访问）**
+   - 获取 ECS 主机的内网 IP 地址（例如 `10.133.x.x`），可以在阿里云控制台查看，或在 ECS 主机上执行 `ifconfig` 或 `ip addr` 命令获取。
+   - 登录 Cloudflare 账户，进入域名 `labworlds.cc` 的 DNS 管理页面。
+   - 添加或更新 DNS 记录，将 `aliyun-harbor.labworlds.cc` 指向 ECS 内网 IP：
+     - **类型**：选择 `A`（地址记录）。
+     - **名称**：输入 `aliyun-harbor`（完整域名为 `aliyun-harbor.labworlds.cc`）。
+     - **IPv4 地址**：输入 ECS 内网 IP，例如 `10.133.x.x`。
+     - **TTL**：选择默认值或较短时间（如 120 秒）。
+     - **代理状态**：选择“仅 DNS”（DNS Only），因为这是内网地址，Cloudflare 无法代理，且该域名仅在 VPC 网络内使用。
+   - 保存记录，等待 DNS 解析生效（通常几分钟内生效）。
+
+9. **访问 Harbor 仓库**
+   - **访问方式**：由于 Harbor 部署在 Private 子网，域名 `aliyun-harbor.labworlds.cc` 只能在 VPC 网络内访问。如果您在 VPC 外部（如本地电脑），需通过 OpenVPN 接入 VPC 网络。
+   - 接入 VPC 网络后，在浏览器中访问 `https://aliyun-harbor.labworlds.cc`，确认 Harbor 界面正常显示，且 HTTPS 证书有效（浏览器显示安全锁图标）。
+   - 登录 Harbor，使用管理员账户：
+     - 用户名：`admin`
+     - 密码：`admin123`（或您在 `harbor.yml` 中设置的密码）
+   - 登录后，可创建项目、上传镜像等操作。
+
+#### 注意事项
+- **网络限制**：Harbor 部署在 Private 子网，无法直接从公网访问，需通过 OpenVPN 接入 VPC 网络后才能访问 `aliyun-harbor.labworlds.cc`。
+- **证书文件**：确保证书文件和私钥文件路径正确，且文件权限适当（例如 `chmod 600` 保护私钥文件）。
+- **Harbor 版本**：本文使用的是 `v2.13.2`，如需其他版本，请从 Harbor 官方 GitHub 页面下载对应版本的离线安装包。
+- **系统依赖**：Harbor 安装需要 Docker 和 Docker Compose，如果 ECS 主机未预装，`install.sh` 脚本会尝试自动安装；如遇问题，请手动安装后再运行脚本。
+- **域名解析**：Cloudflare 中的 DNS 记录指向内网 IP，仅在 VPC 内部有效；如果 OpenVPN 未配置正确，可能无法解析或访问域名。
 
