@@ -836,29 +836,32 @@ kubectl config view
 ### 2.3 配置多个集群 (暂时没有那个条件，阿里云的时候弄吧)
 如果需要管理多个集群，可以添加额外集群信息。假设有一个生产环境集群，步骤如下：
 
-#### 步骤 1：添加新集群配置
-```bash
-kubectl config set-cluster prod-cluster --server=https://<prod-cluster-api-server>:6443 --certificate-authority=/path/to/prod-ca.crt
-```
+#### 使用 `kubectl config set` 手动添加配置
+如果你不希望手动编辑文件，可以通过 `kubectl config set` 命令逐步添加 `ack-config` 中的配置信息到现有 `kubeconfig` 文件中。具体步骤如下：
 
-**教学要点**：  
-- `--server` 指定生产集群的 API 服务器地址。
-- `--certificate-authority` 指定 CA 证书路径，用于验证服务器身份。
-- 可根据认证方式调整参数（如使用 `--insecure-skip-tls-verify` 跳过验证，仅限测试环境）。
+1. **设置集群信息**：
+   从 `ack-config` 中提取集群的 `server` 地址和证书信息，运行：
+   ````bash
+   kubectl config set-cluster ack-labworlds-prod-shiqi --server=https://120.26.228.207:6443 --certificate-authority=D:\workspace\k8s\ack-config\ca.crt --embed-certs=true
+   ````
 
-#### 步骤 2：为新集群创建上下文
-为现有用户创建与生产集群关联的上下文：
-```bash
-# 为 shiqi-user 创建生产集群上下文
-kubectl config set-context shiqi-prod-context --cluster=prod-cluster --user=shiqi-user --namespace=default
+2. **设置用户信息**：
+   提取用户凭证信息，运行：
+   ````bash
+   kubectl config set-credentials ack-labworlds-prod-shiqi --client-certificate=D:\workspace\k8s\ack-config\client.crt --client-key=D:\workspace\k8s\ack-config\client.key --embed-certs=true
+   ````
 
-# 为 ops-shiqi-user 创建生产集群上下文
-kubectl config set-context ops-prod-context --cluster=prod-cluster --user=ops-shiqi-user --namespace=default
-```
+3. **设置上下文**：
+   将集群和用户关联为一个上下文：
+   ````bash
+   kubectl config set-context ack-labworlds-prod-shiqi --cluster=ack-labworlds-prod-shiqi --user=ack-labworlds-prod-shiqi
+   ````
 
-**教学要点**：  
-- 上下文名称应清晰反映关联的集群和用户。
-- 可为不同用户设置不同的默认命名空间。
+4. **切换上下文**：
+   切换到新添加的上下文：
+   ````bash
+   kubectl config use-context ack-labworlds-prod-shiqi
+   ````
 
 #### 步骤 3：验证配置
 查看配置文件，确认新集群和上下文是否正确添加：
@@ -867,7 +870,7 @@ kubectl config view
 ```
 
 **预期结果**：  
-- `clusters` 部分包含多个集群（如 `kubernetes` 和 `prod-cluster`）。
+- `clusters` 部分包含多个集群（如 `kubernetes` 和 `ack-labworlds-prod-shiqi`）。
 - `contexts` 部分包含所有上下文组合。
 
 
