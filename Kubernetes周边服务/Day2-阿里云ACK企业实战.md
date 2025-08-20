@@ -745,3 +745,383 @@ ACR 作为云原生生态的一部分，具备以下显著优势：
 - **数据持久化**：Kuboard 数据存储在 `/root/kuboard-data` 目录，建议定期备份该目录以防数据丢失。
 - **Agent 部署**：确保 ACK 集群的 API Server 可被 Kuboard Agent 访问（通常在 VPC 内部无问题），如有连接问题，检查安全组规则或网络配置。
 - **Kuboard 版本**：本文使用的是 `v3` 版本，如需更新版本，请参考 Kuboard 官方文档或镜像仓库。
+
+
+
+## 所有项目的镜像准备指南
+
+### 1. 在 Harbor 页面创建项目
+请在 Harbor 镜像仓库页面中创建以下项目，用于存储和管理Docker镜像：
+- **admin3-ui**
+- **admin3-server**
+- **go-starter**
+- **light-year-admin-template**
+- **stars-emmision**
+
+**操作步骤**：登录 Harbor 管理界面，进入“项目”选项卡，点击“新建项目”，依次输入上述项目名称并保存。
+
+
+### 2. 创建打包镜像专用环境
+为了确保每个队员独立完成自己的镜像打包任务，需要为每位队员配置独立的资源环境：
+- **配置规格**：2核 CPU，4GB 内存，40GB 存储空间。
+- **注意事项**：每位队员必须使用自己的环境打包镜像，禁止使用他人的环境或镜像。
+
+### 3. 项目镜像构建与推送步骤
+以下是针对各个项目的具体操作步骤，包括代码拉取、配置修改、镜像构建和推送。请按照以下步骤逐一完成。
+
+### 3.1 admin3-ui 和 admin3-server
+#### 代码拉取
+```bash
+git clone https://gitee.com/Tender-Liu/admin3.git
+cd admin3/admin3-ui
+```
+
+#### 修改配置
+- 打开 `.env` 文件，将 `VITE_BASE_URI` 的值修改为：
+  ```
+  VITE_BASE_URI=https://shiqi.admin.labworlds.cc/admin3
+  ```
+- **注意**：请将域名中的 `shiqi` 替换为您自己的域名，确保与您的环境一致。
+
+#### 构建与推送镜像 (admin3-ui)
+```bash
+docker build -t aliyun-harbor.labworlds.cc/admin3-ui/master:shiqi-082020 .
+docker push aliyun-harbor.labworlds.cc/admin3-ui/master:shiqi-082020
+```
+- **注意**：如果 `push` 失败，请检查是否已执行 `docker login` 登录到镜像仓库。如果未登录，请先登录后再重试。
+
+#### 构建与推送镜像 (admin3-server)
+```bash
+cd ../admin3-server
+docker build -t aliyun-harbor.labworlds.cc/admin3-server/master:shiqi-082020 .
+docker push aliyun-harbor.labworlds.cc/admin3-server/master:shiqi-082020
+```
+
+### 3.2 Light-Year-Admin-Template
+#### 代码拉取
+```bash
+git clone https://gitee.com/Tender-Liu/Light-Year-Admin-Template.git
+cd Light-Year-Admin-Template
+```
+
+#### 构建与推送镜像
+```bash
+docker build -t aliyun-harbor.labworlds.cc/light-year-admin-template/master:shiqi-082020 .
+docker push aliyun-harbor.labworlds.cc/light-year-admin-template/master:shiqi-082020
+```
+
+### 3.3 go-starter
+#### 代码拉取
+```bash
+git clone https://gitee.com/Tender-Liu/go-starter.git
+cd go-starter
+```
+
+#### 构建与推送镜像
+```bash
+docker build -t aliyun-harbor.labworlds.cc/go-starter/master:shiqi-082020 .
+docker push aliyun-harbor.labworlds.cc/go-starter/master:shiqi-082020
+```
+
+### 3.4 stars-emmision
+#### 代码拉取
+```bash
+git clone https://gitee.com/Tender-Liu/stars-emmision.git
+cd stars-emmision
+```
+
+#### 构建与推送镜像
+```bash
+docker build -t aliyun-harbor.labworlds.cc/stars-emmision/master:shiqi-082020 .
+docker push aliyun-harbor.labworlds.cc/stars-emmision/master:shiqi-082020
+```
+
+## 注意事项
+1. **镜像标签个性化**：上述命令中镜像标签的 `shiqi-082020` 部分，请替换为您自己的标识（如您的名字或日期），以区分不同队员的镜像。
+2. **Docker 登录**：在执行 `docker push` 前，请确保已使用 `docker login` 登录到 `aliyun-harbor.labworlds.cc` 镜像仓库。如果推送失败，请检查登录状态。
+3. **独立操作**：每位队员需独立完成自己项目的镜像构建和推送，禁止使用他人资源或镜像。
+
+
+
+## 练习教案：Kubernetes 部署 light-year-admin-template 项目
+
+### 目标
+通过本练习，学习如何在 Kubernetes 集群（如阿里云 ACK）中部署一个前端项目 `light-year-admin-template`，包括创建必要的 Kubernetes 资源（如 Deployment、HPA、Service、Ingress），并实现高可用性、自动扩展和域名访问。
+
+### 前提条件
+1. 已创建并配置好 Kubernetes 集群（如阿里云 ACK），并通过 `kubectl` 工具可以正常访问集群。
+2. 已配置镜像仓库（如 Harbor）的登录凭据，并创建对应的 `imagePullSecrets`（名称为 `secret-harbor-login`）。
+3. 已安装 Nginx Ingress Controller，用于处理外部流量入口。
+4. 已通过 Cloudflare 或其他 DNS 服务配置好域名（如 `shiqi.light.labworlds.cc`），并指向 Ingress 控制器的外部 IP。
+5. 已创建 TLS 证书，并存储为 Kubernetes Secret（名称为 `secret-shiqi-light-labworlds-cc`）。
+6. 本地已安装 `kubectl` 工具，并配置好 `kubeconfig` 文件。
+
+### 练习环境
+- **Kubernetes 集群**：阿里云 ACK 集群（或其他符合要求的 Kubernetes 集群）。
+- **命名空间**：`shiqi`（如未创建，需提前创建）。
+- **项目名称**：`light-year-admin-template`。
+- **镜像地址**：`aliyun-harbor.labworlds.cc/light-year-admin-template/master:shiqi-082020`。
+
+### 步骤 1：创建项目文件夹结构
+1. 在本地电脑上创建一个项目文件夹，命名为 `light-year-admin-template`，用于存放 Kubernetes 配置文件。
+2. 在该文件夹中创建以下 4 个 YAML 文件，用于定义不同的 Kubernetes 资源：
+   - `deployment.yml`：定义 Deployment 资源，用于管理 Pod 副本和反亲和性。
+   - `hpa.yml`：定义 HorizontalPodAutoscaler 资源，用于自动扩展 Pod 数量。
+   - `service.yml`：定义 Service 资源，用于集群内部访问 Pod。
+   - `nginx-ingress.yml`：定义 Ingress 资源，用于通过域名访问服务。
+3. 文件夹结构如下：
+   ```
+   light-year-admin-template/
+   ├── deployment.yml
+   ├── hpa.yml
+   ├── service.yml
+   └── nginx-ingress.yml
+   ```
+
+### 步骤 2：编写 Kubernetes 配置文件
+以下是每个 YAML 文件的详细内容，请复制并保存到对应的文件中。每个文件都包含了注释，以便理解每个配置项的作用。
+
+#### 2.1 `deployment.yml` 文件
+该文件定义了 `light-year-admin-template` 项目的 Deployment 资源，包含 Pod 反亲和性策略、资源限制、探针配置等。
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-light-year-admin-template
+  namespace: shiqi
+spec:
+  replicas: 2  # 指定 Pod 副本数，实现高可用性
+  selector:    # 选择器，用于关联 Deployment 和 Pod
+    matchLabels:
+      app: pod-light-year-admin-template
+  strategy:    # 定义更新策略
+    type: RollingUpdate  # 设置为滚动更新，确保更新时服务不中断
+    rollingUpdate:
+      maxSurge: 1        # 最多允许 1 个额外 Pod
+      maxUnavailable: 0  # 不允许有不可用 Pod，确保服务始终可用
+  template:            # Pod 模板，包含 Pod 的完整定义
+    metadata:
+      labels:          # Pod 标签，必须与 selector.matchLabels 一致
+        app: pod-light-year-admin-template
+    spec:              # Pod 规格定义
+      affinity:
+        podAntiAffinity:  # 反亲和性，尽量分散部署以提高可用性
+          preferredDuringSchedulingIgnoredDuringExecution:  # 软策略，调度时尽量满足
+          - weight: 100  # 高权重，优先考虑分散
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: pod-light-year-admin-template
+              topologyKey: "kubernetes.io/hostname"  # 尽量部署在不同主机上
+      containers:  # 容器配置列表
+      - name: light-year-admin-template  # 容器名称
+        image: aliyun-harbor.labworlds.cc/light-year-admin-template/master:shiqi-082020  # 容器镜像地址
+        ports:  # 容器暴露的端口
+        - containerPort: 80  # 容器内部端口
+          name: http         # 端口名称
+        resources:  # 资源限制和请求
+          requests:  # 资源请求（最低需求）
+            cpu: "100m"    # 请求 100 毫核 CPU
+            memory: "64Mi" # 请求 64MB 内存
+          limits:  # 资源限制（最大使用）
+            cpu: "200m"    # 限制 200 毫核 CPU
+            memory: "128Mi" # 限制 128MB 内存
+        livenessProbe:  # 存活探针，检测容器是否存活
+          httpGet:      # 使用 HTTP GET 请求检测
+            path: /     # 检测路径
+            port: 80    # 检测端口
+          initialDelaySeconds: 15  # 首次检测延迟 15 秒
+          periodSeconds: 10        # 每 10 秒检测一次
+        readinessProbe:  # 就绪探针，检测容器是否准备好提供服务
+          httpGet:       # 使用 HTTP GET 请求检测
+            path: /      # 检测路径
+            port: 80     # 检测端口
+          initialDelaySeconds: 5  # 首次检测延迟 5 秒
+          periodSeconds: 5        # 每 5 秒检测一次
+      imagePullSecrets:  # 镜像拉取凭据
+      - name: secret-harbor-login  # 镜像仓库登录密钥名称
+```
+
+#### 2.2 `hpa.yml` 文件
+该文件定义了 HorizontalPodAutoscaler（HPA）资源，用于根据 CPU 使用率自动调整 Pod 副本数。
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-light-year-admin-template
+  namespace: shiqi
+spec:
+  scaleTargetRef:  # 指定要扩展的目标资源
+    apiVersion: apps/v1
+    kind: Deployment
+    name: deployment-light-year-admin-template  # 关联的 Deployment 名称
+  minReplicas: 2  # 最小副本数，至少 2 个
+  maxReplicas: 3  # 最大副本数，根据企业需求设置
+  metrics:        # 定义扩展指标
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # 目标 CPU 使用率 70%，超过时增加副本
+```
+
+#### 2.3 `service.yml` 文件
+该文件定义了 Service 资源，用于在集群内部访问 `light-year-admin-template` 的 Pod。
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-light-year-admin-template
+  namespace: shiqi
+spec:
+  selector:  # 关联具有特定标签的 Pod
+    app: pod-light-year-admin-template
+  ports:
+  - protocol: TCP
+    port: 80        # Service 端口
+    targetPort: 80  # 后端 Pod 容器端口
+  type: ClusterIP   # 默认类型，集群内部访问
+```
+
+#### 2.4 `nginx-ingress.yml` 文件
+该文件定义了 Ingress 资源，用于通过域名访问服务，并启用 TLS 加密。
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-light-year-admin-template
+  namespace: shiqi
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /  # 可选：URL 重写规则
+spec:
+  ingressClassName: nginx  # 指定 Ingress 控制器类型为 Nginx
+  rules:
+  - host: shiqi.light.labworlds.cc  # 基于域名路由
+    http:
+      paths:
+      - path: /  # 基于路径路由
+        pathType: Prefix
+        backend:
+          service:
+            name: service-light-year-admin-template  # 关联的 Service 名称
+            port:
+              number: 80
+  tls:  # 配置 TLS 加密
+  - hosts:
+    - shiqi.light.labworlds.cc
+    secretName: secret-shiqi-light-labworlds-cc  # 存储 TLS 证书的 Secret 名称
+```
+
+### 步骤 3：创建命名空间
+在 Kubernetes 集群中创建用于部署项目的命名空间 `shiqi`（如果尚未创建）。
+1. 执行以下命令创建命名空间：
+   ```bash
+   kubectl create namespace shiqi
+   ```
+2. 验证命名空间是否创建成功：
+   ```bash
+   kubectl get namespace
+   ```
+   确保 `shiqi` 出现在列表中。
+
+### 步骤 4：部署项目资源
+将之前创建的 YAML 文件应用到 Kubernetes 集群中，按顺序部署资源。
+1. 进入项目文件夹：
+   ```bash
+   cd light-year-admin-template
+   ```
+2. 按以下顺序应用配置文件（建议按资源依赖顺序部署）：
+   - 先部署 Deployment：
+     ```bash
+     kubectl apply -f deployment.yml
+     ```
+   - 再部署 Service：
+     ```bash
+     kubectl apply -f service.yml
+     ```
+   - 然后部署 HPA：
+     ```bash
+     kubectl apply -f hpa.yml
+     ```
+   - 最后部署 Ingress：
+     ```bash
+     kubectl apply -f nginx-ingress.yml
+     ```
+3. 验证资源是否创建成功：
+   - 检查 Deployment 和 Pod 状态：
+     ```bash
+     kubectl get deployment -n shiqi
+     kubectl get pod -n shiqi
+     ```
+     确保 `deployment-light-year-admin-template` 显示副本数为 2，且 Pod 状态为 `Running`。
+   - 检查 Service：
+     ```bash
+     kubectl get service -n shiqi
+     ```
+     确保 `service-light-year-admin-template` 已创建。
+   - 检查 HPA：
+     ```bash
+     kubectl get hpa -n shiqi
+     ```
+     确保 `hpa-light-year-admin-template` 已创建，并显示目标 CPU 使用率。
+   - 检查 Ingress：
+     ```bash
+     kubectl get ingress -n shiqi
+     ```
+     确保 `ingress-light-year-admin-template` 已创建，并显示域名信息。
+
+### 步骤 5：验证服务访问
+1. 确保域名 `shiqi.light.labworlds.cc` 已通过 Cloudflare 或其他 DNS 服务解析到 Ingress 控制器的外部 IP 地址。
+   - 如果不确定 Ingress 控制器的 IP，可以通过以下命令查看：
+     ```bash
+     kubectl get ingress -n shiqi -o wide
+     ```
+     或查看 Nginx Ingress Controller 的 Service 外部 IP：
+     ```bash
+     kubectl get service -n ingress-nginx  # 假设 Nginx Ingress 部署在 ingress-nginx 命名空间
+     ```
+2. 在浏览器中访问 `https://shiqi.light.labworlds.cc`，验证是否能正常加载 `light-year-admin-template` 项目页面。
+   - 如果页面无法加载，可能原因包括：
+     - DNS 解析未生效：等待 DNS 生效或检查解析记录。
+     - TLS 证书问题：确保 `secret-shiqi-light-labworlds-cc` 中存储的证书有效。
+     - Ingress 控制器问题：检查 Nginx Ingress Controller 是否正常运行。
+     - Pod 未就绪：检查 Pod 日志，排查容器启动问题。
+
+### 步骤 6：测试自动扩展（HPA）
+1. 模拟高负载以触发 HPA 自动扩展（可选，需额外工具或手动增加负载）。
+   - 可以使用工具（如 `ab` 或 `wrk`）对服务发起大量请求，增加 CPU 使用率。
+   - 或者手动调整 HPA 的 `averageUtilization` 为较低值（如 10%），以便更容易触发扩展：
+     ```bash
+     kubectl edit hpa hpa-light-year-admin-template -n shiqi
+     ```
+2. 检查 HPA 是否增加 Pod 副本数：
+   ```bash
+   kubectl get hpa -n shiqi -w  # 实时监控 HPA 状态
+   kubectl get pod -n shiqi -w   # 实时监控 Pod 数量
+   ```
+   当 CPU 使用率超过目标值（70%）时，Pod 数量应增加（最多到 3 个）。
+
+### 注意事项
+- **镜像拉取问题**：确保 `secret-harbor-login` 正确配置，且镜像地址 `aliyun-harbor.labworlds.cc/light-year-admin-template/master:shiqi-082020` 可访问。如果拉取失败，检查 Secret 或镜像是否存在。
+- **反亲和性策略**：`podAntiAffinity` 配置为软策略（`preferredDuringSchedulingIgnoredDuringExecution`），如果集群节点不足，Pod 可能仍会部署在同一节点上。
+- **HPA 依赖 Metrics Server**：确保集群中已安装 Metrics Server（用于收集 CPU 使用率数据），否则 HPA 无法工作。阿里云 ACK 通常默认安装，若未安装需手动部署。
+- **域名和 TLS**：Ingress 配置依赖域名和 TLS 证书，确保 `shiqi.light.labworlds.cc` 和 `secret-shiqi-light-labworlds-cc` 已正确设置。
+- **资源限制**：根据实际需求调整 CPU 和内存的 `requests` 和 `limits`，避免资源不足或浪费。
+- **日志排查**：如果资源创建或服务访问失败，使用以下命令查看详细信息：
+  - 查看 Pod 日志：
+    ```bash
+    kubectl logs -l app=pod-light-year-admin-template -n shiqi
+    ```
+  - 查看资源事件：
+    ```bash
+    kubectl describe pod -l app=pod-light-year-admin-template -n shiqi
+    ```
+
+### 练习总结
+通过本练习，您学习了如何在 Kubernetes 集群中部署一个完整的前端项目 `light-year-admin-template`，并实现了以下功能：
+1. 使用 Deployment 管理 Pod，确保高可用性和滚动更新。
+2. 配置 Pod 反亲和性策略，尽量将 Pod 分布在不同节点上。
+3. 使用 HPA 实现基于 CPU 使用率的自动扩展。
+4. 通过 Service 提供集群内部访问。
+5. 使用 Nginx Ingress 配置域名访问和 TLS 加密。
