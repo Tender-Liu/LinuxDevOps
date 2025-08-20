@@ -1125,3 +1125,93 @@ spec:
 3. 使用 HPA 实现基于 CPU 使用率的自动扩展。
 4. 通过 Service 提供集群内部访问。
 5. 使用 Nginx Ingress 配置域名访问和 TLS 加密。
+
+
+## 额外: cert-manager 和 Helm 的介绍
+
+**cert-manager** 是一个 Kubernetes 上的开源工具，用于自动化管理 TLS 证书。它可以与多种证书颁发机构（CA）集成，比如 Let's Encrypt、HashiCorp Vault 等，通过自定义资源（如 `Certificate` 和 `Issuer`）来自动签发、续期和管理证书。cert-manager 简化了在 Kubernetes 集群中实现 HTTPS 加密的过程，特别适用于 Ingress 资源配置 TLS。
+
+**Helm** 是 Kubernetes 的包管理工具，类似于 Linux 中的 apt 或 yum。它允许用户通过预定义的模板（称为 Chart）来快速部署和管理 Kubernetes 应用程序。Helm 通过 Chart 将复杂的 Kubernetes 资源配置打包，用户只需简单命令即可完成安装、升级或删除操作，极大地提高了部署效率。
+
+### 2. 在阿里云 ACK 集群中安装 cert-manager 使用 Helm
+
+在阿里云 ACK（容器服务 Kubernetes）集群中，可以通过 Helm 快速安装 cert-manager。步骤如下：
+
+- 登录阿里云控制台，进入容器服务 ACK 集群的管理页面。
+- 在左侧导航栏选择 **应用目录** 或 **Helm Chart**。
+- 在搜索框中输入 `cert-manager`，找到对应的 Chart。
+- 点击 **安装**，根据提示完成配置（如命名空间选择，通常建议使用 `cert-manager` 命名空间）。
+- 安装完成后，确认 cert-manager 的 Pod 运行正常。
+
+![cert-manager安装](/Kubernetes周边服务/enterprise/cert-manager安装.png "cert-manager安装")
+
+如果您需要通过命令行操作，可以使用 Helm CLI：  (我们有可视化不用这个了)
+```bash
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
+```
+
+**注意**：`installCRDs=true` 是必要的，因为 cert-manager 需要安装自定义资源定义（CRD）。
+
+### 3. 修改 nginx-ingress.yml 并添加 cert-manager 相关配置
+
+为了让 Ingress 资源自动使用 cert-manager 签发的证书，您需要在 Ingress 文件中添加 cert-manager 的注解，同时确保已经配置了对应的 `Issuer` 或 `ClusterIssuer`。以下是修改后的 `nginx-ingress.yml` 示例：
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-light-year-admin-template
+  namespace: shiqi
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /  # 可选：URL 重写规则
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # 指定 cert-manager 的 ClusterIssuer 名称
+spec:
+  ingressClassName: nginx  # 指定 Ingress 控制器类型为 Nginx
+  rules:
+  - host: shiqi.light.labworlds.cc  # 基于域名路由
+    http:
+      paths:
+      - path: /  # 基于路径路由
+        pathType: Prefix
+        backend:
+          service:
+            name: service-light-year-admin-template  # 关联的 Service 名称
+            port:
+              number: 80
+  tls:  # 配置 TLS 加密
+  - hosts:
+    - shiqi.light.labworlds.cc
+    secretName: secret-shiqi-light-labworlds-cc  # 存储 TLS 证书的 Secret 名称，由 cert-manager 自动生成
+```
+
+**说明**：
+- `cert-manager.io/cluster-issuer: "letsencrypt-prod"` 是关键注解，用于指定 cert-manager 使用哪个 `ClusterIssuer` 来签发证书。您需要提前创建并配置好 `ClusterIssuer`，例如使用 Let's Encrypt 作为证书颁发机构。
+- `secretName` 是证书存储的 Secret 名称，cert-manager 会自动创建并管理这个 Secret，无需手动创建。
+
+### 创建 ClusterIssuer 示例
+
+如果您还没有创建 `ClusterIssuer`，可以参考以下配置（以 Let's Encrypt 为例）：
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: user@example.com  # 替换为您的邮箱，用于接收证书过期提醒
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+```
+
+**说明**：
+- `server` 指定 Let's Encrypt 的 ACME 服务器地址。
+- `email` 用于接收证书相关通知。
+- `solvers` 定义了域名所有权验证方式，这里使用 HTTP-01 挑战方式，适用于 Nginx Ingress。
