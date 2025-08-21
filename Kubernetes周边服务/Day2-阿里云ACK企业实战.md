@@ -350,7 +350,7 @@ ACR 作为云原生生态的一部分，具备以下显著优势：
     ifconfig-pool-persist ipp.txt
     # 结束位置，你们仔细找找
 
-    push "block-outside-dns"
+    # push "block-outside-dns"  这个注释掉，不然你们会上不了网
     keepalive 10 120
     user nobody
     group nogroup
