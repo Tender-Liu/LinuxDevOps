@@ -792,38 +792,6 @@ Grafana 是日志可视化工具，我们将它安装在另一台主机上，IP 
 
 ### 3. Kubernetes 部署：Promtail（日志采集并推送至 Loki）
 
-在我们的教学环境中，Kubernetes 集群只部署 Promtail，负责采集集群中的日志，并将日志推送至主机上的 Loki 服务（IP：`192.168.110.174`）。我们将使用 Helm 工具来简化 Promtail 的部署。
-
-#### 3.1 使用 Helm 安装 Promtail
-1. **添加 Grafana Helm 仓库**
-   - 运行以下命令，将 Grafana 的 Helm 仓库添加到你的 Helm 配置中：
-     ```bash
-     helm repo add grafana https://grafana.github.io/helm-charts
-     helm repo update
-     ```
-   - 解释：这会添加 Grafana 官方的 Helm Chart 仓库，并更新本地缓存。
-   - **注意**：如果添加仓库时遇到网络问题，可能需要科学上网工具。如果无法连接，可以联系教员寻求帮助。
-
-2. **安装 Promtail**
-   - Promtail 负责采集 Kubernetes 集群中的日志，运行以下命令安装，并配置其将日志推送至指定 Loki 服务：
-     ```bash
-     helm install promtail grafana/promtail --namespace=loki --create-namespace --set loki.serviceName="" --set loki.addr=http://192.168.110.174:3100
-     ```
-   - 解释：`--namespace=loki` 指定安装在 `loki` 命名空间，`--create-namespace` 自动创建该命名空间，`--set loki.addr=http://192.168.110.174:3100` 配置 Promtail 将日志发送到主机上的 Loki 服务（而非 Kubernetes 内部的服务）。
-
-
-好的，我会根据你的要求，在第四部分的 Kubernetes 部署 Promtail 章节中，补充由于国内网络环境需要登录 Kuboard 进入 Loki 命名空间修改 Promtail 镜像为渡渡鸟镜像（`swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/grafana/promtail:3.5.1`），并修改 Loki 中 Secret 的 `clients.url` 配置为 `http://192.168.110.174:3100/loki/api/v1/push`，最后重启 DaemonSet 服务 Promtail 的步骤。我会保持通俗易懂的风格，方便学员理解和操作。以下是更新后的内容。
-
----
-
-## 第四部分：Loki 在本地 Kubernetes 中的部署实操
-
-（前面的内容保持不变，直到 Kubernetes 部署 Promtail 部分）
-
----
-
-### 3. Kubernetes 部署：Promtail（日志采集并推送至 Loki）
-
 在我们的教学环境中，Kubernetes 集群只部署 Promtail，负责采集集群中的日志，并将日志推送至主机上的 Loki 服务（IP：`192.168.110.174`）。我们将使用 Helm 工具来简化 Promtail 的部署。同时，由于国内网络环境的限制，我们需要对 Promtail 的镜像源进行替换，并调整相关配置。
 
 #### 3.1 使用 Helm 安装 Promtail
