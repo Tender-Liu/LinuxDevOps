@@ -566,11 +566,11 @@ server:
 
 common:
   instance_addr: 0.0.0.0
-  path_prefix: /tmp/loki
+  path_prefix: /data/loki
   storage:
     filesystem:
-      chunks_directory: /tmp/loki/chunks
-      rules_directory: /tmp/loki/rules
+      chunks_directory: /data/loki/chunks
+      rules_directory: /data/loki/rules
   replication_factor: 1
   ring:
     kvstore:
@@ -581,7 +581,7 @@ query_range:
     cache:
       embedded_cache:
         enabled: true
-        max_size_mb: 100
+        max_size_mb: 256
 
 limits_config:
   metric_aggregation_enabled: true
@@ -689,7 +689,7 @@ frontend:
    - **操作**：修改前确保目录存在并有写入权限，可以用以下命令创建：
      ```bash
      mkdir -p /var/lib/loki/chunks /var/lib/loki/rules
-     chown loki:loki -R /var/lib/loki
+     chown loki:root -R /var/lib/loki
      ```
 
 2. **调整监听地址，允许外部访问**
@@ -730,10 +730,10 @@ frontend:
 
 6. **充分利用 SSD 磁盘，优化索引周期**
    - **问题**：默认 `schema_config: configs: index: period: 24h` 每 24 小时生成一个索引，可能导致查询范围较大时性能下降。
-   - **优化建议**：将索引周期缩短到 12 小时，减少单个索引文件的大小。
+   - **优化建议**：将索引周期缩短到 24 小时，减少单个索引文件的大小。
    - **修改方法**：在 `schema_config: configs: index:` 下修改：
      ```yaml
-     period: 12h
+     period: 24h
      ```
    - **原因**：SSD 磁盘读取速度快，缩短索引周期可以提高查询效率，同时不会显著增加磁盘负担。
 
